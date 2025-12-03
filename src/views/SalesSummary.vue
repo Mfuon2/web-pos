@@ -187,6 +187,7 @@ onMounted(() => {
   margin: 0;
   font-size: 2rem;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .header-icon {

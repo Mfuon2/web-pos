@@ -71,13 +71,13 @@ function getCategoryIcon(category) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  gap: 0.5rem;
+  padding: 0.5rem;
+  gap: 0.35rem;
 }
 
 .product-icon-wrapper {
   background: var(--bg-hover);
-  padding: 0.75rem;
+  padding: 0.5rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -90,8 +90,8 @@ function getCategoryIcon(category) {
 }
 
 .product-icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   color: var(--primary-color);
 }
 
@@ -103,32 +103,32 @@ function getCategoryIcon(category) {
 .product-card h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
   line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.15rem;
 }
 
 .price {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   color: var(--primary-color);
   margin: 0;
 }
 
 .stock-badge {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.15rem 0.4rem;
-  border-radius: 10px;
+  top: 0.35rem;
+  right: 0.35rem;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: 0.1rem 0.35rem;
+  border-radius: 8px;
   background: var(--bg-hover);
   color: var(--text-secondary);
 }

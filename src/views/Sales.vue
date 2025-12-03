@@ -503,4 +503,5 @@ onMounted(() => {
     justify-content: space-between;
   }
 }
+
 </style>

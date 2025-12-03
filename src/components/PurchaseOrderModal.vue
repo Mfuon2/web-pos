@@ -117,13 +117,15 @@ function handleSubmit() {
 
 .modal-header h2 {
   margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 500;
   color: var(--text-primary);
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: var(--font-size-xl);
   cursor: pointer;
   color: var(--text-secondary);
 }
@@ -135,18 +137,19 @@ function handleSubmit() {
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 0.75rem;
+  padding: var(--spacing-md);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  font-size: 1rem;
+  font-size: var(--font-size-base);
 }
 
 .form-group input:focus,
@@ -172,15 +175,15 @@ function handleSubmit() {
 
 .submit-btn {
   width: 100%;
-  padding: 1rem;
+  padding: var(--spacing-md);
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
   border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 500;
+  font-size: var(--font-size-base);
   cursor: pointer;
-  margin-top: 1rem;
+  margin-top: var(--spacing-lg);
   transition: all 0.3s ease;
 }
 

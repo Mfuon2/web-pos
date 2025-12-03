@@ -85,8 +85,8 @@ function handleBackdropClick() {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 24px;
-  padding: 2rem;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
   width: 90%;
   max-width: 400px;
   box-shadow: 
@@ -121,7 +121,8 @@ function handleBackdropClick() {
 
 .dialog-header h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--font-size-xl);
+  font-weight: 500;
   color: var(--text-primary);
   text-align: center;
 }
@@ -140,13 +141,13 @@ function handleBackdropClick() {
 }
 
 button {
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 600;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   border: none;
-  font-size: 1rem;
+  font-size: var(--font-size-base);
 }
 
 .btn-confirm {

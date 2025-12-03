@@ -47,6 +47,15 @@
 
     /* Typography */
     --font-family: 'Cabin', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+    /* Responsive font sizes */
+    --font-size-base: 14px;
+    --font-size-sm: 12px;
+    --font-size-xs: 10px;
+    --font-size-lg: 16px;
+    --font-size-xl: 18px;
+    --font-size-2xl: 20px;
+    --font-size-3xl: 24px;
 }
 
 * {
@@ -61,8 +70,70 @@ body {
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Responsive typography */
+h1 {
+    font-size: var(--font-size-2xl);
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+h2 {
+    font-size: var(--font-size-xl);
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+h3 {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+p {
+    font-weight: 400;
+}
+
+strong {
+    font-weight: 600;
+}
+
+/* Mobile responsive typography */
+@media (max-width: 768px) {
+    :root {
+        --font-size-base: 14px;
+        --font-size-sm: 13px;
+        --font-size-xs: 11px;
+        --font-size-lg: 16px;
+        --font-size-xl: 18px;
+        --font-size-2xl: 20px;
+        --font-size-3xl: 24px;
+    }
+
+    body {
+        font-size: var(--font-size-sm);
+    }
+
+    h1 {
+        font-size: var(--font-size-xl);
+        font-weight: 500;
+    }
+
+    h2 {
+        font-size: var(--font-size-lg);
+        font-weight: 500;
+    }
+
+    h3 {
+        font-size: var(--font-size-base);
+        font-weight: 500;
+    }
 }
 
 button {
@@ -70,12 +141,14 @@ button {
     border: none;
     outline: none;
     font-family: inherit;
+    font-weight: 400;
 }
 
 input,
 select,
 textarea {
     font-family: inherit;
+    font-weight: 300;
 }
 
 /* Utility Classes */
@@ -137,8 +210,8 @@ textarea {
     color: var(--text-white);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-md);
-    font-weight: 600;
-    font-size: 0.875rem;
+    font-weight: 400;
+    font-size: var(--font-size-sm);
     transition: all 0.3s ease;
 }
 
@@ -159,10 +232,27 @@ textarea {
     padding: 0.5rem 0.75rem;
     border: 2px solid var(--border-color);
     border-radius: var(--radius-md);
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
 }
 
 .input-field:focus {
     outline: none;
     border-color: var(--primary-color);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .card {
+        padding: 0.75rem;
+    }
+
+    .btn-primary {
+        padding: 0.6rem 1rem;
+        font-size: var(--font-size-sm);
+    }
+
+    .input-field {
+        padding: 0.6rem;
+        font-size: var(--font-size-base);
+    }
 }

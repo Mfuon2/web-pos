@@ -101,6 +101,7 @@ function handleLogout() {
   font-size: 1.5rem;
   color: var(--text-primary);
   margin: 0;
+  font-weight: 500;
 }
 
 .nav-links {
@@ -111,7 +112,7 @@ function handleLogout() {
 .nav-links a {
   text-decoration: none;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 500;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
   transition: all 0.3s;
@@ -182,8 +183,18 @@ function handleLogout() {
 /* Mobile Styles */
 @media (max-width: 768px) {
   .navbar {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     flex-direction: column;
+  }
+  
+  .nav-brand h1 {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+  }
+  
+  .brand-icon {
+    width: 24px;
+    height: 24px;
   }
 
   .nav-brand {
@@ -216,7 +227,8 @@ function handleLogout() {
   .nav-links a {
     width: 100%;
     justify-content: center;
-    padding: 1rem;
+    padding: 0.875rem;
+    font-size: var(--font-size-base);
   }
 
   .mobile-overlay {
@@ -241,8 +253,9 @@ function handleLogout() {
 }
 
 .username {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
 }
 
 .logout-btn {

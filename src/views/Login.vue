@@ -5,7 +5,7 @@
         <div class="logo">
           <ShoppingBag class="logo-icon" />
         </div>
-        <h1>727 Corktails Bar</h1>
+        <h1>{Business Name}</h1>
         <p>Sign in to your account</p>
       </div>
 
@@ -93,7 +93,7 @@ async function handleLogin() {
   background: var(--bg-white);
   width: 100%;
   max-width: 400px;
-  padding: 2.5rem;
+  padding: var(--spacing-xl);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
 }
@@ -121,7 +121,8 @@ async function handleLogin() {
 }
 
 .login-header h1 {
-  font-size: 1.75rem;
+  font-size: var(--font-size-2xl);
+  font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
@@ -139,9 +140,9 @@ async function handleLogin() {
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
 }
 
 .input-wrapper {
@@ -160,10 +161,10 @@ async function handleLogin() {
 
 .input-wrapper input {
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 2.5rem;
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  font-size: 1rem;
+  font-size: var(--font-size-base);
   transition: all 0.2s;
 }
 
@@ -176,19 +177,20 @@ async function handleLogin() {
 .error-message {
   background: var(--danger-light);
   color: var(--danger-bg);
-  padding: 0.75rem;
+  padding: var(--spacing-md);
   border-radius: var(--radius-md);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
   text-align: center;
 }
 
 .login-btn {
   background: var(--primary-gradient);
   color: var(--text-white);
-  padding: 0.875rem;
+  padding: var(--spacing-md);
   border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 500;
+  font-size: var(--font-size-base);
   transition: all 0.3s;
 }
 
@@ -200,5 +202,26 @@ async function handleLogin() {
 .login-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .login-card {
+    padding: var(--spacing-lg);
+  }
+  
+  .login-header h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .logo {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+  }
 }
 </style>

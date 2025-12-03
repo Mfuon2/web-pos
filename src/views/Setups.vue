@@ -567,7 +567,7 @@ onMounted(async () => {
   background: transparent;
   border: none;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 1rem;
   color: var(--text-secondary);
   cursor: pointer;
@@ -615,7 +615,7 @@ onMounted(async () => {
   color: var(--text-white);
   border: none;
   border-radius: var(--radius-md);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
   display: flex;
@@ -649,7 +649,7 @@ thead {
 th {
   padding: 1rem;
   text-align: left;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 td {
@@ -771,7 +771,7 @@ tbody tr:hover {
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
 }
 
@@ -799,15 +799,14 @@ tbody tr:hover {
 
 .submit-btn {
   width: 100%;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
   border-radius: var(--radius-md);
-  font-weight: 600;
   font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  margin-top: 1rem;
   transition: all 0.3s;
 }
 
@@ -848,10 +847,10 @@ tbody tr:hover {
 
 
 .role-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
   text-transform: capitalize;
 }
 
@@ -864,5 +863,112 @@ tbody tr:hover {
   background: var(--bg-hover);
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .setups {
+    padding: 1rem;
+  }
+  
+  .setups h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .header-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .icon-sm {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tab {
+    padding: 0.75rem 1rem;
+    min-width: auto;
+    font-size: var(--font-size-sm);
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .section-header h2 {
+    font-size: var(--font-size-lg);
+  }
+  
+  .add-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem;
+    font-size: var(--font-size-sm);
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table {
+    min-width: 600px;
+    font-size: var(--font-size-sm);
+  }
+  
+  th, td {
+    padding: 0.75rem 0.5rem;
+    font-size: var(--font-size-xs);
+  }
+  
+  .empty-state {
+    padding: 2rem 1rem !important;
+    font-size: var(--font-size-sm);
+  }
+  
+  .modal-content {
+    max-width: 100%;
+    width: calc(100% - 2rem);
+    padding: 1.5rem;
+    margin: 0 1rem;
+  }
+  
+  .modal-header h2 {
+    font-size: var(--font-size-lg);
+  }
+  
+  .form-group label {
+    font-size: var(--font-size-sm);
+  }
+  
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-size: var(--font-size-base);
+    padding: 0.65rem;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .submit-btn {
+    padding: 0.875rem;
+    font-size: var(--font-size-base);
+  }
+  
+  .role-badge {
+    font-size: var(--font-size-xs);
+    padding: 0.25rem 0.5rem;
+  }
 }
 </style>
