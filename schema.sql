@@ -102,6 +102,23 @@ CREATE INDEX IF NOT EXISTS idx_purchase_orders_received_at ON purchase_orders(re
 CREATE INDEX IF NOT EXISTS idx_purchase_order_items_po_id ON purchase_order_items(purchase_order_id);
 CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id);
 
+-- Settings Table
+CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    business_name TEXT NOT NULL DEFAULT 'POS System',
+    primary_color TEXT NOT NULL DEFAULT '#667eea',
+    secondary_color TEXT NOT NULL DEFAULT '#764ba2',
+    currency_symbol TEXT NOT NULL DEFAULT '$',
+    currency_code TEXT NOT NULL DEFAULT 'USD',
+    tax_rate REAL DEFAULT 0,
+    logo_url TEXT,
+    address TEXT,
+    phone TEXT,
+    email TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Seed Default Admin User
 -- Username: admin
 -- Password: admin123 (bcrypt hashed with 10 salt rounds)

@@ -4,6 +4,13 @@
     <router-view />
     <GlassDialog />
     
+    <!-- First-Time Setup Wizard -->
+    <SetupWizard 
+      v-if="showSetupWizard" 
+      :show="showSetupWizard"
+      @complete="showSetupWizard = false"
+    />
+    
     <!-- PWA Install Prompt -->
     <div v-if="showInstallPrompt" class="install-prompt">
       <div class="install-content">
@@ -25,11 +32,26 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import Navbar from './components/Navbar.vue'
 import GlassDialog from './components/GlassDialog.vue'
+import SetupWizard from './components/SetupWizard.vue'
+import { useSettingsStore } from './stores/settingsStore'
+import { useAuthStore } from './stores/authStore'
+
+const settingsStore = useSettingsStore()
+const authStore = useAuthStore()
 
 const deferredPrompt = ref(null)
 const showInstallPrompt = ref(false)
+const showSetupWizard = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
+  // Load settings on app mount
+  await settingsStore.fetchSettings()
+  
+  // Show setup wizard if no settings and user is logged in
+  if (!settingsStore.hasSettings && authStore.isAuthenticated) {
+    showSetupWizard.value = true
+  }
+  
   window.addEventListener('beforeinstallprompt', (e) => {
     // Prevent Chrome 67 and earlier from automatically showing the prompt
     e.preventDefault()
