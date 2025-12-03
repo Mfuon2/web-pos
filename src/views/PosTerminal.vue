@@ -220,19 +220,20 @@ onMounted(() => {
 
 .controls {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
 }
 
 .search-bar {
   flex: 1;
   min-width: 200px;
-  padding: 1rem;
+  padding: 0.5rem 0.75rem;
   border: 2px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  font-size: 1.1rem;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   box-shadow: var(--shadow-sm);
+  font-weight: 400;
 }
 
 .search-bar:focus {
@@ -241,13 +242,14 @@ onMounted(() => {
 }
 
 .category-filter {
-  padding: 1rem;
+  padding: 0.5rem 0.75rem;
   border: 2px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  font-size: 1rem;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   background: var(--bg-white);
-  min-width: 150px;
+  min-width: 120px;
   cursor: pointer;
+  font-weight: 400;
 }
 
 .category-filter:focus {
@@ -257,20 +259,22 @@ onMounted(() => {
 
 .categories {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
 }
 
 .category-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.35rem 0.75rem;
   background: var(--bg-white);
   border: 1px solid var(--border-color);
-  border-radius: 20px;
+  border-radius: 16px;
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
 }
 
 .category-btn.active {
@@ -281,8 +285,8 @@ onMounted(() => {
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.5rem;
   overflow-y: auto;
   padding: 0.5rem;
   align-content: start;

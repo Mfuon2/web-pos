@@ -196,6 +196,7 @@ onMounted(() => {
   margin: 0;
   font-size: 2rem;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .header-icon {
@@ -282,7 +283,7 @@ onMounted(() => {
 .stat-content h3 {
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -290,7 +291,7 @@ onMounted(() => {
 
 .stat-value {
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
@@ -298,6 +299,7 @@ onMounted(() => {
 .stat-detail {
   font-size: 0.85rem;
   color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .quick-actions {
@@ -311,6 +313,7 @@ onMounted(() => {
   margin: 0 0 1rem 0;
   font-size: 1.25rem;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .actions-grid {
@@ -350,12 +353,14 @@ onMounted(() => {
   margin: 0;
   font-size: 1rem;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .action-card p {
   margin: 0;
   font-size: 0.85rem;
   color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .recent-activity {
@@ -369,6 +374,7 @@ onMounted(() => {
   margin: 0 0 1rem 0;
   font-size: 1.25rem;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .activity-list {
@@ -396,6 +402,7 @@ onMounted(() => {
 .activity-time {
   font-size: 0.85rem;
   color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .activity-desc {
@@ -404,7 +411,7 @@ onMounted(() => {
 }
 
 .activity-amount {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   font-size: 1.1rem;
 }
@@ -426,10 +433,92 @@ onMounted(() => {
   .dashboard {
     padding: 1rem;
   }
+  
+  .header h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .header-icon {
+    width: 24px;
+    height: 24px;
+  }
 
-  .stats-grid,
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .stat-card {
+    padding: 1rem;
+  }
+  
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .stat-content h3 {
+    font-size: var(--font-size-xs);
+  }
+  
+  .stat-value {
+    font-size: var(--font-size-xl);
+  }
+  
+  .stat-detail {
+    font-size: var(--font-size-xs);
+  }
+  
+  .quick-actions,
+  .recent-activity {
+    padding: 1rem;
+  }
+  
+  .quick-actions h2,
+  .recent-activity h2 {
+    font-size: var(--font-size-lg);
+  }
+  
   .actions-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .action-card {
+    padding: 1rem;
+  }
+  
+  .action-icon {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .action-card h3 {
+    font-size: var(--font-size-sm);
+  }
+  
+  .action-card p {
+    font-size: var(--font-size-xs);
+  }
+  
+  .activity-item {
+    padding: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .activity-time {
+    font-size: var(--font-size-xs);
+  }
+  
+  .activity-desc {
+    font-size: var(--font-size-sm);
+  }
+  
+  .activity-amount {
+    font-size: var(--font-size-lg);
+    align-self: flex-end;
   }
 }
 </style>

@@ -130,8 +130,9 @@ function handleSubmit() {
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
 }
 
 .form-group input,
@@ -153,15 +154,15 @@ function handleSubmit() {
 
 .submit-btn {
   width: 100%;
-  padding: 1rem;
+  padding: var(--spacing-md);
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
   border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--font-size-base);
+  font-weight: 500;
   cursor: pointer;
-  margin-top: 1rem;
+  margin-top: var(--spacing-lg);
   transition: all 0.3s ease;
 }
 
