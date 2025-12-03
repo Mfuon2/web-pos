@@ -105,11 +105,11 @@ CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id);
 -- Settings Table
 CREATE TABLE IF NOT EXISTS settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    business_name TEXT NOT NULL DEFAULT 'POS System',
+    business_name TEXT NOT NULL DEFAULT 'Set Up Your Business Name',
     primary_color TEXT NOT NULL DEFAULT '#667eea',
     secondary_color TEXT NOT NULL DEFAULT '#764ba2',
-    currency_symbol TEXT NOT NULL DEFAULT '$',
-    currency_code TEXT NOT NULL DEFAULT 'USD',
+    currency_symbol TEXT NOT NULL DEFAULT 'Ksh',
+    currency_code TEXT NOT NULL DEFAULT 'KES',
     tax_rate REAL DEFAULT 0,
     logo_url TEXT,
     address TEXT,
