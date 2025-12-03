@@ -2,7 +2,7 @@
   <nav class="navbar">
     <div class="nav-brand">
       <Store class="brand-icon" />
-      <h1>POS</h1>
+      <h1>{{ businessName }}</h1>
       <button class="mobile-menu-btn" @click="isMenuOpen = !isMenuOpen" aria-label="Toggle menu">
         <span class="hamburger" :class="{ open: isMenuOpen }"></span>
       </button>
@@ -55,15 +55,18 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
-import { Store, LayoutDashboard, ShoppingCart, Package, Wallet, Settings, Receipt, LogOut, TrendingUp } from 'lucide-vue-next'
+import { useSettingsStore } from '../stores/settingsStore'
+import { Store, LayoutDashboard, ShoppingCart, Package, Receipt, Wallet, Settings, LogOut, TrendingUp } from 'lucide-vue-next'
 
-const router = useRouter()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
+const router = useRouter()
 const isMenuOpen = ref(false)
 
-const isAdmin = computed(() => authStore.isAdmin)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const currentUser = computed(() => authStore.currentUser)
+const isAdmin = computed(() => currentUser.value?.role === 'admin')
+const businessName = computed(() => settingsStore.businessName)
 
 function handleLogout() {
   authStore.logout()

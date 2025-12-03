@@ -5,7 +5,7 @@
         <div class="logo">
           <ShoppingBag class="logo-icon" />
         </div>
-        <h1>{Business Name}</h1>
+        <h1>{{ businessName }}</h1>
         <p>Sign in to your account</p>
       </div>
 
@@ -51,18 +51,22 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { ShoppingBag, User, Lock } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 
 const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+
+const businessName = computed(() => settingsStore.businessName)
 
 async function handleLogin() {
   loading.value = true

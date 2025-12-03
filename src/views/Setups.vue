@@ -31,6 +31,14 @@
         <Users class="icon-sm" />
         Users
       </button>
+      <button 
+        class="tab" 
+        :class="{ active: activeTab === 'settings' }"
+        @click="activeTab = 'settings'"
+      >
+        <Settings class="icon-sm" />
+        Settings
+      </button>
     </div>
 
     <!-- Tab Content -->
@@ -188,6 +196,149 @@
           />
         </div>
       </div>
+
+      <!-- Settings Tab -->
+      <div v-if="activeTab === 'settings'" class="content-section">
+        <div class="section-header">
+          <h2>Business Settings</h2>
+        </div>
+
+        <form @submit.prevent="handleSaveSettings" class="settings-form">
+          <div class="settings-section">
+            <h3><Palette class="icon-sm" /> Branding</h3>
+            
+            <div class="form-group">
+              <label>Business Name *</label>
+              <input 
+                v-model="settingsForm.business_name" 
+                type="text" 
+                required 
+                placeholder="My Business"
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Primary Color</label>
+                <div class="color-input-wrapper">
+                  <input 
+                    v-model="settingsForm.primary_color" 
+                    type="color"
+                    class="color-picker"
+                  />
+                  <input 
+                    v-model="settingsForm.primary_color" 
+                    type="text"
+                    class="color-text"
+                    placeholder="#667eea"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Secondary Color</label>
+                <div class="color-input-wrapper">
+                  <input 
+                    v-model="settingsForm.secondary_color" 
+                    type="color"
+                    class="color-picker"
+                  />
+                  <input 
+                    v-model="settingsForm.secondary_color" 
+                    type="text"
+                    class="color-text"
+                    placeholder="#764ba2"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Currency & Tax</h3>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Currency Symbol</label>
+                <input 
+                  v-model="settingsForm.currency_symbol" 
+                  type="text" 
+                  placeholder="$"
+                  maxlength="3"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Currency Code</label>
+                <input 
+                  v-model="settingsForm.currency_code" 
+                  type="text" 
+                  placeholder="USD"
+                  maxlength="3"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Tax Rate (%)</label>
+                <input 
+                  v-model.number="settingsForm.tax_rate" 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Contact Information</h3>
+            
+            <div class="form-group">
+              <label>Address</label>
+              <textarea 
+                v-model="settingsForm.address" 
+                rows="2"
+                placeholder="123 Main St, City, Country"
+              ></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Phone</label>
+                <input 
+                  v-model="settingsForm.phone" 
+                  type="tel" 
+                  placeholder="+1234567890"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Email</label>
+                <input 
+                  v-model="settingsForm.email" 
+                  type="email" 
+                  placeholder="contact@business.com"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Logo URL (Optional)</label>
+              <input 
+                v-model="settingsForm.logo_url" 
+                type="url" 
+                placeholder="https://example.com/logo.png"
+              />
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn" :disabled="settingsStore.loading">
+            {{ settingsStore.loading ? 'Saving...' : 'Save Settings' }}
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Category Modal -->
@@ -296,19 +447,22 @@ import { ref, computed, onMounted } from 'vue'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useSupplierStore } from '../stores/supplierStore'
 import { useUserStore } from '../stores/userStore'
-import { Settings, Folder, Truck, Users, Plus, Edit2, Trash2, X } from 'lucide-vue-next'
+import { Settings, Folder, Truck, Users, Plus, Edit2, Trash2, X, Palette } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
 
 import { useDialogStore } from '../stores/dialogStore'
+import { useSettingsStore } from '../stores/settingsStore'
 
 const categoryStore = useCategoryStore()
 const supplierStore = useSupplierStore()
 const userStore = useUserStore()
 const dialogStore = useDialogStore()
+const settingsStore = useSettingsStore()
 
 const categories = computed(() => categoryStore.categories)
 const suppliers = computed(() => supplierStore.suppliers)
 const users = computed(() => userStore.users)
+const currentSettings = computed(() => settingsStore.settings)
 
 const categoryPagination = computed(() => categoryStore.pagination)
 const supplierPagination = computed(() => supplierStore.pagination)
@@ -341,8 +495,37 @@ const userForm = ref({
   role: 'cashier'
 })
 
+const settingsForm = ref({
+  business_name: '',
+  primary_color: '#667eea',
+  secondary_color: '#764ba2',
+  currency_symbol: '$',
+  currency_code: 'USD',
+  tax_rate: 0,
+  logo_url: '',
+  address: '',
+  phone: '',
+  email: ''
+})
+
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+// Settings functions
+async function loadSettings() {
+  if (currentSettings.value) {
+    settingsForm.value = { ...currentSettings.value }
+  }
+}
+
+async function handleSaveSettings() {
+  try {
+    await settingsStore.updateSettings(settingsForm.value)
+    dialogStore.success('Settings saved successfully!')
+  } catch (err) {
+    dialogStore.error('Failed to save settings: ' + err.message)
+  }
 }
 
 // Category functions
@@ -524,6 +707,19 @@ onMounted(async () => {
   await categoryStore.fetchCategories({ page: 1, limit: 20 })
   await supplierStore.fetchSuppliers({ page: 1, limit: 20 })
   await userStore.fetchUsers({ page: 1, limit: 20 })
+  
+  // Load settings if they exist
+  if (currentSettings.value) {
+    loadSettings()
+  }
+})
+
+// Watch for settings changes and update form
+import { watch } from 'vue'
+watch(() => currentSettings.value, (newSettings) => {
+  if (newSettings) {
+    settingsForm.value = { ...newSettings }
+  }
 })
 </script>
 
@@ -971,4 +1167,62 @@ tbody tr:hover {
     padding: 0.25rem 0.5rem;
   }
 }
+
+/* Settings Form Styles */
+.settings-form {
+  max-width: 800px;
+}
+
+.settings-section {
+  background: var(--bg-white);
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.settings-section h3 {
+  margin: 0 0 1.25rem 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.color-input-wrapper {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.color-picker {
+  width: 60px;
+  height: 44px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.color-picker:hover {
+  border-color: var(--primary-color);
+}
+
+.color-text {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: monospace;
+  text-transform: uppercase;
+}
+
+.settings-form .submit-btn {
+  margin-top: 1rem;
+}
 </style>
+
