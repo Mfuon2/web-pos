@@ -171,7 +171,7 @@ onMounted(() => {
 
 <style scoped>
 .sales-summary {
-  padding: 2rem;
+  padding: var(--spacing-xl);
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -185,7 +185,7 @@ onMounted(() => {
 
 .header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: var(--font-size-2xl);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -272,35 +272,36 @@ onMounted(() => {
 
 .card-content h3 {
   margin: 0 0 0.5rem 0;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .amount {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
 .detail {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 
 .recent-sales {
   background: var(--bg-white);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  padding: var(--spacing-xl);
   box-shadow: var(--shadow-md);
 }
 
 .recent-sales h2 {
   margin: 0 0 1rem 0;
-  font-size: 1.25rem;
+  font-size: var(--font-size-lg);
+  font-weight: 500;
   color: var(--text-primary);
 }
 
@@ -314,7 +315,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: var(--spacing-lg);
   background: var(--bg-hover);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
@@ -329,12 +330,13 @@ onMounted(() => {
 .sale-id {
   font-family: monospace;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sale-time {
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
 }
 
 .sale-details {
@@ -347,7 +349,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
   text-transform: capitalize;
 }
@@ -358,9 +360,9 @@ onMounted(() => {
 }
 
 .sale-amount {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
 }
 
 .empty-state {
@@ -378,22 +380,75 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .sales-summary {
-    padding: 1rem;
+    padding: var(--spacing-lg);
+  }
+  
+  .header h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .header-icon {
+    width: 24px;
+    height: 24px;
   }
 
   .summary-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .summary-card {
+    padding: 1rem;
+  }
+  
+  .card-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .card-content h3 {
+    font-size: var(--font-size-xs);
+  }
+  
+  .amount {
+    font-size: var(--font-size-xl);
+  }
+  
+  .detail {
+    font-size: var(--font-size-xs);
+  }
+  
+  .recent-sales {
+    padding: 1rem;
+  }
+  
+  .recent-sales h2 {
+    font-size: var(--font-size-lg);
   }
 
   .sale-item {
+    padding: 0.75rem;
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+  
+  .sale-time {
+    font-size: var(--font-size-xs);
+  }
+  
+  .payment-method {
+    font-size: var(--font-size-xs);
   }
 
   .sale-details {
     width: 100%;
     justify-content: space-between;
+  }
+  
+  .sale-amount {
+    font-size: var(--font-size-lg);
+    align-self: flex-end;
   }
 }
 </style>

@@ -187,7 +187,7 @@ onMounted(() => {
 
 <style scoped>
 .sales-container {
-  padding: 2rem;
+  padding: var(--spacing-xl);
   max-width: 1400px; 
   margin: 0 auto;
 }
@@ -198,11 +198,12 @@ onMounted(() => {
 
 .header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: var(--font-size-2xl);
   color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  font-weight: 500;
 }
 
 .header-icon {
@@ -235,7 +236,7 @@ onMounted(() => {
 
 .error {
   text-align: center;
-  padding: 2rem;
+  padding: var(--spacing-xl);
   color: var(--danger-bg);
   background: var(--bg-white);
   border-radius: var(--radius-md);
@@ -271,7 +272,7 @@ onMounted(() => {
 }
 
 .day-header {
-  padding: 1rem 1.25rem;
+  padding: var(--spacing-lg) 1.25rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -304,8 +305,8 @@ onMounted(() => {
 
 .day-info h2 {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: 500;
   color: var(--text-primary);
 }
 
@@ -319,9 +320,9 @@ onMounted(() => {
 }
 
 .day-total {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--primary-color);
-  font-size: 1rem;
+  font-size: var(--font-size-base);
 }
 
 /* Sales List */
@@ -361,11 +362,11 @@ onMounted(() => {
 .sale-id {
   font-family: monospace;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
 }
 
 .sale-time {
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -380,7 +381,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.8rem;
+  font-size: var(--font-size-xs);
   color: var(--text-secondary);
   text-transform: capitalize;
 }
@@ -391,7 +392,7 @@ onMounted(() => {
 }
 
 .sale-amount {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
   min-width: 60px;
   text-align: right;
@@ -413,14 +414,14 @@ onMounted(() => {
   padding: 0 1.25rem 1.25rem;
   background: #f8fafc;
   border-top: 1px solid var(--border-color);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
 }
 
 .items-table-header {
   display: flex;
   padding: 0.75rem 0.5rem;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border-color);
@@ -462,7 +463,7 @@ onMounted(() => {
 
 .item-subtotal {
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .no-items {
@@ -489,7 +490,7 @@ onMounted(() => {
 
 @media (max-width: 640px) {
   .sales-container {
-    padding: 1rem;
+    padding: var(--spacing-lg);
   }
   
   .sale-summary {

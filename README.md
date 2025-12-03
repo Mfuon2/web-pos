@@ -1,4 +1,4 @@
-# 🏪 Vue 727 Corktails Bar with Cloudflare Pages & D1
+# 🏪 Vue POS with Cloudflare Pages & D1
 
 A complete Point of Sale (POS) application built with **Vue 3**, **Cloudflare Pages Functions**, and **Cloudflare D1** database.
 
