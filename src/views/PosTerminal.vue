@@ -44,16 +44,16 @@
         <div v-if="cart.length === 0" class="empty-cart">
           Cart is empty
         </div>
-        <div v-else v-for="item in cart" :key="item.id" class="cart-item">
+        <div v-else v-for="item in cart" :key="item.product_id" class="cart-item">
           <div class="item-info">
             <h4>{{ item.name }}</h4>
             <p>{{ formatCurrency(item.price) }} x {{ item.quantity }}</p>
           </div>
           <div class="item-actions">
-            <button @click="updateQuantity(item.id, -1)">-</button>
+            <button @click="updateQuantity(item.product_id, -1)">-</button>
             <span>{{ item.quantity }}</span>
-            <button @click="updateQuantity(item.id, 1)">+</button>
-            <button @click="removeFromCart(item.id)" class="delete-btn">
+            <button @click="updateQuantity(item.product_id, 1)">+</button>
+            <button @click="removeFromCart(item.product_id)" class="delete-btn">
               <Trash2 class="icon-sm" />
             </button>
           </div>
@@ -156,12 +156,16 @@ function addToCart(product) {
   // Optional: Show a toast notification here
 }
 
-function updateQuantity(id, change) {
-  cartStore.updateQuantity(id, change)
+function updateQuantity(productId, change) {
+  const item = cart.value.find(i => i.product_id === productId)
+  if (item) {
+    const newQuantity = item.quantity + change
+    cartStore.updateQuantity(productId, newQuantity)
+  }
 }
 
-function removeFromCart(id) {
-  cartStore.removeItem(id)
+function removeFromCart(productId) {
+  cartStore.removeItem(productId)
 }
 
 function handleBarcodeSearch() {
