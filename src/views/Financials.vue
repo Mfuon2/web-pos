@@ -109,8 +109,8 @@
             </thead>
             <tbody>
               <tr v-for="po in purchaseOrders" :key="po.id">
-                <td>{{ formatDate(po.created_at) }}</td>
-                <td>{{ getSupplierName(po.supplier_id) }}</td>
+                <td>{{ formatDate(po.createdAt) }}</td>
+                <td>{{ getSupplierName(po.supplierId) }}</td>
                 <td>
                   <span class="status-badge" :class="po.status">{{ po.status }}</span>
                 </td>
@@ -166,7 +166,7 @@
             </thead>
             <tbody>
               <tr v-for="expense in expenses" :key="expense.id">
-                <td>{{ formatDate(expense.created_at) }}</td>
+                <td>{{ formatDate(expense.createdAt) }}</td>
                 <td><span class="category-badge">{{ expense.category }}</span></td>
                 <td>{{ expense.description }}</td>
                 <td class="amount">{{ formatCurrency(expense.amount) }}</td>
@@ -638,31 +638,6 @@ table {
   width: 100%; 
   border-collapse: collapse; 
   min-width: 800px;
-}
-
-thead { 
-  background: var(--primary-gradient); 
-  color: var(--text-white); 
-}
-
-th { 
-  padding: 1rem; 
-  text-align: left; 
-  font-weight: 600; 
-}
-
-tbody tr { 
-  border-bottom: 1px solid var(--border-color); 
-  transition: background 0.2s; 
-}
-
-tbody tr:hover { 
-  background: var(--bg-hover); 
-}
-
-td { 
-  padding: 1rem; 
-  color: var(--text-primary); 
 }
 
 .empty-state {

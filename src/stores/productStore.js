@@ -41,6 +41,17 @@ export const useProductStore = defineStore('product', () => {
         }
     }
 
+    async function getAllProducts() {
+        try {
+            const response = await fetch('/api/products')
+            if (!response.ok) throw new Error('Failed to fetch all products')
+            return await response.json()
+        } catch (err) {
+            console.error('Error fetching all products:', err)
+            throw err
+        }
+    }
+
     async function addProduct(product) {
         loading.value = true
         error.value = null
@@ -111,6 +122,7 @@ export const useProductStore = defineStore('product', () => {
         loading,
         error,
         fetchProducts,
+        getAllProducts,
         addProduct,
         updateProduct,
         deleteProduct,

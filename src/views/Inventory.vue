@@ -5,7 +5,13 @@
         <Package class="header-icon" />
         Inventory
       </h1>
-      <button @click="openAddModal" class="add-btn">+ Add Product</button>
+      <div class="header-actions">
+        <button @click="exportToExcel" class="export-btn" :disabled="exporting">
+          <Download class="icon-sm" />
+          {{ exporting ? 'Exporting...' : 'Export' }}
+        </button>
+        <button @click="openAddModal" class="add-btn">+ Add Product</button>
+      </div>
     </div>
     
     <div class="inventory-table">
@@ -16,7 +22,9 @@
             <th>Barcode</th>
             <th>Price</th>
             <th>Cost</th>
+            <th>Expected Profit</th>
             <th>Stock</th>
+            <th>Total Value</th>
             <th>Category</th>
             <th>Actions</th>
           </tr>
@@ -30,7 +38,9 @@
             <td><code>{{ product.barcode || 'N/A' }}</code></td>
             <td>{{ formatCurrency(product.price) }}</td>
             <td>{{ formatCurrency(product.cost || 0) }}</td>
+            <td>{{ formatCurrency(product.price - (product.cost || 0)) }}</td>
             <td :class="{ 'low-stock': product.stock < 10 }">{{ product.stock }}</td>
+            <td>{{ formatCurrency(product.price * product.stock) }}</td>
             <td>{{ product.category || 'N/A' }}</td>
             <td class="actions">
               <button 
@@ -116,18 +126,86 @@
 import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '../stores/productStore'
 import { useCategoryStore } from '../stores/categoryStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { formatCurrency } from '../utils/currency'
-import { Edit2, Trash2, Package } from 'lucide-vue-next'
+import { Edit2, Trash2, Package, Download } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
+import * as XLSX from 'xlsx'
 
 import { useDialogStore } from '../stores/dialogStore'
 
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
+const settingsStore = useSettingsStore()
 const dialogStore = useDialogStore()
 const products = computed(() => productStore.products)
 const categories = computed(() => categoryStore.categories)
 const pagination = computed(() => productStore.pagination)
+
+const exporting = ref(false)
+
+async function exportToExcel() {
+  exporting.value = true
+  try {
+    // Fetch all products for export (ignoring pagination)
+    // Note: In a real app with thousands of items, we might need a dedicated API endpoint
+    // For now, we'll assume the store can handle fetching all or we use the current list
+    // If we need ALL products, we might need to fetch them. 
+    // Let's assume we want to export what's currently available or fetch all if possible.
+    // For this implementation, I'll fetch all products temporarily.
+    
+    // Fetch all products
+    const allProducts = await productStore.getAllProducts() // We need to ensure this exists or implement it
+    
+    const businessName = settingsStore.businessName
+    const date = new Date().toLocaleDateString()
+    const time = new Date().toLocaleTimeString()
+    
+    // Prepare data
+    const data = [
+      [businessName], // Row 1: Business Name
+      [`Stock as at ${date} ${time}`], // Row 2: Date
+      [], // Row 3: Empty
+      ['Name', 'Barcode', 'Price', 'Cost', 'Expected Profit', 'Stock', 'Total Value', 'Category'] // Row 4: Headers
+    ]
+    
+    allProducts.forEach(p => {
+      data.push([
+        p.name,
+        p.barcode || 'N/A',
+        p.price,
+        p.cost || 0,
+        p.price - (p.cost || 0),
+        p.stock,
+        p.price * p.stock,
+        p.category || 'N/A'
+      ])
+    })
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(data)
+    
+    // Merge cells for title
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Merge Business Name across 8 columns
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }  // Merge Date across 8 columns
+    ]
+    
+    // Create workbook
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory')
+    
+    // Save file
+    XLSX.writeFile(wb, `Inventory_${date.replace(/\//g, '-')}.xlsx`)
+    
+    dialogStore.success('Inventory exported successfully')
+  } catch (error) {
+    console.error('Export failed:', error)
+    dialogStore.error('Export failed: ' + error.message)
+  } finally {
+    exporting.value = false
+  }
+}
 
 const showModal = ref(false)
 const isEditing = ref(false)
@@ -142,10 +220,34 @@ const formData = ref({
   category: ''
 })
 
+function generateBarcode() {
+  const startBarcode = 1000000001
+  
+  // Get all existing numeric barcodes
+  const existingBarcodes = productStore.products
+    .map(p => parseInt(p.barcode))
+    .filter(b => !isNaN(b) && b >= startBarcode)
+    
+  if (existingBarcodes.length === 0) {
+    return startBarcode.toString()
+  }
+  
+  // Find the max and add 1
+  const maxBarcode = Math.max(...existingBarcodes)
+  return (maxBarcode + 1).toString()
+}
+
 function openAddModal() {
   isEditing.value = false
   editingId.value = null
-  formData.value = { name: '', barcode: '', price: 0, cost: 0, stock: 0, category: '' }
+  formData.value = { 
+    name: '', 
+    barcode: generateBarcode(), 
+    price: 0, 
+    cost: 0, 
+    stock: 0, 
+    category: '' 
+  }
   showModal.value = true
 }
 
@@ -216,6 +318,10 @@ onMounted(async () => {
   height: 32px;
   color: var(--primary-color);
 }
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
 .add-btn {
   padding: 0.75rem 1.5rem;
   background: var(--primary-gradient);
@@ -226,21 +332,30 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.3s ease;
 }
+.export-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.export-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+.export-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 .add-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
 .inventory-table { background: var(--bg-white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 800px; }
-thead { background: var(--primary-gradient); color: var(--text-white); }
-th {
-  padding: var(--spacing-lg);
-  text-align: left;
-  font-weight: 500;
-}
-tbody tr { border-bottom: 1px solid var(--border-color); transition: background 0.2s; }
-tbody tr:hover { background: var(--bg-hover); }
-td {
-  padding: var(--spacing-lg);
-  color: var(--text-primary);
-}
+table { min-width: 800px; }
 code {
   background: var(--bg-hover);
   padding: 0.25rem 0.5rem;
@@ -285,14 +400,17 @@ code {
 .close-btn:hover { color: var(--text-primary); }
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary); }
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: var(--spacing-md);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
+  background-color: var(--bg-white);
 }
-.form-group input:focus { outline: none; border-color: var(--primary-color); }
+.form-group input:focus,
+.form-group select:focus { outline: none; border-color: var(--primary-color); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .submit-btn {
   width: 100%;

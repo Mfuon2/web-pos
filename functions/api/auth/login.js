@@ -1,23 +1,23 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs'
+import { getDb } from '../../../drizzle/db'
+import { users } from '../../../drizzle/schema'
+import { eq } from 'drizzle-orm'
 
 export async function onRequestPost(context) {
     const { request, env } = context;
 
     try {
+        const db = getDb(env);
         const { username, password } = await request.json();
 
-        const { results } = await env.DB.prepare(
-            'SELECT * FROM users WHERE username = ?'
-        ).bind(username).all();
+        const user = await db.select().from(users).where(eq(users.username, username)).get();
 
-        if (results.length === 0) {
+        if (!user) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), {
                 status: 401,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-
-        const user = results[0];
 
         // Check if password is hashed (bcrypt hashes start with $2)
         let passwordValid = false;

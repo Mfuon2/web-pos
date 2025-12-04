@@ -1,41 +1,36 @@
-// GET /api/expenses - Fetch all expenses
-// POST /api/expenses - Create a new expense
+import { getDb } from '../../../drizzle/db'
+import { expenses } from '../../../drizzle/schema'
+import { between, count, desc, sql } from 'drizzle-orm'
 
 export async function onRequestGet(context) {
     const { env, request } = context;
 
     try {
+        const db = getDb(env);
         const url = new URL(request.url);
         const startDate = url.searchParams.get('start_date');
         const endDate = url.searchParams.get('end_date');
         const pageParam = url.searchParams.get('page');
         const limitParam = url.searchParams.get('limit');
 
-        let query = 'SELECT * FROM expenses';
-        const params = [];
-        let countQuery = 'SELECT COUNT(*) as total FROM expenses';
-        const countParams = [];
+        let query = db.select().from(expenses);
+        let countQuery = db.select({ total: count() }).from(expenses);
 
+        // Apply date filter if provided
         if (startDate && endDate) {
-            const whereClause = ' WHERE created_at BETWEEN ? AND ?';
-            query += whereClause;
-            countQuery += whereClause;
-            params.push(startDate, endDate);
-            countParams.push(startDate, endDate);
+            query = query.where(between(expenses.createdAt, startDate, endDate));
+            countQuery = countQuery.where(between(expenses.createdAt, startDate, endDate));
         }
 
-        query += ' ORDER BY created_at DESC';
+        query = query.orderBy(desc(expenses.createdAt));
 
         if (pageParam) {
             const page = parseInt(pageParam) || 1;
             const limit = parseInt(limitParam) || 20;
             const offset = (page - 1) * limit;
 
-            query += ' LIMIT ? OFFSET ?';
-            params.push(limit, offset);
-
-            const { total } = await env.DB.prepare(countQuery).bind(...countParams).first();
-            const { results } = await env.DB.prepare(query).bind(...params).all();
+            const [{ total }] = await countQuery;
+            const results = await query.limit(limit).offset(offset);
 
             return new Response(JSON.stringify({
                 data: results,
@@ -49,7 +44,7 @@ export async function onRequestGet(context) {
                 headers: { 'Content-Type': 'application/json' }
             });
         } else {
-            const { results } = await env.DB.prepare(query).bind(...params).all();
+            const results = await query;
 
             return new Response(JSON.stringify(results), {
                 headers: { 'Content-Type': 'application/json' }
@@ -67,16 +62,20 @@ export async function onRequestPost(context) {
     const { request, env } = context;
 
     try {
+        const db = getDb(env);
         const body = await request.json();
         const { category, amount, description } = body;
 
-        const result = await env.DB.prepare(
-            'INSERT INTO expenses (category, amount, description, created_at) VALUES (?, ?, ?, datetime("now"))'
-        ).bind(category, amount, description).run();
+        const result = await db.insert(expenses).values({
+            category,
+            amount,
+            description,
+            createdAt: sql`datetime('now')`
+        }).returning({ id: expenses.id });
 
         return new Response(JSON.stringify({
             success: true,
-            id: result.meta.last_row_id
+            id: result[0].id
         }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' }
@@ -88,4 +87,3 @@ export async function onRequestPost(context) {
         });
     }
 }
-

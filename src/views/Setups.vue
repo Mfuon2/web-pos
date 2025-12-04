@@ -67,7 +67,7 @@
               <tr v-for="category in categories" :key="category.id">
                 <td><strong>{{ category.name }}</strong></td>
                 <td>{{ category.description || 'N/A' }}</td>
-                <td>{{ formatDate(category.created_at) }}</td>
+                <td>{{ formatDate(category.createdAt) }}</td>
                 <td class="actions">
                   <button @click="openCategoryModal(category)" class="action-btn edit-btn">
                     <Edit2 class="icon-sm" />
@@ -171,7 +171,7 @@
                 <td>
                   <span class="role-badge" :class="user.role">{{ user.role }}</span>
                 </td>
-                <td>{{ formatDate(user.created_at) }}</td>
+                <td>{{ formatDate(user.createdAt) }}</td>
                 <td class="actions">
                   <button @click="openUserModal(user)" class="action-btn edit-btn" title="Edit User">
                     <Edit2 class="icon-sm" />
@@ -289,6 +289,19 @@
                   placeholder="0.00"
                 />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label>Business Timezone</label>
+              <select v-model="settingsForm.timezone">
+                <option value="Africa/Nairobi">Africa/Nairobi (EAT - UTC+3)</option>
+                <option value="Africa/Lagos">Africa/Lagos (WAT - UTC+1)</option>
+                <option value="Africa/Cairo">Africa/Cairo (EET - UTC+2)</option>
+                <option value="Africa/Johannesburg">Africa/Johannesburg (SAST - UTC+2)</option>
+                <option value="Africa/Accra">Africa/Accra (GMT - UTC+0)</option>
+                <option value="Africa/Casablanca">Africa/Casablanca (WET - UTC+0/+1)</option>
+                <option value="UTC">UTC (Coordinated Universal Time)</option>
+              </select>
             </div>
           </div>
 
@@ -502,6 +515,7 @@ const settingsForm = ref({
   currency_symbol: '$',
   currency_code: 'USD',
   tax_rate: 0,
+  timezone: 'Africa/Nairobi',
   logo_url: '',
   address: '',
   phone: '',
@@ -515,7 +529,20 @@ function formatDate(dateString) {
 // Settings functions
 async function loadSettings() {
   if (currentSettings.value) {
-    settingsForm.value = { ...currentSettings.value }
+    // Map camelCase API response to snake_case form fields
+    settingsForm.value = {
+      business_name: currentSettings.value.businessName || '',
+      primary_color: currentSettings.value.primaryColor || '#667eea',
+      secondary_color: currentSettings.value.secondaryColor || '#764ba2',
+      currency_symbol: currentSettings.value.currencySymbol || '$',
+      currency_code: currentSettings.value.currencyCode || 'USD',
+      tax_rate: currentSettings.value.taxRate || 0,
+      timezone: currentSettings.value.timezone || 'Africa/Nairobi',
+      logo_url: currentSettings.value.logoUrl || '',
+      address: currentSettings.value.address || '',
+      phone: currentSettings.value.phone || '',
+      email: currentSettings.value.email || ''
+    }
   }
 }
 
@@ -718,7 +745,19 @@ onMounted(async () => {
 import { watch } from 'vue'
 watch(() => currentSettings.value, (newSettings) => {
   if (newSettings) {
-    settingsForm.value = { ...newSettings }
+    settingsForm.value = {
+      business_name: newSettings.businessName || '',
+      primary_color: newSettings.primaryColor || '#667eea',
+      secondary_color: newSettings.secondaryColor || '#764ba2',
+      currency_symbol: newSettings.currencySymbol || '$',
+      currency_code: newSettings.currencyCode || 'USD',
+      tax_rate: newSettings.taxRate || 0,
+      timezone: newSettings.timezone || 'Africa/Nairobi',
+      logo_url: newSettings.logoUrl || '',
+      address: newSettings.address || '',
+      phone: newSettings.phone || '',
+      email: newSettings.email || ''
+    }
   }
 })
 </script>
@@ -837,19 +876,7 @@ table {
   border-collapse: collapse;
 }
 
-thead {
-  background: var(--primary-gradient);
-  color: var(--text-white);
-}
-
-th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 500;
-}
-
 td {
-  padding: 1rem;
   border-bottom: 1px solid var(--border-color);
 }
 

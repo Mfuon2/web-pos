@@ -1,5 +1,6 @@
-// GET /api/products - Fetch all products
-// POST /api/products - Create a new product
+import { getDb } from '../../drizzle/db'
+import { products } from '../../drizzle/schema'
+import { count, desc } from 'drizzle-orm'
 
 export async function onRequestGet(context) {
     const { env, request } = context;
@@ -8,18 +9,15 @@ export async function onRequestGet(context) {
     const limitParam = url.searchParams.get('limit');
 
     try {
+        const db = getDb(env);
+
         if (pageParam) {
             const page = parseInt(pageParam) || 1;
             const limit = parseInt(limitParam) || 20;
             const offset = (page - 1) * limit;
 
-            const { total } = await env.DB.prepare(
-                'SELECT COUNT(*) as total FROM products'
-            ).first();
-
-            const { results } = await env.DB.prepare(
-                'SELECT * FROM products ORDER BY created_at DESC LIMIT ? OFFSET ?'
-            ).bind(limit, offset).all();
+            const [{ total }] = await db.select({ total: count() }).from(products);
+            const results = await db.select().from(products).orderBy(desc(products.createdAt)).limit(limit).offset(offset);
 
             return new Response(JSON.stringify({
                 data: results,
@@ -33,9 +31,7 @@ export async function onRequestGet(context) {
                 headers: { 'Content-Type': 'application/json' }
             });
         } else {
-            const { results } = await env.DB.prepare(
-                'SELECT * FROM products ORDER BY created_at DESC'
-            ).all();
+            const results = await db.select().from(products).orderBy(desc(products.createdAt));
 
             return new Response(JSON.stringify(results), {
                 headers: { 'Content-Type': 'application/json' }
@@ -53,16 +49,22 @@ export async function onRequestPost(context) {
     const { request, env } = context;
 
     try {
+        const db = getDb(env);
         const body = await request.json();
         const { name, price, stock, barcode, category, cost } = body;
 
-        const result = await env.DB.prepare(
-            'INSERT INTO products (name, price, stock, barcode, category, cost) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind(name, price, stock, barcode, category || null, cost || 0).run();
+        const result = await db.insert(products).values({
+            name,
+            price,
+            stock,
+            barcode,
+            category: category || null,
+            cost: cost || 0
+        }).returning({ id: products.id });
 
         return new Response(JSON.stringify({
             success: true,
-            id: result.meta.last_row_id
+            id: result[0].id
         }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' }

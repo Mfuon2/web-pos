@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS settings (
     address TEXT,
     phone TEXT,
     email TEXT,
+    timezone TEXT NOT NULL DEFAULT 'Africa/Nairobi',
     setup_complete BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

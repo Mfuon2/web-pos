@@ -5,26 +5,32 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:backend": "wrangler pages dev --proxy 5173 --port 8788",
-    "dev:remote": "wrangler pages dev --proxy 5173 --port 8788 --remote",
+    "dev:backend": "CI=true wrangler pages dev --proxy 5173 --port 8788",
+    "dev:remote": "CI=true wrangler pages dev --proxy 5173 --port 8788 --remote",
+    "dev:all": "concurrently \"bun run dev\" \"wait-on http://localhost:5173 && bun run dev:backend\" --names \"vite,wrangler\" --prefix-colors \"cyan,magenta\"",
     "build": "vite build",
     "preview": "vite preview",
     "pages:deploy": "vite build && wrangler pages deploy dist"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.44.7",
     "lucide-vue-next": "^0.555.0",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
-    "vue-router": "^4.2.0"
+    "vue-router": "^4.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "@vitejs/plugin-vue": "^5.0.0",
     "autoprefixer": "^10.4.22",
+    "concurrently": "^9.1.2",
+    "drizzle-kit": "^0.31.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "vite": "^7.2.6",
-    "wrangler": "^4.51.0"
+    "wait-on": "^8.0.3",
+    "wrangler": "^4.52.1"
   }
 }

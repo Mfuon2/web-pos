@@ -6,12 +6,12 @@ export const useSettingsStore = defineStore('settings', () => {
     const loading = ref(false)
     const error = ref(null)
 
-    const hasSettings = computed(() => !!settings.value?.setup_complete)
+    const hasSettings = computed(() => !!settings.value?.setupComplete)
 
-    const businessName = computed(() => settings.value?.business_name || 'POS System')
-    const primaryColor = computed(() => settings.value?.primary_color || '#667eea')
-    const secondaryColor = computed(() => settings.value?.secondary_color || '#764ba2')
-    const currencySymbol = computed(() => settings.value?.currency_symbol || '$')
+    const businessName = computed(() => settings.value?.businessName || 'POS System')
+    const primaryColor = computed(() => settings.value?.primaryColor || '#667eea')
+    const secondaryColor = computed(() => settings.value?.secondaryColor || '#764ba2')
+    const currencySymbol = computed(() => settings.value?.currencySymbol || '$')
 
     async function fetchSettings() {
         loading.value = true
@@ -25,7 +25,7 @@ export const useSettingsStore = defineStore('settings', () => {
             settings.value = data
 
             // Apply colors to CSS variables if settings exist and setup is complete
-            if (data && data.setup_complete) {
+            if (data && data.setupComplete) {
                 localStorage.setItem('settings', JSON.stringify(data))
                 applyColors()
             }
@@ -71,11 +71,11 @@ export const useSettingsStore = defineStore('settings', () => {
         if (!settings.value) return
 
         const root = document.documentElement
-        root.style.setProperty('--primary-color', settings.value.primary_color)
-        root.style.setProperty('--secondary-color', settings.value.secondary_color)
+        root.style.setProperty('--primary-color', settings.value.primaryColor)
+        root.style.setProperty('--secondary-color', settings.value.secondaryColor)
 
         // Update gradient
-        const gradient = `linear-gradient(135deg, ${settings.value.primary_color} 0%, ${settings.value.secondary_color} 100%)`
+        const gradient = `linear-gradient(135deg, ${settings.value.primaryColor} 0%, ${settings.value.secondaryColor} 100%)`
         root.style.setProperty('--primary-gradient', gradient)
     }
 

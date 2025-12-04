@@ -86,7 +86,7 @@
         <div v-if="recentSales.length > 0" class="activity-list">
           <div v-for="sale in recentSales.slice(0, 5)" :key="sale.id" class="activity-item">
             <div class="activity-info">
-              <span class="activity-time">{{ formatTime(sale.created_at) }}</span>
+              <span class="activity-time">{{ formatTime(sale.createdAt) }}</span>
               <span class="activity-desc">Sale #{{ sale.id }}</span>
             </div>
             <span class="activity-amount">{{ formatCurrency(sale.total) }}</span>
@@ -136,7 +136,7 @@ async function fetchDashboardData() {
     today.setHours(0, 0, 0, 0)
     
     const todaySales = allSales.filter(sale => {
-      const saleDate = new Date(sale.created_at)
+      const saleDate = new Date(sale.createdAt)
       saleDate.setHours(0, 0, 0, 0)
       return saleDate.getTime() === today.getTime()
     })
@@ -147,7 +147,7 @@ async function fetchDashboardData() {
     // Calculate month stats
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const monthSales = allSales.filter(sale => {
-      const saleDate = new Date(sale.created_at)
+      const saleDate = new Date(sale.createdAt)
       return saleDate >= startOfMonth
     })
     
@@ -156,7 +156,7 @@ async function fetchDashboardData() {
     
     // Recent sales
     recentSales.value = allSales
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 5)
     
     // Fetch products data

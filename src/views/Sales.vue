@@ -44,7 +44,7 @@
               <div class="sale-summary">
                 <div class="sale-main-info">
                   <span class="sale-id">#{{ sale.id }}</span>
-                  <span class="sale-time">{{ formatTime(sale.created_at) }}</span>
+                  <span class="sale-time">{{ formatTime(sale.createdAt) }}</span>
                 </div>
                 
                 <div class="sale-meta">
@@ -102,7 +102,7 @@ const salesByDate = computed(() => {
   const grouped = {}
   
   sales.value.forEach(sale => {
-    const date = new Date(sale.created_at).toDateString()
+    const date = new Date(sale.createdAt).toDateString()
     if (!grouped[date]) {
       grouped[date] = {
         date,
