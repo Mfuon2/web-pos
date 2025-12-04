@@ -523,6 +523,8 @@ const settingsForm = ref({
 })
 
 function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  if (typeof dateString === 'string') dateString = dateString.replace(' ', 'T')
   return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
@@ -792,7 +794,7 @@ watch(() => currentSettings.value, (newSettings) => {
   display: flex;
   gap: 1rem;
   margin-bottom: var(--spacing-lg);
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: var(--border-width) solid var(--border-color);
   overflow-x: auto;
 }
 
@@ -877,7 +879,7 @@ table {
 }
 
 td {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: var(--border-width) solid var(--border-color);
 }
 
 tr:last-child td {
@@ -999,17 +1001,20 @@ tbody tr:hover {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
-  padding: 0.75rem;
-  border: 2px solid var(--border-color);
+  padding: 0.4rem 0.4rem;
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 1rem;
   transition: border-color 0.2s;
+  background-color: var(--bg-white);
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--primary-color);
 }
@@ -1085,7 +1090,7 @@ tbody tr:hover {
 .role-badge.cashier {
   background: var(--bg-hover);
   color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
 }
 
 /* Mobile Responsive Styles */
@@ -1206,7 +1211,7 @@ tbody tr:hover {
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
 }
 
 .settings-section h3 {
@@ -1228,7 +1233,7 @@ tbody tr:hover {
 .color-picker {
   width: 60px;
   height: 44px;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: border-color 0.2s;
@@ -1241,7 +1246,7 @@ tbody tr:hover {
 .color-text {
   flex: 1;
   padding: 0.75rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-family: monospace;

@@ -59,12 +59,12 @@
         <div v-for="sale in todaySales.slice(0, 10)" :key="sale.id" class="sale-item">
           <div class="sale-info">
             <span class="sale-id">#{{ sale.id }}</span>
-            <span class="sale-time">{{ formatTime(sale.created_at) }}</span>
+            <span class="sale-time">{{ formatTime(sale.createdAt || sale.created_at) }}</span>
           </div>
           <div class="sale-details">
             <span class="payment-method">
-              <component :is="getPaymentIcon(sale.payment_method)" class="icon-xs" />
-              {{ sale.payment_method }}
+              <component :is="getPaymentIcon(sale.paymentMethod || sale.payment_method)" class="icon-xs" />
+              {{ sale.paymentMethod || sale.payment_method }}
             </span>
             <span class="sale-amount">{{ formatCurrency(sale.total) }}</span>
           </div>
@@ -112,7 +112,8 @@ const todayStats = computed(() => {
     stats.totalSales += sale.total
     stats.transactionCount++
     
-    if (sale.payment_method === 'cash') {
+    const paymentMethod = sale.paymentMethod || sale.payment_method
+    if (paymentMethod === 'cash') {
       stats.cashSales += sale.total
       stats.cashCount++
     } else {
@@ -152,10 +153,17 @@ async function fetchTodaySales() {
     today.setHours(0, 0, 0, 0)
     
     todaySales.value = allSales.filter(sale => {
-      const saleDate = new Date(sale.created_at)
-      saleDate.setHours(0, 0, 0, 0)
-      return saleDate.getTime() === today.getTime()
-    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      let dateStr = sale.createdAt || sale.created_at
+      if (dateStr && typeof dateStr === 'string') dateStr = dateStr.replace(' ', 'T')
+      const saleDate = new Date(dateStr)
+      return saleDate.toDateString() === today.toDateString()
+    }).sort((a, b) => {
+      let dateA = a.createdAt || a.created_at
+      let dateB = b.createdAt || b.created_at
+      if (dateA && typeof dateA === 'string') dateA = dateA.replace(' ', 'T')
+      if (dateB && typeof dateB === 'string') dateB = dateB.replace(' ', 'T')
+      return new Date(dateB) - new Date(dateA)
+    })
     
   } catch (err) {
     console.error('Error fetching sales:', err)
@@ -233,7 +241,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -318,7 +326,7 @@ onMounted(() => {
   padding: var(--spacing-lg);
   background: var(--bg-hover);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
 }
 
 .sale-info {

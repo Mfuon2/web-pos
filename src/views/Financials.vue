@@ -242,11 +242,13 @@ const showPurchaseOrderModal = ref(false)
 const editingExpense = ref(null)
 
 const currentMonthLabel = computed(() => {
-  const date = new Date(startDate.value)
+  const date = new Date(startDate.value.replace(' ', 'T'))
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 })
 
 function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  if (typeof dateString === 'string') dateString = dateString.replace(' ', 'T')
   return new Date(dateString).toLocaleDateString() + ' ' + 
          new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
@@ -433,7 +435,7 @@ onMounted(() => {
 
 .date-filter input { 
   padding: 0.5rem; 
-  border: 2px solid var(--border-color); 
+  border: var(--border-width) solid var(--border-color); 
   border-radius: var(--radius-md); 
   font-size: 1rem;
 }
@@ -549,7 +551,7 @@ onMounted(() => {
 }
 
 .summary-card.profit { 
-  border: 2px solid var(--primary-color); 
+  border: var(--border-width) solid var(--primary-color); 
 }
 
 .summary-card h3 { 

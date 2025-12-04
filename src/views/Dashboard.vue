@@ -86,7 +86,7 @@
         <div v-if="recentSales.length > 0" class="activity-list">
           <div v-for="sale in recentSales.slice(0, 5)" :key="sale.id" class="activity-item">
             <div class="activity-info">
-              <span class="activity-time">{{ formatTime(sale.createdAt) }}</span>
+              <span class="activity-time">{{ formatTime(sale.createdAt || sale.created_at) }}</span>
               <span class="activity-desc">Sale #{{ sale.id }}</span>
             </div>
             <span class="activity-amount">{{ formatCurrency(sale.total) }}</span>
@@ -118,6 +118,8 @@ const stats = ref({
 const recentSales = ref([])
 
 function formatTime(dateString) {
+  if (!dateString) return ''
+  if (typeof dateString === 'string') dateString = dateString.replace(' ', 'T')
   return new Date(dateString).toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit'
@@ -136,9 +138,15 @@ async function fetchDashboardData() {
     today.setHours(0, 0, 0, 0)
     
     const todaySales = allSales.filter(sale => {
-      const saleDate = new Date(sale.createdAt)
+      let dateStr = sale.createdAt || sale.created_at
+      if (dateStr && typeof dateStr === 'string') dateStr = dateStr.replace(' ', 'T')
+      const saleDate = new Date(dateStr)
       saleDate.setHours(0, 0, 0, 0)
-      return saleDate.getTime() === today.getTime()
+      
+      // Debug logging
+      // console.log('Sale Date:', dateStr, saleDate.toDateString(), 'Today:', today.toDateString())
+      
+      return saleDate.toDateString() === today.toDateString()
     })
     
     stats.value.todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0)
@@ -147,7 +155,9 @@ async function fetchDashboardData() {
     // Calculate month stats
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const monthSales = allSales.filter(sale => {
-      const saleDate = new Date(sale.createdAt)
+      let dateStr = sale.createdAt || sale.created_at
+      if (dateStr && typeof dateStr === 'string') dateStr = dateStr.replace(' ', 'T')
+      const saleDate = new Date(dateStr)
       return saleDate >= startOfMonth
     })
     
@@ -156,7 +166,13 @@ async function fetchDashboardData() {
     
     // Recent sales
     recentSales.value = allSales
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .sort((a, b) => {
+        let dateA = a.createdAt || a.created_at
+        let dateB = b.createdAt || b.created_at
+        if (dateA && typeof dateA === 'string') dateA = dateA.replace(' ', 'T')
+        if (dateB && typeof dateB === 'string') dateB = dateB.replace(' ', 'T')
+        return new Date(dateB) - new Date(dateA)
+      })
       .slice(0, 5)
     
     // Fetch products data
@@ -247,7 +263,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -324,7 +340,7 @@ onMounted(() => {
 
 .action-card {
   background: var(--bg-hover);
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.5rem;
   text-decoration: none;
@@ -390,7 +406,7 @@ onMounted(() => {
   padding: 1rem;
   background: var(--bg-hover);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
 }
 
 .activity-info {

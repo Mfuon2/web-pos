@@ -14,7 +14,7 @@ echo "🛠️  Running local database migrations..."
 # First ensure base schema exists (safe with IF NOT EXISTS)
 npx wrangler d1 execute pos_database --local --file=schema.sql
 # Then apply additional migrations
-npx wrangler d1 execute pos_database --local --file=./drizzle/migrations/add_timezone.sql
+# npx wrangler d1 execute pos_database --local --file=./drizzle/migrations/add_timezone.sql
 
 # 3. Run remote migrations
 echo "☁️  Running remote database migrations..."

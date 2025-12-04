@@ -166,7 +166,7 @@ async function handleLogin() {
 .input-wrapper input {
   width: 100%;
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 2.5rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   transition: all 0.2s;

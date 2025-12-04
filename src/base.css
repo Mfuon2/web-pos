@@ -16,6 +16,7 @@
     --text-white: #ffffff;
 
     --border-color: #e2e8f0;
+    --border-width: 0.7px;
 
     --success-bg: #d4edda;
     --success-text: #28a745;
@@ -230,7 +231,7 @@ textarea {
 .input-field {
     width: 100%;
     padding: 0.4rem 0.4rem;
-    border: 0.7px solid var(--border-color);
+    border: var(--border-width) solid var(--border-color);
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
 }
@@ -258,7 +259,7 @@ th {
 }
 
 tbody tr {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: var(--border-width) solid var(--border-color);
     transition: background 0.2s;
 }
 

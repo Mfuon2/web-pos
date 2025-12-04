@@ -336,7 +336,7 @@ onMounted(async () => {
   padding: 0.75rem 1.5rem;
   background: var(--bg-white);
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-weight: 500;
   cursor: pointer;
@@ -404,7 +404,7 @@ code {
 .form-group select {
   width: 100%;
   padding: var(--spacing-md);
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   background-color: var(--bg-white);

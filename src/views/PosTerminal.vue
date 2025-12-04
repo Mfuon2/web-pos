@@ -233,7 +233,7 @@ onMounted(() => {
   flex: 1;
   min-width: 200px;
   padding: 0.5rem 0.75rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   box-shadow: var(--shadow-sm);
@@ -247,7 +247,7 @@ onMounted(() => {
 
 .category-filter {
   padding: 0.5rem 0.75rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   background: var(--bg-white);
@@ -272,7 +272,7 @@ onMounted(() => {
 .category-btn {
   padding: 0.35rem 0.75rem;
   background: var(--bg-white);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: 16px;
   white-space: nowrap;
   cursor: pointer;
@@ -317,7 +317,7 @@ onMounted(() => {
 
 .cart-header {
   padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: var(--border-width) solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -391,7 +391,7 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   background: var(--bg-white);
   display: flex;
   align-items: center;
@@ -435,7 +435,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   background: var(--bg-white);
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
