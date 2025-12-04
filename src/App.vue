@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import Navbar from './components/Navbar.vue'
 import GlassDialog from './components/GlassDialog.vue'
 import SetupWizard from './components/SetupWizard.vue'
@@ -44,12 +44,17 @@ const showInstallPrompt = ref(false)
 const showSetupWizard = ref(false)
 
 onMounted(async () => {
-  // Load settings on app mount
-  await settingsStore.fetchSettings()
-  
-  // Show setup wizard if no settings and user is logged in
-  if (!settingsStore.hasSettings && authStore.isAuthenticated) {
-    showSetupWizard.value = true
+  // Initialize settings from cache (branding persistence)
+  settingsStore.initSettings()
+
+  // Load settings on app mount if user is logged in
+  if (authStore.isAuthenticated) {
+    await settingsStore.fetchSettings()
+    
+    // Show setup wizard if no settings
+    if (!settingsStore.hasSettings) {
+      showSetupWizard.value = true
+    }
   }
   
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -60,6 +65,17 @@ onMounted(async () => {
     // Update UI to notify the user they can add to home screen
     showInstallPrompt.value = true
   })
+})
+
+// Watch for authentication changes
+watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
+  if (isAuthenticated) {
+    await settingsStore.fetchSettings()
+    
+    if (!settingsStore.hasSettings) {
+      showSetupWizard.value = true
+    }
+  }
 })
 
 async function installPWA() {

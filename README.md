@@ -6,6 +6,8 @@
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages-orange.svg)](https://pages.cloudflare.com/)
 [![D1 Database](https://img.shields.io/badge/Database-D1-blue.svg)](https://developers.cloudflare.com/d1/)
 
+![POS System Demo](public/demo.webp)
+
 ---
 
 ## Why Choose This POS System?

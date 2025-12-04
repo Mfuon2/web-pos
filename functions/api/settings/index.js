@@ -20,7 +20,13 @@ export async function onRequest(context) {
         if (request.method === 'GET') {
             const result = await db.prepare('SELECT * FROM settings WHERE id = 1').first();
 
-            return new Response(JSON.stringify(result || null), {
+            if (!result) {
+                return new Response(JSON.stringify({ setup_complete: false }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
+            }
+
+            return new Response(JSON.stringify(result), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
@@ -34,11 +40,11 @@ export async function onRequest(context) {
                 secondary_color,
                 currency_symbol,
                 currency_code,
-                tax_rate,
-                logo_url,
-                address,
-                phone,
-                email
+                tax_rate = 0,
+                logo_url = null,
+                address = null,
+                phone = null,
+                email = null
             } = body;
 
             // Check if settings exist
@@ -58,6 +64,7 @@ export async function onRequest(context) {
               address = ?,
               phone = ?,
               email = ?,
+              setup_complete = 1,
               updated_at = CURRENT_TIMESTAMP
           WHERE id = 1
         `).bind(
@@ -78,8 +85,8 @@ export async function onRequest(context) {
           INSERT INTO settings (
             id, business_name, primary_color, secondary_color,
             currency_symbol, currency_code, tax_rate,
-            logo_url, address, phone, email
-          ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            logo_url, address, phone, email, setup_complete
+          ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         `).bind(
                     business_name,
                     primary_color,

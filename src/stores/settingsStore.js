@@ -6,7 +6,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const loading = ref(false)
     const error = ref(null)
 
-    const hasSettings = computed(() => settings.value !== null)
+    const hasSettings = computed(() => !!settings.value?.setup_complete)
 
     const businessName = computed(() => settings.value?.business_name || 'POS System')
     const primaryColor = computed(() => settings.value?.primary_color || '#667eea')
@@ -24,8 +24,9 @@ export const useSettingsStore = defineStore('settings', () => {
             const data = await response.json()
             settings.value = data
 
-            // Apply colors to CSS variables if settings exist
-            if (data) {
+            // Apply colors to CSS variables if settings exist and setup is complete
+            if (data && data.setup_complete) {
+                localStorage.setItem('settings', JSON.stringify(data))
                 applyColors()
             }
         } catch (err) {
@@ -53,6 +54,7 @@ export const useSettingsStore = defineStore('settings', () => {
             settings.value = data
 
             // Apply new colors
+            localStorage.setItem('settings', JSON.stringify(data))
             applyColors()
 
             return data
@@ -77,6 +79,19 @@ export const useSettingsStore = defineStore('settings', () => {
         root.style.setProperty('--primary-gradient', gradient)
     }
 
+    function initSettings() {
+        const cached = localStorage.getItem('settings')
+        if (cached) {
+            try {
+                settings.value = JSON.parse(cached)
+                applyColors()
+            } catch (e) {
+                console.error('Failed to parse cached settings', e)
+                localStorage.removeItem('settings')
+            }
+        }
+    }
+
     return {
         settings,
         loading,
@@ -88,6 +103,7 @@ export const useSettingsStore = defineStore('settings', () => {
         currencySymbol,
         fetchSettings,
         updateSettings,
-        applyColors
+        applyColors,
+        initSettings
     }
 })
