@@ -90,6 +90,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Receipt, ChevronDown, ChevronRight, Banknote, CreditCard } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
+import { apiGet } from '../utils/api'
 
 const sales = ref([])
 const loading = ref(false)
@@ -184,7 +185,7 @@ async function fetchSales() {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('/api/sales')
+    const response = await apiGet('/api/sales')
     if (!response.ok) throw new Error('Failed to fetch sales')
     sales.value = await response.json()
     

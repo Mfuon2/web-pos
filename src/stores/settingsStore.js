@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { apiGet, apiPut } from '../utils/api'
 
 export const useSettingsStore = defineStore('settings', () => {
     const settings = ref(null)
@@ -12,13 +13,14 @@ export const useSettingsStore = defineStore('settings', () => {
     const primaryColor = computed(() => settings.value?.primaryColor || '#667eea')
     const secondaryColor = computed(() => settings.value?.secondaryColor || '#764ba2')
     const currencySymbol = computed(() => settings.value?.currencySymbol || '$')
+    const currentSettings = computed(() => settings.value)
 
     async function fetchSettings() {
         loading.value = true
         error.value = null
 
         try {
-            const response = await fetch('/api/settings')
+            const response = await apiGet('/api/settings')
             if (!response.ok) throw new Error('Failed to fetch settings')
 
             const data = await response.json()
@@ -42,11 +44,7 @@ export const useSettingsStore = defineStore('settings', () => {
         error.value = null
 
         try {
-            const response = await fetch('/api/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settingsData)
-            })
+            const response = await apiPut('/api/settings', settingsData)
 
             if (!response.ok) throw new Error('Failed to update settings')
 
@@ -101,6 +99,7 @@ export const useSettingsStore = defineStore('settings', () => {
         primaryColor,
         secondaryColor,
         currencySymbol,
+        currentSettings,
         fetchSettings,
         updateSettings,
         applyColors,

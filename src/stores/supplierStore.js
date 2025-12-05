@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 
 export const useSupplierStore = defineStore('supplier', () => {
     const suppliers = ref([])
@@ -22,7 +23,7 @@ export const useSupplierStore = defineStore('supplier', () => {
                 url += `?page=${params.page}&limit=${params.limit || 20}`
             }
 
-            const response = await fetch(url)
+            const response = await apiGet(url)
             if (!response.ok) throw new Error('Failed to fetch suppliers')
 
             const data = await response.json()
@@ -45,11 +46,7 @@ export const useSupplierStore = defineStore('supplier', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch('/api/suppliers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(supplierData)
-            })
+            const response = await apiPost('/api/suppliers', supplierData)
             if (!response.ok) throw new Error('Failed to add supplier')
             await fetchSuppliers()
         } catch (err) {
@@ -64,11 +61,7 @@ export const useSupplierStore = defineStore('supplier', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/suppliers/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(supplierData)
-            })
+            const response = await apiPut(`/api/suppliers/${id}`, supplierData)
             if (!response.ok) throw new Error('Failed to update supplier')
             await fetchSuppliers()
         } catch (err) {
@@ -83,9 +76,7 @@ export const useSupplierStore = defineStore('supplier', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/suppliers/${id}`, {
-                method: 'DELETE'
-            })
+            const response = await apiDelete(`/api/suppliers/${id}`)
             if (!response.ok) throw new Error('Failed to delete supplier')
             await fetchSuppliers()
         } catch (err) {

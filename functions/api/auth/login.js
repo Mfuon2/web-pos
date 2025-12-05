@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs'
 import { getDb } from '../../../drizzle/db'
 import { users } from '../../../drizzle/schema'
 import { eq } from 'drizzle-orm'
+import { createSession } from '../../utils/auth.js'
 
 export async function onRequestPost(context) {
     const { request, env } = context;
@@ -39,9 +40,13 @@ export async function onRequestPost(context) {
         // Don't return the password
         const { password: _, ...userWithoutPassword } = user;
 
+        // Create session and get token
+        const token = await createSession(userWithoutPassword, env);
+
         return new Response(JSON.stringify({
             success: true,
-            user: userWithoutPassword
+            user: userWithoutPassword,
+            token: token
         }), {
             headers: { 'Content-Type': 'application/json' }
         });

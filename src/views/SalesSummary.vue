@@ -84,6 +84,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { TrendingUp, DollarSign, Banknote, CreditCard, Receipt } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
+import { apiGet } from '../utils/api'
 
 const todaySales = ref([])
 const loading = ref(false)
@@ -147,7 +148,7 @@ function getPaymentIcon(method) {
 async function fetchTodaySales() {
   loading.value = true
   try {
-    const response = await fetch('/api/sales')
+    const response = await apiGet('/api/sales')
     if (!response.ok) throw new Error('Failed to fetch sales')
     
     const allSales = await response.json()

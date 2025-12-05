@@ -105,6 +105,7 @@
 import { ref, onMounted } from 'vue'
 import { LayoutDashboard, DollarSign, TrendingUp, Package, ShoppingCart, Receipt, Wallet } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
+import { apiGet } from '../utils/api'
 
 const loading = ref(false)
 const stats = ref({
@@ -132,7 +133,7 @@ async function fetchDashboardData() {
   loading.value = true
   try {
     // Fetch sales data
-    const salesRes = await fetch('/api/sales')
+    const salesRes = await apiGet('/api/sales')
     const allSales = await salesRes.json()
     
     // Calculate today's stats
@@ -186,7 +187,7 @@ async function fetchDashboardData() {
       .slice(0, 5)
     
     // Fetch products data
-    const productsRes = await fetch('/api/products')
+    const productsRes = await apiGet('/api/products')
     const products = await productsRes.json()
     
     stats.value.totalProducts = products.length

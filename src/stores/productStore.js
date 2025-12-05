@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { apiFetch, apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 
 export const useProductStore = defineStore('product', () => {
     const products = ref([])
@@ -22,7 +23,7 @@ export const useProductStore = defineStore('product', () => {
                 url += `?page=${params.page}&limit=${params.limit || 20}`
             }
 
-            const response = await fetch(url)
+            const response = await apiGet(url)
             if (!response.ok) throw new Error('Failed to fetch products')
 
             const data = await response.json()
@@ -43,7 +44,7 @@ export const useProductStore = defineStore('product', () => {
 
     async function getAllProducts() {
         try {
-            const response = await fetch('/api/products')
+            const response = await apiGet('/api/products')
             if (!response.ok) throw new Error('Failed to fetch all products')
             return await response.json()
         } catch (err) {
@@ -56,11 +57,7 @@ export const useProductStore = defineStore('product', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch('/api/products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(product)
-            })
+            const response = await apiPost('/api/products', product)
             if (!response.ok) throw new Error('Failed to add product')
             await fetchProducts() // Refresh list
             return await response.json()
@@ -77,11 +74,7 @@ export const useProductStore = defineStore('product', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/products/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            })
+            const response = await apiPut(`/api/products/${id}`, updates)
             if (!response.ok) throw new Error('Failed to update product')
             await fetchProducts()
         } catch (err) {
@@ -96,9 +89,7 @@ export const useProductStore = defineStore('product', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/products/${id}`, {
-                method: 'DELETE'
-            })
+            const response = await apiDelete(`/api/products/${id}`)
             if (!response.ok) throw new Error('Failed to delete product')
             await fetchProducts()
         } catch (err) {
@@ -126,7 +117,6 @@ export const useProductStore = defineStore('product', () => {
         addProduct,
         updateProduct,
         deleteProduct,
-        getProductById,
         getProductById,
         getProductByBarcode,
         pagination
