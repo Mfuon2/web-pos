@@ -524,7 +524,9 @@ const settingsForm = ref({
 
 function formatDate(dateString) {
   if (!dateString) return 'N/A'
-  if (typeof dateString === 'string') dateString = dateString.replace(' ', 'T')
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 

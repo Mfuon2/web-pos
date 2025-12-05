@@ -1,3 +1,4 @@
+import { getNairobiTimestamp } from '../utils/timezone.js'
 import { getDb } from '../../drizzle/db'
 import { suppliers } from '../../drizzle/schema'
 import { asc, count } from 'drizzle-orm'
@@ -58,7 +59,8 @@ export async function onRequestPost(context) {
             contactPerson: contact_person || null,
             phone: phone || null,
             email: email || null,
-            address: address || null
+            address: address || null,
+            createdAt: getNairobiTimestamp()
         }).returning({ id: suppliers.id });
 
         return new Response(JSON.stringify({

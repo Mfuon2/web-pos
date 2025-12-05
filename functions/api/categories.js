@@ -1,3 +1,4 @@
+import { getNairobiTimestamp } from '../utils/timezone.js'
 import { getDb } from '../../drizzle/db'
 import { categories } from '../../drizzle/schema'
 import { asc, count, sql } from 'drizzle-orm'
@@ -62,7 +63,8 @@ export async function onRequestPost(context) {
 
         const result = await db.insert(categories).values({
             name,
-            description: description || null
+            description: description || null,
+            createdAt: getNairobiTimestamp()
         }).returning({ id: categories.id });
 
         return new Response(JSON.stringify({

@@ -1,3 +1,4 @@
+import { getNairobiTimestamp } from '../../utils/timezone.js'
 import { getDb } from '../../../drizzle/db'
 import { expenses } from '../../../drizzle/schema'
 import { between, count, desc, sql } from 'drizzle-orm'
@@ -70,7 +71,7 @@ export async function onRequestPost(context) {
             category,
             amount,
             description,
-            createdAt: sql`datetime('now')`
+            createdAt: getNairobiTimestamp()
         }).returning({ id: expenses.id });
 
         return new Response(JSON.stringify({

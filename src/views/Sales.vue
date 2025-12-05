@@ -103,7 +103,9 @@ const salesByDate = computed(() => {
   
   sales.value.forEach(sale => {
     let dateStr = sale.createdAt || sale.created_at
-    if (dateStr && typeof dateStr === 'string') dateStr = dateStr.replace(' ', 'T')
+    if (dateStr && typeof dateStr === 'string') {
+      dateStr = dateStr.replace(' ', 'T')
+    }
     const date = new Date(dateStr).toDateString()
     if (!grouped[date]) {
       grouped[date] = {
@@ -133,7 +135,9 @@ function toggleSale(id) {
 
 function isToday(dateString) {
   if (!dateString) return false
-  if (typeof dateString === 'string') dateString = dateString.replace(' ', 'T')
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   const date = new Date(dateString)
   const today = new Date()
   const yesterday = new Date(today)
@@ -163,7 +167,9 @@ function formatDate(dateString) {
 
 function formatTime(dateString) {
   if (!dateString) return ''
-  if (typeof dateString === 'string') dateString = dateString.replace(' ', 'T')
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   return new Date(dateString).toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit'

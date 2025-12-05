@@ -1,3 +1,4 @@
+import { getNairobiTimestamp } from '../utils/timezone.js'
 import { getDb } from '../../drizzle/db'
 import { products } from '../../drizzle/schema'
 import { count, desc } from 'drizzle-orm'
@@ -59,7 +60,8 @@ export async function onRequestPost(context) {
             stock,
             barcode,
             category: category || null,
-            cost: cost || 0
+            cost: cost || 0,
+            createdAt: getNairobiTimestamp()
         }).returning({ id: products.id });
 
         return new Response(JSON.stringify({

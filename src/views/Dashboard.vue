@@ -119,7 +119,9 @@ const recentSales = ref([])
 
 function formatTime(dateString) {
   if (!dateString) return ''
-  if (typeof dateString === 'string') dateString = dateString.replace(' ', 'T')
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   return new Date(dateString).toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit'
@@ -139,7 +141,9 @@ async function fetchDashboardData() {
     
     const todaySales = allSales.filter(sale => {
       let dateStr = sale.createdAt || sale.created_at
-      if (dateStr && typeof dateStr === 'string') dateStr = dateStr.replace(' ', 'T')
+      if (dateStr && typeof dateStr === 'string') {
+        dateStr = dateStr.replace(' ', 'T')
+      }
       const saleDate = new Date(dateStr)
       saleDate.setHours(0, 0, 0, 0)
       
@@ -156,7 +160,9 @@ async function fetchDashboardData() {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const monthSales = allSales.filter(sale => {
       let dateStr = sale.createdAt || sale.created_at
-      if (dateStr && typeof dateStr === 'string') dateStr = dateStr.replace(' ', 'T')
+      if (dateStr && typeof dateStr === 'string') {
+        dateStr = dateStr.replace(' ', 'T')
+      }
       const saleDate = new Date(dateStr)
       return saleDate >= startOfMonth
     })
@@ -169,8 +175,12 @@ async function fetchDashboardData() {
       .sort((a, b) => {
         let dateA = a.createdAt || a.created_at
         let dateB = b.createdAt || b.created_at
-        if (dateA && typeof dateA === 'string') dateA = dateA.replace(' ', 'T')
-        if (dateB && typeof dateB === 'string') dateB = dateB.replace(' ', 'T')
+        if (dateA && typeof dateA === 'string') {
+            dateA = dateA.replace(' ', 'T')
+        }
+        if (dateB && typeof dateB === 'string') {
+            dateB = dateB.replace(' ', 'T')
+        }
         return new Date(dateB) - new Date(dateA)
       })
       .slice(0, 5)

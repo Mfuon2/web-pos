@@ -13,6 +13,10 @@ export function formatDateWithTimezone(dateString, timezone = 'Africa/Nairobi', 
     if (!dateString) return 'N/A'
 
     try {
+        // Replace SQL datetime format space with T for proper parsing
+        if (typeof dateString === 'string') {
+            dateString = dateString.replace(' ', 'T')
+        }
         const date = new Date(dateString)
         if (isNaN(date.getTime())) return 'Invalid Date'
 
