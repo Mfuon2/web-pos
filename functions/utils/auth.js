@@ -48,6 +48,7 @@ export async function createSession(user, env) {
 
 /**
  * Validate a session token and return user info
+ * Implements sliding expiration - extends session on each valid access
  * @param {string} token - Session token from Authorization header
  * @param {Object} env - Environment with optional KV binding
  * @returns {Promise<Object|null>} User session or null if invalid
@@ -73,6 +74,20 @@ export async function validateSession(token, env) {
     if (Date.now() > session.expiresAt) {
         await destroySession(token, env)
         return null
+    }
+
+    // Sliding expiration: refresh the session expiry on each valid access
+    // This keeps the session alive while the user is actively using the app
+    const newExpiry = Date.now() + SESSION_EXPIRY
+    session.expiresAt = newExpiry
+
+    // Update the session in storage
+    if (env?.SESSIONS) {
+        await env.SESSIONS.put(token, JSON.stringify(session), {
+            expirationTtl: SESSION_EXPIRY / 1000
+        })
+    } else {
+        sessions.set(token, session)
     }
 
     return session

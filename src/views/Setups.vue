@@ -849,7 +849,7 @@ watch(() => currentSettings.value, (newSettings) => {
 }
 
 .add-btn {
-  padding: 0.75rem 1.5rem;
+      padding: 0.3rem 1.0rem;
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;

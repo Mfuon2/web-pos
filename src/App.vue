@@ -29,19 +29,44 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Navbar from './components/Navbar.vue'
 import GlassDialog from './components/GlassDialog.vue'
 import SetupWizard from './components/SetupWizard.vue'
 import { useSettingsStore } from './stores/settingsStore'
 import { useAuthStore } from './stores/authStore'
+import { useRouter } from 'vue-router'
 
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 const deferredPrompt = ref(null)
 const showInstallPrompt = ref(false)
 const showSetupWizard = ref(false)
+
+let activityCheckInterval = null
+
+// Throttle activity refresh to avoid excessive localStorage writes
+let lastActivityRefresh = 0
+const ACTIVITY_THROTTLE_MS = 60000 // Only refresh once per minute max
+
+function handleUserActivity() {
+  if (!authStore.isAuthenticated) return
+  
+  const now = Date.now()
+  if (now - lastActivityRefresh > ACTIVITY_THROTTLE_MS) {
+    authStore.refreshActivity()
+    lastActivityRefresh = now
+  }
+}
+
+function checkSession() {
+  if (authStore.isAuthenticated && !authStore.checkSessionTimeout()) {
+    // Session expired due to inactivity
+    router.push('/login')
+  }
+}
 
 onMounted(async () => {
   // Initialize settings from cache (branding persistence)
@@ -57,6 +82,16 @@ onMounted(async () => {
     }
   }
   
+  // Track user activity to keep session alive
+  // These events indicate the user is actively using the app
+  const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove']
+  activityEvents.forEach(event => {
+    document.addEventListener(event, handleUserActivity, { passive: true })
+  })
+  
+  // Check session validity periodically (every 5 minutes)
+  activityCheckInterval = setInterval(checkSession, 5 * 60 * 1000)
+  
   window.addEventListener('beforeinstallprompt', (e) => {
     // Prevent Chrome 67 and earlier from automatically showing the prompt
     e.preventDefault()
@@ -65,6 +100,18 @@ onMounted(async () => {
     // Update UI to notify the user they can add to home screen
     showInstallPrompt.value = true
   })
+})
+
+onUnmounted(() => {
+  // Clean up event listeners
+  const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove']
+  activityEvents.forEach(event => {
+    document.removeEventListener(event, handleUserActivity)
+  })
+  
+  if (activityCheckInterval) {
+    clearInterval(activityCheckInterval)
+  }
 })
 
 // Watch for authentication changes
