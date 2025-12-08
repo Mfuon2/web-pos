@@ -108,6 +108,25 @@ export const useProductStore = defineStore('product', () => {
         return products.value.find(p => p.barcode === barcode)
     }
 
+    async function bulkAddProducts(productsData) {
+        loading.value = true
+        error.value = null
+        try {
+            const response = await apiPost('/api/products/bulk', { products: productsData })
+            if (!response.ok) {
+                const errData = await response.json()
+                throw new Error(errData.error || 'Failed to import products')
+            }
+            await fetchProducts() // Refresh the list
+            return await response.json()
+        } catch (err) {
+            error.value = err.message
+            throw err
+        } finally {
+            loading.value = false
+        }
+    }
+
     return {
         products,
         loading,
@@ -119,6 +138,7 @@ export const useProductStore = defineStore('product', () => {
         deleteProduct,
         getProductById,
         getProductByBarcode,
+        bulkAddProducts,
         pagination
     }
 })

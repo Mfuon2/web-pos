@@ -10,6 +10,10 @@
           <Download class="icon-sm" />
           {{ exporting ? 'Exporting...' : 'Export' }}
         </button>
+        <button @click="showBulkUploadModal = true" class="upload-btn">
+          <Upload class="icon-sm" />
+          Upload Products
+        </button>
         <button @click="openAddModal" class="add-btn">+ Add Product</button>
       </div>
     </div>
@@ -119,6 +123,13 @@
         </form>
       </div>
     </div>
+
+    <!-- Bulk Upload Modal -->
+    <BulkUploadModal 
+      v-if="showBulkUploadModal" 
+      @close="showBulkUploadModal = false"
+      @imported="handleBulkImported"
+    />
   </div>
 </template>
 
@@ -128,8 +139,9 @@ import { useProductStore } from '../stores/productStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { formatCurrency } from '../utils/currency'
-import { Edit2, Trash2, Package, Download } from 'lucide-vue-next'
+import { Edit2, Trash2, Package, Download, Upload } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
+import BulkUploadModal from '../components/BulkUploadModal.vue'
 import * as XLSX from 'xlsx'
 
 import { useDialogStore } from '../stores/dialogStore'
@@ -208,6 +220,7 @@ async function exportToExcel() {
 }
 
 const showModal = ref(false)
+const showBulkUploadModal = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 
@@ -293,6 +306,11 @@ async function handleDelete(id) {
   }
 }
 
+function handleBulkImported() {
+  // Refresh data is already handled by the store action, but we can do extra cleanup if needed
+  // The modal emits this event after successful import and store refresh
+}
+
 onMounted(async () => {
   await productStore.fetchProducts({ page: 1, limit: 20 })
   await categoryStore.fetchCategories()
@@ -323,7 +341,7 @@ onMounted(async () => {
   gap: 1rem;
 }
 .add-btn {
-  padding: 0.75rem 1.5rem;
+      padding: 0.3rem 1.0rem;
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
@@ -332,8 +350,8 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.3s ease;
 }
-.export-btn {
-  padding: 0.75rem 1.5rem;
+.export-btn, .upload-btn {
+  padding: 0.3rem 1.0rem;
   background: var(--bg-white);
   color: var(--text-primary);
   border: var(--border-width) solid var(--border-color);
@@ -345,7 +363,7 @@ onMounted(async () => {
   align-items: center;
   gap: 0.5rem;
 }
-.export-btn:hover {
+.export-btn:hover, .upload-btn:hover {
   background: var(--bg-hover);
   border-color: var(--text-secondary);
 }

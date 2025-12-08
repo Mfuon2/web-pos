@@ -149,7 +149,7 @@
       <!-- Expenses Tab -->
       <div v-show="activeTab === 'expenses'" class="tab-panel">
         <div class="section-header">
-          <h2>📝 Expenses</h2>
+          <h2>Expenses</h2>
           <button @click="showExpenseModal = true; editingExpense = null" class="add-btn">+ Add Expense</button>
         </div>
         
@@ -614,7 +614,7 @@ onMounted(() => {
 }
 
 .add-btn { 
-  padding: 0.75rem 1.5rem; 
+      padding: 0.3rem 1.0rem;
   background: var(--primary-gradient); 
   color: var(--text-white); 
   border: none; 
@@ -627,15 +627,6 @@ onMounted(() => {
 .add-btn:hover { 
   transform: translateY(-2px); 
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); 
-}
-
-/* Tables */
-.table-container { 
-  background: var(--bg-white); 
-  border-radius: var(--radius-lg); 
-  overflow: hidden; 
-  box-shadow: var(--shadow-md); 
-  overflow-x: auto;
 }
 
 table { 

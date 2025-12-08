@@ -1,8 +1,14 @@
 <template>
   <div class="sales-summary">
     <div class="header">
-      <TrendingUp class="header-icon" />
-      <h1>Sales Summary - {{ currentDateFormatted }}</h1>
+      <h1>
+        <TrendingUp class="header-icon" />
+        Sales Summary - {{ currentDateFormatted }}
+      </h1>
+      <button @click="downloadPDF" class="download-btn" :disabled="loading || salesItems.length === 0">
+        <Download class="icon-sm" />
+        Download Report
+      </button>
     </div>
 
     <div v-if="loading" class="loading">
@@ -18,6 +24,16 @@
           <h3>Total Sales Today</h3>
           <p class="amount">{{ formatCurrency(todayStats.totalSales) }}</p>
           <span class="detail">{{ todayStats.transactionCount }} transactions</span>
+        </div>
+      </div>
+
+      <!-- Total Profit Card -->
+      <div class="summary-card success">
+        <TrendingUp class="card-icon" />
+        <div class="card-content">
+          <h3>Total Profit</h3>
+          <p class="amount">{{ formatCurrency(todayStats.totalProfit) }}</p>
+          <span class="detail">{{ formatCurrency(todayStats.totalCost) }} cost</span>
         </div>
       </div>
 
@@ -40,39 +56,49 @@
           <span class="detail">{{ todayStats.cardCount }} transactions</span>
         </div>
       </div>
+    </div>
 
-      <!-- Average Transaction Card -->
-      <div class="summary-card">
-        <TrendingUp class="card-icon" />
-        <div class="card-content">
-          <h3>Average Transaction</h3>
-          <p class="amount">{{ formatCurrency(todayStats.averageTransaction) }}</p>
-          <span class="detail">per sale</span>
-        </div>
+    <!-- Detailed Sales Report -->
+    <div v-if="!loading && salesItems.length > 0" class="report-section">
+      <h2>Detailed Sales Report</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Item Sold</th>
+              <th class="center-align-text">Opening Qty</th>
+              <th class="center-align-text">Sold Qty</th>
+              <th class="center-align-text">Remaining Qty</th>
+              <th class="right-align-text">Buying Price</th>
+              <th class="right-align-text">Selling Price</th>
+              <th class="right-align-text">Total Value (Sold Qty * Selling Price)</th>
+              <th class="right-align-text">Profit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in salesItems" :key="index">
+              <td>{{ item.productName }}</td>
+              <td class="center-align-text">{{ item.currentStock + item.quantity }}</td>
+              <td class="center-align-text">{{ item.quantity }}</td>
+              <td class="center-align-text">{{ item.currentStock }}</td>
+              <td class="right-align-text">{{ formatCurrency(item.cost || 0) }}</td>
+              <td class="right-align-text">{{ formatCurrency(item.price) }}</td>
+              <td class="right-align-text">{{ formatCurrency(item.price * item.quantity) }}</td>
+              <td class="profit">{{ formatCurrency((item.price - (item.cost || 0)) * item.quantity) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="grand-total">
+              <td colspan="6"><strong>Totals</strong></td>
+              <td class="right-align-text"><strong>{{ formatCurrency(todayStats.totalSales) }}</strong></td>
+              <td class="profit"><strong>{{ formatCurrency(todayStats.totalProfit) }}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
 
-    <!-- Recent Sales List -->
-    <div v-if="!loading && todaySales.length > 0" class="recent-sales">
-      <h2>Recent Sales</h2>
-      <div class="sales-list">
-        <div v-for="sale in todaySales.slice(0, 10)" :key="sale.id" class="sale-item">
-          <div class="sale-info">
-            <span class="sale-id">#{{ sale.id }}</span>
-            <span class="sale-time">{{ formatTime(sale.createdAt || sale.created_at) }}</span>
-          </div>
-          <div class="sale-details">
-            <span class="payment-method">
-              <component :is="getPaymentIcon(sale.paymentMethod || sale.payment_method)" class="icon-xs" />
-              {{ sale.paymentMethod || sale.payment_method }}
-            </span>
-            <span class="sale-amount">{{ formatCurrency(sale.total) }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-else-if="!loading && todaySales.length === 0" class="empty-state">
+    <div v-else-if="!loading && salesItems.length === 0" class="empty-state">
       <Receipt class="empty-icon" />
       <h3>No Sales Today</h3>
       <p>Sales made today will appear here</p>
@@ -82,9 +108,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { TrendingUp, DollarSign, Banknote, CreditCard, Receipt } from 'lucide-vue-next'
+import { TrendingUp, DollarSign, Banknote, CreditCard, Receipt, Download } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
 import { apiGet } from '../utils/api'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const todaySales = ref([])
 const loading = ref(false)
@@ -98,9 +126,27 @@ const currentDateFormatted = computed(() => {
   })
 })
 
+const salesItems = computed(() => {
+  const items = []
+  todaySales.value.forEach(sale => {
+    if (sale.items && Array.isArray(sale.items)) {
+      sale.items.forEach(item => {
+        items.push({
+          ...item,
+          saleId: sale.id,
+          createdAt: sale.createdAt || sale.created_at
+        })
+      })
+    }
+  })
+  return items
+})
+
 const todayStats = computed(() => {
   const stats = {
     totalSales: 0,
+    totalCost: 0,
+    totalProfit: 0,
     cashSales: 0,
     cardSales: 0,
     cashCount: 0,
@@ -121,6 +167,15 @@ const todayStats = computed(() => {
       stats.cardSales += sale.total
       stats.cardCount++
     }
+
+    if (sale.items) {
+      sale.items.forEach(item => {
+        const cost = (item.cost || 0) * item.quantity
+        const revenue = item.price * item.quantity
+        stats.totalCost += cost
+        stats.totalProfit += (revenue - cost)
+      })
+    }
   })
 
   stats.averageTransaction = stats.transactionCount > 0 
@@ -139,10 +194,6 @@ function formatTime(dateString) {
     hour: '2-digit', 
     minute: '2-digit'
   })
-}
-
-function getPaymentIcon(method) {
-  return method === 'cash' ? Banknote : CreditCard
 }
 
 async function fetchTodaySales() {
@@ -183,6 +234,75 @@ async function fetchTodaySales() {
   }
 }
 
+function downloadPDF() {
+  const doc = new jsPDF()
+  
+  // Header
+  doc.setFontSize(20)
+  doc.text('Sales Summary Report', 14, 22)
+  
+  doc.setFontSize(11)
+  doc.text(`Date: ${currentDateFormatted.value}`, 14, 32)
+  
+  // Summary Stats
+  doc.setFillColor(240, 240, 240)
+  doc.rect(14, 40, 182, 30, 'F')
+  
+  doc.setFontSize(12)
+  doc.text('Summary', 20, 50)
+  
+  doc.setFontSize(10)
+  doc.text(`Total Sales: ${formatCurrency(todayStats.value.totalSales)}`, 20, 60)
+  doc.text(`Total Profit: ${formatCurrency(todayStats.value.totalProfit)}`, 80, 60)
+  doc.text(`Transactions: ${todayStats.value.transactionCount}`, 140, 60)
+  
+  // Detailed Table
+  const tableColumn = ["Item Sold", "Opening Qty", "Sold Qty", "Remaining Qty", "Buying Price", "Selling Price", "Total Value (Sold * Price)", "Profit"]
+  const tableRows = []
+
+  salesItems.value.forEach(item => {
+    const rowData = [
+      item.productName,
+      (item.currentStock + item.quantity).toString(),
+      item.quantity.toString(),
+      item.currentStock.toString(),
+      formatCurrency(item.cost || 0),
+      formatCurrency(item.price),
+      formatCurrency(item.price * item.quantity),
+      formatCurrency((item.price - (item.cost || 0)) * item.quantity)
+    ]
+    tableRows.push(rowData)
+  })
+
+  // Add Totals Row
+  tableRows.push([
+    { content: 'Totals', colSpan: 6, styles: { fontStyle: 'bold' } },
+    { content: formatCurrency(todayStats.value.totalSales), styles: { fontStyle: 'bold' } },
+    { content: formatCurrency(todayStats.value.totalProfit), styles: { fontStyle: 'bold' } }
+  ])
+
+  autoTable(doc, {
+    head: [tableColumn],
+    body: tableRows,
+    startY: 80,
+    theme: 'grid',
+    headStyles: { fillColor: [102, 126, 234], cellPadding: 2 },
+    styles: { fontSize: 8, cellPadding: 2 }, // Compact PDF table
+    columnStyles: {
+      0: { cellWidth: 35 }, // Item Name
+      1: { cellWidth: 15, halign: 'center' }, // Opening
+      2: { cellWidth: 15, halign: 'center' }, // Sold
+      3: { cellWidth: 15, halign: 'center' }, // Remaining
+      4: { cellWidth: 20, halign: 'right' }, // Buying
+      5: { cellWidth: 20, halign: 'right' }, // Selling
+      6: { cellWidth: 30, halign: 'right' }, // Total
+      7: { cellWidth: 20, halign: 'right' }  // Profit
+    }
+  })
+
+  doc.save(`sales-summary-${new Date().toISOString().slice(0,10)}.pdf`)
+}
+
 onMounted(() => {
   fetchTodaySales()
 })
@@ -198,8 +318,8 @@ onMounted(() => {
 .header {
   margin-bottom: 2rem;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
 }
 
 .header h1 {
@@ -207,6 +327,9 @@ onMounted(() => {
   font-size: var(--font-size-2xl);
   color: var(--text-primary);
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .header-icon {
@@ -285,6 +408,46 @@ onMounted(() => {
   opacity: 0.9;
 }
 
+.grand-total {
+  font-weight: bolder;
+  font-size: large;
+  text-align: right;
+  color: var(--text-success);
+}
+
+.right-align-text {
+  font-weight: bold;
+  text-align: right;
+}
+
+.center-align-text {
+  text-align: center;
+}
+
+.profit {
+  font-weight: bold;
+  font-family: 'Courier New', Courier, monospace;
+  text-align: right;
+  color: var(--text-success);
+}
+
+.summary-card.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: var(--text-white);
+  border: none;
+}
+
+.summary-card.success h3,
+.summary-card.success .amount,
+.summary-card.success .detail {
+  color: var(--text-white);
+}
+
+.summary-card.success .card-icon {
+  color: var(--text-white);
+  opacity: 0.9;
+}
+
 .card-content {
   flex: 1;
 }
@@ -292,8 +455,6 @@ onMounted(() => {
 .card-content h3 {
   margin: 0 0 0.5rem 0;
   font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -328,6 +489,20 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.download-btn {
+  padding: 0.3rem 1.0rem;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .sale-item {
@@ -455,7 +630,6 @@ onMounted(() => {
   .sale-time {
     font-size: var(--font-size-xs);
   }
-  
   .payment-method {
     font-size: var(--font-size-xs);
   }
@@ -464,7 +638,7 @@ onMounted(() => {
     width: 100%;
     justify-content: space-between;
   }
-  
+
   .sale-amount {
     font-size: var(--font-size-lg);
     align-self: flex-end;

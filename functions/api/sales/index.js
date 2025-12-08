@@ -24,7 +24,9 @@ export async function onRequestGet(context) {
                 quantity: saleItems.quantity,
                 price: saleItems.price,
                 productName: products.name,
-                productId: products.id
+                productId: products.id,
+                cost: products.cost,
+                currentStock: products.stock
             }).from(saleItems)
                 .leftJoin(products, eq(saleItems.productId, products.id))
                 .where(eq(saleItems.saleId, sale.id));
