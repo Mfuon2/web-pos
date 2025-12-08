@@ -1,7 +1,6 @@
 /**
  * API utility for making authenticated requests
- * Automatically includes auth token in all requests
- * Refreshes session activity on successful requests
+ * Automatically includes JWT token in all requests
  */
 
 /**
@@ -12,11 +11,14 @@ function getAuthToken() {
 }
 
 /**
- * Refresh last activity timestamp to keep session alive
+ * Clear all auth-related data from localStorage
  */
-function refreshActivity() {
-    const now = Date.now()
-    localStorage.setItem('lastActivityTime', now.toString())
+function clearAuthData() {
+    localStorage.removeItem('authToken')
+    // Clean up legacy keys
+    localStorage.removeItem('user')
+    localStorage.removeItem('lastActivityTime')
+    localStorage.removeItem('loginTimestamp')
 }
 
 /**
@@ -44,10 +46,8 @@ export async function apiFetch(url, options = {}) {
 
     // Handle 401 Unauthorized - redirect to login
     if (response.status === 401) {
-        // Clear auth data
-        localStorage.removeItem('user')
-        localStorage.removeItem('lastActivityTime')
-        localStorage.removeItem('authToken')
+        // Clear all auth data
+        clearAuthData()
 
         // Only redirect if we're not already on the login page
         if (!window.location.pathname.includes('/login')) {
@@ -65,11 +65,6 @@ export async function apiFetch(url, options = {}) {
     if (response.status === 429) {
         const data = await response.json()
         throw new Error(data.message || 'Rate limit exceeded. Please slow down.')
-    }
-
-    // On successful request, refresh activity timestamp to keep session alive
-    if (response.ok) {
-        refreshActivity()
     }
 
     return response
@@ -108,4 +103,3 @@ export async function apiPut(url, data) {
 export async function apiDelete(url) {
     return apiFetch(url, { method: 'DELETE' })
 }
-

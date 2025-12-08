@@ -1,37 +1,96 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-// Idle timeout duration (how long user can be inactive before logout)
-const IDLE_TIMEOUT_MS = 8 * 60 * 60 * 1000 // 8 hours in milliseconds
+/**
+ * Decode a JWT token and extract the payload
+ * @param {string} token - JWT token
+ * @returns {Object|null} Decoded payload or null if invalid
+ */
+function decodeJWT(token) {
+    if (!token) return null
+
+    try {
+        const parts = token.split('.')
+        if (parts.length !== 3) return null
+
+        // Decode the payload (second part)
+        const payload = parts[1]
+        // Base64URL decode
+        let base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+        while (base64.length % 4) {
+            base64 += '='
+        }
+        const decoded = atob(base64)
+        return JSON.parse(decoded)
+    } catch (e) {
+        console.error('Failed to decode JWT:', e)
+        return null
+    }
+}
+
+/**
+ * Check if a JWT token is expired
+ * @param {Object} payload - Decoded JWT payload
+ * @returns {boolean} True if expired
+ */
+function isTokenExpired(payload) {
+    if (!payload || !payload.exp) return true
+    const now = Math.floor(Date.now() / 1000)
+    return payload.exp < now
+}
+
+/**
+ * Clean up legacy keys from previous implementation
+ */
+function cleanupLegacyKeys() {
+    localStorage.removeItem('loginTimestamp')
+    localStorage.removeItem('lastActivityTime')
+    localStorage.removeItem('user') // No longer needed - user info is in JWT
+}
 
 export const useAuthStore = defineStore('auth', () => {
-    const currentUser = ref(JSON.parse(localStorage.getItem('user')) || null)
-    const authToken = ref(localStorage.getItem('authToken') || null)
-    // Track last activity time instead of login time
-    const lastActivityTime = ref(parseInt(localStorage.getItem('lastActivityTime')) || null)
+    // Clean up legacy keys on store initialization
+    cleanupLegacyKeys()
 
-    const isAuthenticated = computed(() => !!currentUser.value && !!authToken.value)
+    // Only store the JWT token - all user info is decoded from it
+    const authToken = ref(localStorage.getItem('authToken') || null)
+
+    // Decode user info from JWT token
+    const tokenPayload = computed(() => decodeJWT(authToken.value))
+
+    // Extract user info from token payload
+    const currentUser = computed(() => {
+        const payload = tokenPayload.value
+        if (!payload) return null
+        return {
+            id: payload.userId,
+            username: payload.username,
+            role: payload.role
+        }
+    })
+
+    const isAuthenticated = computed(() => {
+        if (!authToken.value || !tokenPayload.value) return false
+        // Also check if token is not expired
+        return !isTokenExpired(tokenPayload.value)
+    })
+
     const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
-    /**
-     * Check if session is valid based on last activity (not login time)
-     */
-    const isSessionValid = computed(() => {
-        if (!lastActivityTime.value || !authToken.value) return false
-        const now = Date.now()
-        const idleTime = now - lastActivityTime.value
-        return idleTime < IDLE_TIMEOUT_MS
+    // Get token expiration time from JWT
+    const tokenExpiresAt = computed(() => {
+        const payload = tokenPayload.value
+        if (!payload || !payload.exp) return null
+        return payload.exp * 1000 // Convert to milliseconds
     })
 
     /**
-     * Refresh the activity timestamp - call this on any user activity
-     * This extends the session timeout
+     * Check if session is valid (token not expired)
      */
-    function refreshActivity() {
-        const now = Date.now()
-        lastActivityTime.value = now
-        localStorage.setItem('lastActivityTime', now.toString())
-    }
+    const isSessionValid = computed(() => {
+        if (!authToken.value || !tokenPayload.value) return false
+        return !isTokenExpired(tokenPayload.value)
+    })
 
     async function login(username, password) {
         try {
@@ -47,15 +106,10 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             const data = await response.json()
-            const timestamp = Date.now()
 
-            currentUser.value = data.user
+            // Only store the token - user info will be decoded from it
             authToken.value = data.token
-            lastActivityTime.value = timestamp
-
-            localStorage.setItem('user', JSON.stringify(data.user))
             localStorage.setItem('authToken', data.token)
-            localStorage.setItem('lastActivityTime', timestamp.toString())
 
             return true
         } catch (error) {
@@ -65,24 +119,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     function logout() {
-        currentUser.value = null
         authToken.value = null
-        lastActivityTime.value = null
-        localStorage.removeItem('user')
         localStorage.removeItem('authToken')
-        localStorage.removeItem('lastActivityTime')
+        // Clean up any legacy keys
+        cleanupLegacyKeys()
     }
 
     /**
-     * Check if session has expired due to inactivity
+     * Check if session has expired
      * Returns true if session is valid, false if expired
      */
     function checkSessionTimeout() {
-        if (!isAuthenticated.value) return true // Not logged in
+        if (!authToken.value) return true // Not logged in
 
         if (!isSessionValid.value) {
             logout()
-            return false // Session expired due to inactivity
+            return false // Session expired
         }
         return true // Session valid
     }
@@ -91,9 +143,22 @@ export const useAuthStore = defineStore('auth', () => {
      * Get remaining time before session expires (in ms)
      */
     function getTimeUntilExpiry() {
-        if (!lastActivityTime.value) return 0
-        const elapsed = Date.now() - lastActivityTime.value
-        return Math.max(0, IDLE_TIMEOUT_MS - elapsed)
+        if (!tokenExpiresAt.value) return 0
+        const remaining = tokenExpiresAt.value - Date.now()
+        return Math.max(0, remaining)
+    }
+
+    /**
+     * Refresh activity - for JWT, we just check if token is still valid
+     * Note: JWT tokens are stateless, so we can't extend them client-side
+     * The token will be valid for its full duration from creation
+     */
+    function refreshActivity() {
+        // With JWT, the token has a fixed expiration from creation
+        // We just verify it's still valid
+        if (authToken.value && isTokenExpired(tokenPayload.value)) {
+            logout()
+        }
     }
 
     /**
@@ -109,7 +174,8 @@ export const useAuthStore = defineStore('auth', () => {
     return {
         currentUser,
         authToken,
-        lastActivityTime,
+        tokenPayload,
+        tokenExpiresAt,
         isAuthenticated,
         isAdmin,
         isSessionValid,

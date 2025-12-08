@@ -1,109 +1,150 @@
 /**
  * Authentication utilities for API security
- * Uses simple session tokens stored in memory (for local dev) or KV (for production)
+ * Uses JWT tokens for stateless authentication (works on Cloudflare Workers)
  */
 
-// In-memory session store (used when KV is not available)
-const sessions = new Map()
+// JWT configuration
+const JWT_EXPIRY_SECONDS = 8 * 60 * 60 // 8 hours in seconds
 
-// Session configuration
-const SESSION_EXPIRY = 8 * 60 * 60 * 1000 // 8 hours in milliseconds
+// Secret key for JWT signing (in production, use env.JWT_SECRET)
+const DEFAULT_SECRET = '74deeacbbd7bb5d8846d13eff262a49bb9435e903f0e05ba32656aa5698b3aa17adc4575c7f1f1cae47ff06f92cf3d23'
 
 /**
- * Generate a secure random session token
+ * Base64URL encode
  */
-export function generateSessionToken() {
-    const array = new Uint8Array(32)
-    crypto.getRandomValues(array)
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+function base64UrlEncode(str) {
+    const base64 = btoa(str)
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
 /**
- * Create a new session for a user
+ * Base64URL decode
+ */
+function base64UrlDecode(str) {
+    let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
+    // Add padding
+    while (base64.length % 4) {
+        base64 += '='
+    }
+    return atob(base64)
+}
+
+/**
+ * Create HMAC-SHA256 signature using Web Crypto API
+ */
+async function createSignature(data, secret) {
+    const encoder = new TextEncoder()
+    const keyData = encoder.encode(secret)
+    const messageData = encoder.encode(data)
+
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    )
+
+    const signature = await crypto.subtle.sign('HMAC', key, messageData)
+    const signatureArray = new Uint8Array(signature)
+    return base64UrlEncode(String.fromCharCode(...signatureArray))
+}
+
+/**
+ * Verify HMAC-SHA256 signature
+ */
+async function verifySignature(data, signature, secret) {
+    const expectedSignature = await createSignature(data, secret)
+    return signature === expectedSignature
+}
+
+/**
+ * Create a JWT token for a user
  * @param {Object} user - User object (without password)
- * @param {Object} env - Environment with optional KV binding
- * @returns {Promise<string>} Session token
+ * @param {Object} env - Environment with optional JWT_SECRET
+ * @returns {Promise<string>} JWT token
  */
 export async function createSession(user, env) {
-    const token = generateSessionToken()
-    const session = {
+    const secret = env?.JWT_SECRET || DEFAULT_SECRET
+
+    const header = {
+        alg: 'HS256',
+        typ: 'JWT'
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const payload = {
         userId: user.id,
         username: user.username,
         role: user.role,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + SESSION_EXPIRY
+        iat: now,
+        exp: now + JWT_EXPIRY_SECONDS
     }
 
-    // Try to use KV if available, otherwise use in-memory store
-    if (env?.SESSIONS) {
-        await env.SESSIONS.put(token, JSON.stringify(session), {
-            expirationTtl: SESSION_EXPIRY / 1000
-        })
-    } else {
-        sessions.set(token, session)
-    }
+    const headerEncoded = base64UrlEncode(JSON.stringify(header))
+    const payloadEncoded = base64UrlEncode(JSON.stringify(payload))
+    const dataToSign = `${headerEncoded}.${payloadEncoded}`
 
-    return token
+    const signature = await createSignature(dataToSign, secret)
+
+    return `${dataToSign}.${signature}`
 }
 
 /**
- * Validate a session token and return user info
- * Implements sliding expiration - extends session on each valid access
- * @param {string} token - Session token from Authorization header
- * @param {Object} env - Environment with optional KV binding
+ * Validate a JWT token and return user info
+ * Implements sliding expiration by checking remaining time
+ * @param {string} token - JWT token from Authorization header
+ * @param {Object} env - Environment with optional JWT_SECRET
  * @returns {Promise<Object|null>} User session or null if invalid
  */
 export async function validateSession(token, env) {
     if (!token) return null
 
-    let session = null
+    const secret = env?.JWT_SECRET || DEFAULT_SECRET
 
-    // Try KV first, then in-memory
-    if (env?.SESSIONS) {
-        const stored = await env.SESSIONS.get(token)
-        if (stored) {
-            session = JSON.parse(stored)
+    try {
+        const parts = token.split('.')
+        if (parts.length !== 3) return null
+
+        const [headerEncoded, payloadEncoded, signature] = parts
+        const dataToVerify = `${headerEncoded}.${payloadEncoded}`
+
+        // Verify signature
+        const isValid = await verifySignature(dataToVerify, signature, secret)
+        if (!isValid) return null
+
+        // Decode payload
+        const payload = JSON.parse(base64UrlDecode(payloadEncoded))
+
+        // Check expiration
+        const now = Math.floor(Date.now() / 1000)
+        if (payload.exp < now) {
+            return null // Token expired
         }
-    } else {
-        session = sessions.get(token)
-    }
 
-    if (!session) return null
-
-    // Check expiration
-    if (Date.now() > session.expiresAt) {
-        await destroySession(token, env)
+        // Return session data
+        return {
+            userId: payload.userId,
+            username: payload.username,
+            role: payload.role,
+            createdAt: payload.iat * 1000,
+            expiresAt: payload.exp * 1000
+        }
+    } catch (e) {
+        console.error('JWT validation error:', e)
         return null
     }
-
-    // Sliding expiration: refresh the session expiry on each valid access
-    // This keeps the session alive while the user is actively using the app
-    const newExpiry = Date.now() + SESSION_EXPIRY
-    session.expiresAt = newExpiry
-
-    // Update the session in storage
-    if (env?.SESSIONS) {
-        await env.SESSIONS.put(token, JSON.stringify(session), {
-            expirationTtl: SESSION_EXPIRY / 1000
-        })
-    } else {
-        sessions.set(token, session)
-    }
-
-    return session
 }
 
 /**
  * Destroy a session (logout)
- * @param {string} token - Session token
- * @param {Object} env - Environment with optional KV binding
+ * With JWT, logout is handled client-side by removing the token
+ * @param {string} token - JWT token
+ * @param {Object} env - Environment (unused for JWT)
  */
 export async function destroySession(token, env) {
-    if (env?.SESSIONS) {
-        await env.SESSIONS.delete(token)
-    } else {
-        sessions.delete(token)
-    }
+    // JWT is stateless - logout is handled client-side
+    // Nothing to do on server
 }
 
 /**
@@ -124,13 +165,11 @@ export function getTokenFromRequest(request) {
 }
 
 /**
- * Clean up expired sessions (for in-memory store)
+ * Generate a secure random token (for other uses like CSRF)
  */
-export function cleanupExpiredSessions() {
-    const now = Date.now()
-    for (const [token, session] of sessions.entries()) {
-        if (now > session.expiresAt) {
-            sessions.delete(token)
-        }
-    }
+export function generateSessionToken() {
+    const array = new Uint8Array(32)
+    crypto.getRandomValues(array)
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
 }
+
