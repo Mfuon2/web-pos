@@ -118,11 +118,30 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    function logout() {
+    async function logout() {
+        // Call logout API to clear last_seen_at for offline status
+        try {
+            if (authToken.value) {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken.value}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+            }
+        } catch (e) {
+            // Ignore errors - still proceed with local logout
+            console.error('Logout API error:', e)
+        }
+
         authToken.value = null
         localStorage.removeItem('authToken')
         // Clean up any legacy keys
         cleanupLegacyKeys()
+
+        // Redirect to login page
+        window.location.href = '/login'
     }
 
     /**

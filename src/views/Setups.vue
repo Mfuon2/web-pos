@@ -160,6 +160,7 @@
             <thead>
               <tr>
                 <th>Username</th>
+                <th>Status</th>
                 <th>Role</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -168,6 +169,12 @@
             <tbody>
               <tr v-for="user in users" :key="user.id">
                 <td><strong>{{ user.username }}</strong></td>
+                <td>
+                  <span class="status-badge" :class="isUserOnline(user) ? 'online' : 'offline'">
+                    <span class="status-dot"></span>
+                    {{ isUserOnline(user) ? 'Online' : 'Offline' }}
+                  </span>
+                </td>
                 <td>
                   <span class="role-badge" :class="user.role">{{ user.role }}</span>
                 </td>
@@ -182,7 +189,7 @@
                 </td>
               </tr>
               <tr v-if="users.length === 0">
-                <td colspan="4" class="empty-state">No users found.</td>
+                <td colspan="5" class="empty-state">No users found.</td>
               </tr>
             </tbody>
           </table>
@@ -528,6 +535,20 @@ function formatDate(dateString) {
     dateString = dateString.replace(' ', 'T')
   }
   return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+/**
+ * Check if user is online based on lastSeenAt timestamp
+ * Consider user online if they've been active in the last 5 minutes
+ */
+function isUserOnline(user) {
+  if (!user.lastSeenAt) return false
+  
+  const lastSeen = new Date(user.lastSeenAt.replace(' ', 'T'))
+  const now = new Date()
+  const fiveMinutes = 5 * 60 * 1000 // 5 minutes in milliseconds
+  
+  return (now - lastSeen) < fiveMinutes
 }
 
 // Settings functions
@@ -1093,6 +1114,48 @@ tbody tr:hover {
   background: var(--bg-hover);
   color: var(--text-secondary);
   border: var(--border-width) solid var(--border-color);
+}
+
+/* Status Badge Styles */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-badge.online {
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+}
+
+.status-badge.online .status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  animation: pulse 2s infinite;
+}
+
+.status-badge.offline {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.status-badge.offline .status-dot {
+  background: #9ca3af;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* Mobile Responsive Styles */

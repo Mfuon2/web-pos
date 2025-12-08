@@ -22,6 +22,7 @@ export async function onRequestGet(context) {
                 id: users.id,
                 username: users.username,
                 role: users.role,
+                lastSeenAt: users.lastSeenAt,
                 createdAt: users.createdAt
             }).from(users).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
 
@@ -41,6 +42,7 @@ export async function onRequestGet(context) {
                 id: users.id,
                 username: users.username,
                 role: users.role,
+                lastSeenAt: users.lastSeenAt,
                 createdAt: users.createdAt
             }).from(users).orderBy(desc(users.createdAt));
 

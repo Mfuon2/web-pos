@@ -3,6 +3,7 @@ import { getDb } from '../../../drizzle/db'
 import { users } from '../../../drizzle/schema'
 import { eq } from 'drizzle-orm'
 import { createSession } from '../../utils/auth.js'
+import { getNairobiTimestamp } from '../../utils/timezone.js'
 
 export async function onRequestPost(context) {
     const { request, env } = context;
@@ -37,6 +38,12 @@ export async function onRequestPost(context) {
             });
         }
 
+        // Update last_seen_at for online status tracking
+        const now = getNairobiTimestamp();
+        await db.update(users)
+            .set({ lastSeenAt: now })
+            .where(eq(users.id, user.id));
+
         // Don't return the password
         const { password: _, ...userWithoutPassword } = user;
 
@@ -57,3 +64,4 @@ export async function onRequestPost(context) {
         });
     }
 }
+

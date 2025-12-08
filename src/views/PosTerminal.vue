@@ -4,6 +4,7 @@
     <div class="products-section" :class="{ 'mobile-hidden': showCartMobile }">
       <div class="controls">
         <input 
+          ref="searchInputRef"
           v-model="searchQuery" 
           placeholder="🔍 Search products or scan barcode..." 
           class="search-bar"
@@ -128,6 +129,7 @@ const selectedCategory = ref('')
 const paymentMethod = ref('cash')
 const processing = ref(false)
 const showCartMobile = ref(false)
+const searchInputRef = ref(null)
 
 const products = computed(() => productStore.products)
 const loading = computed(() => productStore.loading)
@@ -201,6 +203,10 @@ async function handleCheckout() {
 
 onMounted(() => {
   productStore.fetchProducts()
+  // Auto-focus search input for faster barcode scanning
+  if (searchInputRef.value) {
+    searchInputRef.value.focus()
+  }
 })
 </script>
 
