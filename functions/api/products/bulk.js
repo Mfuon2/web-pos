@@ -106,32 +106,38 @@ export async function onRequestPost(context) {
         }
 
         // Perform Inserts using raw SQL to avoid Drizzle including null for id column
+        // Batch inserts to avoid D1's SQL variable limit (max ~100 variables per query)
         if (productsToInsert.length > 0) {
-            // Build a batch insert query without the id column
             const insertColumns = ['name', 'barcode', 'price', 'cost', 'stock', 'category', 'created_at'];
-            const placeholders = productsToInsert.map(() => `(?, ?, ?, ?, ?, ?, ?)`).join(', ');
-            const values = productsToInsert.flatMap(p => [
-                p.name,
-                p.barcode,
-                p.price,
-                p.cost,
-                p.stock,
-                p.category,
-                p.createdAt
-            ]);
+            const BATCH_SIZE = 10; // 10 products * 7 columns = 70 variables per batch
 
-            const insertQuery = `INSERT INTO products (${insertColumns.join(', ')}) VALUES ${placeholders}`;
+            // Process inserts in batches
+            for (let i = 0; i < productsToInsert.length; i += BATCH_SIZE) {
+                const batch = productsToInsert.slice(i, i + BATCH_SIZE);
+                const placeholders = batch.map(() => `(?, ?, ?, ?, ?, ?, ?)`).join(', ');
+                const values = batch.flatMap(p => [
+                    p.name,
+                    p.barcode,
+                    p.price,
+                    p.cost,
+                    p.stock,
+                    p.category,
+                    p.createdAt
+                ]);
 
-            // Execute raw SQL insert
-            await env.DB.prepare(insertQuery).bind(...values).run();
+                const insertQuery = `INSERT INTO products (${insertColumns.join(', ')}) VALUES ${placeholders}`;
+                await env.DB.prepare(insertQuery).bind(...values).run();
+            }
 
-            // Fetch the inserted products to return them
-            const barcodes = productsToInsert.map(p => p.barcode);
-            const barcodePlaceholders = barcodes.map(() => '?').join(', ');
-            const fetchQuery = `SELECT * FROM products WHERE barcode IN (${barcodePlaceholders})`;
-            const insertedResults = await env.DB.prepare(fetchQuery).bind(...barcodes).all();
-
-            processedResults.push(...insertedResults.results.map(p => ({ ...p, _action: 'created' })));
+            // Fetch all inserted products in batches to avoid variable limit on SELECT too
+            const allBarcodes = productsToInsert.map(p => p.barcode);
+            for (let i = 0; i < allBarcodes.length; i += BATCH_SIZE) {
+                const batchBarcodes = allBarcodes.slice(i, i + BATCH_SIZE);
+                const barcodePlaceholders = batchBarcodes.map(() => '?').join(', ');
+                const fetchQuery = `SELECT * FROM products WHERE barcode IN (${barcodePlaceholders})`;
+                const insertedResults = await env.DB.prepare(fetchQuery).bind(...batchBarcodes).all();
+                processedResults.push(...insertedResults.results.map(p => ({ ...p, _action: 'created' })));
+            }
         }
 
         return new Response(JSON.stringify({
