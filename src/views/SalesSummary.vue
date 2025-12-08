@@ -5,15 +5,20 @@
         <TrendingUp class="header-icon" />
         Sales Summary - {{ currentDateFormatted }}
       </h1>
-      <button @click="downloadPDF" class="download-btn" :disabled="loading || salesItems.length === 0">
-        <Download class="icon-sm" />
-        Download Report
-      </button>
+      <div class="header-actions">
+        <div class="date-filter">
+          <input type="date" v-model="selectedDate" @change="fetchSales" :max="todayDate" />
+        </div>
+        <button @click="downloadPDF" class="download-btn" :disabled="loading || salesItems.length === 0">
+          <Download class="icon-sm" />
+          Download Report
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
-      Loading today's sales...
+      Loading sales...
     </div>
 
     <div v-else class="summary-grid">
@@ -21,7 +26,7 @@
       <div class="summary-card primary">
         <DollarSign class="card-icon" />
         <div class="card-content">
-          <h3>Total Sales Today</h3>
+          <h3>Total Sales</h3>
           <p class="amount">{{ formatCurrency(todayStats.totalSales) }}</p>
           <span class="detail">{{ todayStats.transactionCount }} transactions</span>
         </div>
@@ -100,8 +105,8 @@
 
     <div v-else-if="!loading && salesItems.length === 0" class="empty-state">
       <Receipt class="empty-icon" />
-      <h3>No Sales Today</h3>
-      <p>Sales made today will appear here</p>
+      <h3>No Sales Found</h3>
+      <p>No sales records found for {{ currentDateFormatted }}</p>
     </div>
   </div>
 </template>
@@ -116,9 +121,12 @@ import autoTable from 'jspdf-autotable'
 
 const todaySales = ref([])
 const loading = ref(false)
+const selectedDate = ref(new Date().toISOString().split('T')[0])
+const todayDate = new Date().toISOString().split('T')[0]
 
 const currentDateFormatted = computed(() => {
-  return new Date().toLocaleDateString('en-US', { 
+  const date = new Date(selectedDate.value)
+  return date.toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
     month: 'long', 
@@ -196,7 +204,7 @@ function formatTime(dateString) {
   })
 }
 
-async function fetchTodaySales() {
+async function fetchSales() {
   loading.value = true
   try {
     const response = await apiGet('/api/sales')
@@ -204,9 +212,9 @@ async function fetchTodaySales() {
     
     const allSales = await response.json()
     
-    // Filter to today's sales only
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    // Filter to selected date
+    // Actually, selectedDate is YYYY-MM-DD string.
+    // We can just compare the date string part of the sale date.
     
     todaySales.value = allSales.filter(sale => {
       let dateStr = sale.createdAt || sale.created_at
@@ -214,7 +222,7 @@ async function fetchTodaySales() {
         dateStr = dateStr.replace(' ', 'T')
       }
       const saleDate = new Date(dateStr)
-      return saleDate.toDateString() === today.toDateString()
+      return saleDate.toISOString().split('T')[0] === selectedDate.value
     }).sort((a, b) => {
       let dateA = a.createdAt || a.created_at
       let dateB = b.createdAt || b.created_at
@@ -300,11 +308,11 @@ function downloadPDF() {
     }
   })
 
-  doc.save(`sales-summary-${new Date().toISOString().slice(0,10)}.pdf`)
+  doc.save(`sales-summary-${selectedDate.value}.pdf`)
 }
 
 onMounted(() => {
-  fetchTodaySales()
+  fetchSales()
 })
 </script>
 
@@ -330,6 +338,26 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.date-filter input {
+  padding: 0.5rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.date-filter input:focus {
+  outline: none;
+  border-color: var(--primary-color);
 }
 
 .header-icon {

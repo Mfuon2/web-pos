@@ -91,7 +91,7 @@
       <!-- Purchase Orders Tab -->
       <div v-show="activeTab === 'purchase-orders'" class="tab-panel">
         <div class="section-header">
-          <h2>📦 Purchase Orders</h2>
+          <h2>Purchase Orders</h2>
           <button @click="showPurchaseOrderModal = true" class="add-btn">+ Add Purchase Order</button>
         </div>
         
@@ -669,41 +669,6 @@ table {
 .status-badge.received { 
   background: var(--success-bg); 
   color: var(--success-text); 
-}
-
-.amount-cell { 
-  font-weight: 600; 
-}
-
-/* Action Buttons */
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn { 
-  background: none; 
-  border: none; 
-  font-size: 1.2rem; 
-  cursor: pointer; 
-  padding: 0.25rem 0.5rem; 
-  margin: 0 0.25rem; 
-  transition: transform 0.2s; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.action-btn:hover { 
-  transform: scale(1.2); 
-}
-
-.edit-btn {
-  color: var(--primary-color);
-}
-
-.delete-btn {
-  color: var(--danger-bg);
 }
 
 .receive-btn {

@@ -18,7 +18,7 @@
       </div>
     </div>
     
-    <div class="inventory-table">
+    <div class="table-container">
       <table>
         <thead>
           <tr>
@@ -49,7 +49,7 @@
             <td class="actions">
               <button 
                 @click="openEditModal(product)" 
-                class="btn-icon edit" 
+                class="action-btn edit-btn"
                 title="Edit"
                 :disabled="!!product.deleted_at"
               >
@@ -57,7 +57,7 @@
               </button>
               <button 
                 @click="handleDelete(product.id)" 
-                class="btn-icon delete" 
+                class="action-btn delete-btn" 
                 title="Delete"
                 :disabled="!!product.deleted_at"
               >
@@ -372,8 +372,7 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 .add-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
-.inventory-table { background: var(--bg-white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); overflow-x: auto; }
-table { min-width: 800px; }
+
 code {
   background: var(--bg-hover);
   padding: 0.25rem 0.5rem;
@@ -382,17 +381,7 @@ code {
 }
 .low-stock { color: var(--danger-bg); font-weight: 600; }
 .actions { display: flex; gap: 0.5rem; }
-.btn-icon {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: var(--radius-sm);
-  transition: background 0.2s;
-}
-.btn-icon:hover { background: var(--bg-hover); }
-.btn-icon.delete:hover { background: var(--danger-light); }
+
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
 .modal-content {
   background: var(--bg-white);

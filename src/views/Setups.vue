@@ -888,30 +888,7 @@ watch(() => currentSettings.value, (newSettings) => {
   box-shadow: var(--shadow-lg);
 }
 
-.table-container {
-  background: var(--bg-white);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  overflow-x: auto;
-}
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-td {
-  border-bottom: var(--border-width) solid var(--border-color);
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-tbody tr:hover {
-  background: var(--bg-hover);
-}
 
 .empty-state {
   text-align: center;
@@ -919,36 +896,6 @@ tbody tr:hover {
   padding: 3rem !important;
 }
 
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  padding: 0.5rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.edit-btn {
-  background: var(--bg-hover);
-  color: var(--primary-color);
-}
-
-.edit-btn:hover {
-  background: var(--primary-color);
-  color: var(--text-white);
-}
-
-.delete-btn {
-  background: var(--danger-light);
-  color: var(--danger-bg);
-}
 
 .delete-btn:hover {
   background: var(--danger-bg);
