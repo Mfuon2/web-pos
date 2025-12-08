@@ -105,10 +105,33 @@ export async function onRequestPost(context) {
                 .where(eq(products.id, update.id));
         }
 
-        // Perform Inserts
+        // Perform Inserts using raw SQL to avoid Drizzle including null for id column
         if (productsToInsert.length > 0) {
-            const inserted = await db.insert(products).values(productsToInsert).returning();
-            processedResults.push(...inserted.map(p => ({ ...p, _action: 'created' })));
+            // Build a batch insert query without the id column
+            const insertColumns = ['name', 'barcode', 'price', 'cost', 'stock', 'category', 'created_at'];
+            const placeholders = productsToInsert.map(() => `(?, ?, ?, ?, ?, ?, ?)`).join(', ');
+            const values = productsToInsert.flatMap(p => [
+                p.name,
+                p.barcode,
+                p.price,
+                p.cost,
+                p.stock,
+                p.category,
+                p.createdAt
+            ]);
+
+            const insertQuery = `INSERT INTO products (${insertColumns.join(', ')}) VALUES ${placeholders}`;
+
+            // Execute raw SQL insert
+            await env.DB.prepare(insertQuery).bind(...values).run();
+
+            // Fetch the inserted products to return them
+            const barcodes = productsToInsert.map(p => p.barcode);
+            const barcodePlaceholders = barcodes.map(() => '?').join(', ');
+            const fetchQuery = `SELECT * FROM products WHERE barcode IN (${barcodePlaceholders})`;
+            const insertedResults = await env.DB.prepare(fetchQuery).bind(...barcodes).all();
+
+            processedResults.push(...insertedResults.results.map(p => ({ ...p, _action: 'created' })));
         }
 
         return new Response(JSON.stringify({
@@ -122,10 +145,10 @@ export async function onRequestPost(context) {
             headers: { 'Content-Type': 'application/json' }
         });
 
-
-
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        // Include the underlying error cause if available
+        const errorMessage = error.cause ? `${error.message} - Cause: ${error.cause.message || error.cause}` : error.message;
+        return new Response(JSON.stringify({ error: errorMessage }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });

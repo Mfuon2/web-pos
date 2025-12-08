@@ -127,3 +127,10 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Password: admin123 (bcrypt hashed with 10 salt rounds)
 INSERT OR IGNORE INTO users (username, password, role) VALUES 
 ('admin', '$2b$10$3oQIQ6MduZBgkfqO3pLsbO4twZbSmWlH09ZJCqzQv0ScK8Zc0Z2Qu', 'admin');
+
+-- Migrations Tracking Table
+CREATE TABLE IF NOT EXISTS _migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
