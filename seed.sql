@@ -1,7 +1,7 @@
 -- Sample test data for POS application
 
 -- Insert sample suppliers
-INSERT INTO suppliers (name, contact, email, phone) VALUES 
+INSERT INTO suppliers (name, contact_person, email, phone) VALUES 
 ('ABC Wholesale', 'John Doe', 'john@abcwholesale.com', '555-0101'),
 ('XYZ Distributors', 'Jane Smith', 'jane@xyzdist.com', '555-0102');
 

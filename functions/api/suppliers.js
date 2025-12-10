@@ -1,5 +1,7 @@
-// GET /api/suppliers - Fetch all suppliers
-// POST /api/suppliers - Create a new supplier
+import { getNairobiTimestamp } from '../utils/timezone.js'
+import { getDb } from '../../drizzle/db'
+import { suppliers } from '../../drizzle/schema'
+import { asc, count } from 'drizzle-orm'
 
 export async function onRequestGet(context) {
     const { env, request } = context;
@@ -8,18 +10,15 @@ export async function onRequestGet(context) {
     const limitParam = url.searchParams.get('limit');
 
     try {
+        const db = getDb(env);
+
         if (pageParam) {
             const page = parseInt(pageParam) || 1;
             const limit = parseInt(limitParam) || 20;
             const offset = (page - 1) * limit;
 
-            const { total } = await env.DB.prepare(
-                'SELECT COUNT(*) as total FROM suppliers'
-            ).first();
-
-            const { results } = await env.DB.prepare(
-                'SELECT * FROM suppliers ORDER BY name ASC LIMIT ? OFFSET ?'
-            ).bind(limit, offset).all();
+            const [{ total }] = await db.select({ total: count() }).from(suppliers);
+            const results = await db.select().from(suppliers).orderBy(asc(suppliers.name)).limit(limit).offset(offset);
 
             return new Response(JSON.stringify({
                 data: results,
@@ -33,9 +32,7 @@ export async function onRequestGet(context) {
                 headers: { 'Content-Type': 'application/json' }
             });
         } else {
-            const { results } = await env.DB.prepare(
-                'SELECT * FROM suppliers ORDER BY name ASC'
-            ).all();
+            const results = await db.select().from(suppliers).orderBy(asc(suppliers.name));
 
             return new Response(JSON.stringify(results), {
                 headers: { 'Content-Type': 'application/json' }
@@ -53,16 +50,22 @@ export async function onRequestPost(context) {
     const { request, env } = context;
 
     try {
+        const db = getDb(env);
         const body = await request.json();
         const { name, contact_person, phone, email, address } = body;
 
-        const result = await env.DB.prepare(
-            'INSERT INTO suppliers (name, contact_person, phone, email, address) VALUES (?, ?, ?, ?, ?)'
-        ).bind(name, contact_person || null, phone || null, email || null, address || null).run();
+        const result = await db.insert(suppliers).values({
+            name,
+            contactPerson: contact_person || null,
+            phone: phone || null,
+            email: email || null,
+            address: address || null,
+            createdAt: getNairobiTimestamp()
+        }).returning({ id: suppliers.id });
 
         return new Response(JSON.stringify({
             success: true,
-            id: result.meta.last_row_id
+            id: result[0].id
         }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' }

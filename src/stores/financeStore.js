@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { apiGet, apiPost, apiPut, apiDelete, apiFetch } from '../utils/api'
 
 export const useFinanceStore = defineStore('finance', () => {
     const expenses = ref([])
@@ -22,7 +23,7 @@ export const useFinanceStore = defineStore('finance', () => {
                 url += `?start_date=${startDate}&end_date=${endDate}`
             }
 
-            const response = await fetch(url)
+            const response = await apiGet(url)
             if (!response.ok) throw new Error('Failed to fetch expenses')
             expenses.value = await response.json()
         } catch (err) {
@@ -37,11 +38,7 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch('/api/expenses', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(expense)
-            })
+            const response = await apiPost('/api/expenses', expense)
             if (!response.ok) throw new Error('Failed to add expense')
             await fetchExpenses() // Refresh list
             return await response.json()
@@ -63,7 +60,7 @@ export const useFinanceStore = defineStore('finance', () => {
                 url += `?start_date=${startDate}&end_date=${endDate}`
             }
 
-            const response = await fetch(url)
+            const response = await apiGet(url)
             if (!response.ok) throw new Error('Failed to fetch summary')
             summary.value = await response.json()
         } catch (err) {
@@ -78,11 +75,7 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/expenses/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(expense)
-            })
+            const response = await apiPut(`/api/expenses/${id}`, expense)
             if (!response.ok) throw new Error('Failed to update expense')
             await fetchExpenses() // Refresh list
             return await response.json()
@@ -99,9 +92,7 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/expenses/${id}`, {
-                method: 'DELETE'
-            })
+            const response = await apiDelete(`/api/expenses/${id}`)
             if (!response.ok) throw new Error('Failed to delete expense')
             await fetchExpenses() // Refresh list
             return await response.json()
@@ -137,7 +128,7 @@ export const useFinanceStore = defineStore('finance', () => {
 
             url += '?' + params.toString()
 
-            const response = await fetch(url)
+            const response = await apiGet(url)
             if (!response.ok) throw new Error('Failed to fetch purchase orders')
 
             const data = await response.json()
@@ -160,11 +151,7 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch('/api/purchase-orders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(purchaseOrder)
-            })
+            const response = await apiPost('/api/purchase-orders', purchaseOrder)
             if (!response.ok) throw new Error('Failed to add purchase order')
             await fetchPurchaseOrders() // Refresh list
             return await response.json()
@@ -181,7 +168,7 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/purchase-orders/${id}/receive`, {
+            const response = await apiFetch(`/api/purchase-orders/${id}/receive`, {
                 method: 'PUT'
             })
             if (!response.ok) throw new Error('Failed to mark purchase order as received')
@@ -200,9 +187,7 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/purchase-orders/${id}`, {
-                method: 'DELETE'
-            })
+            const response = await apiDelete(`/api/purchase-orders/${id}`)
             if (!response.ok) throw new Error('Failed to delete purchase order')
             await fetchPurchaseOrders() // Refresh list
             return await response.json()

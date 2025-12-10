@@ -1,31 +1,34 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { apiGet, apiPut } from '../utils/api'
 
 export const useSettingsStore = defineStore('settings', () => {
     const settings = ref(null)
     const loading = ref(false)
     const error = ref(null)
 
-    const hasSettings = computed(() => settings.value !== null)
+    const hasSettings = computed(() => !!settings.value?.setupComplete)
 
-    const businessName = computed(() => settings.value?.business_name || 'POS System')
-    const primaryColor = computed(() => settings.value?.primary_color || '#667eea')
-    const secondaryColor = computed(() => settings.value?.secondary_color || '#764ba2')
-    const currencySymbol = computed(() => settings.value?.currency_symbol || '$')
+    const businessName = computed(() => settings.value?.businessName || 'POS System')
+    const primaryColor = computed(() => settings.value?.primaryColor || '#667eea')
+    const secondaryColor = computed(() => settings.value?.secondaryColor || '#764ba2')
+    const currencySymbol = computed(() => settings.value?.currencySymbol || '$')
+    const currentSettings = computed(() => settings.value)
 
     async function fetchSettings() {
         loading.value = true
         error.value = null
 
         try {
-            const response = await fetch('/api/settings')
+            const response = await apiGet('/api/settings')
             if (!response.ok) throw new Error('Failed to fetch settings')
 
             const data = await response.json()
             settings.value = data
 
-            // Apply colors to CSS variables if settings exist
-            if (data) {
+            // Apply colors to CSS variables if settings exist and setup is complete
+            if (data && data.setupComplete) {
+                localStorage.setItem('settings', JSON.stringify(data))
                 applyColors()
             }
         } catch (err) {
@@ -41,11 +44,7 @@ export const useSettingsStore = defineStore('settings', () => {
         error.value = null
 
         try {
-            const response = await fetch('/api/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settingsData)
-            })
+            const response = await apiPut('/api/settings', settingsData)
 
             if (!response.ok) throw new Error('Failed to update settings')
 
@@ -53,6 +52,7 @@ export const useSettingsStore = defineStore('settings', () => {
             settings.value = data
 
             // Apply new colors
+            localStorage.setItem('settings', JSON.stringify(data))
             applyColors()
 
             return data
@@ -69,12 +69,31 @@ export const useSettingsStore = defineStore('settings', () => {
         if (!settings.value) return
 
         const root = document.documentElement
-        root.style.setProperty('--primary-color', settings.value.primary_color)
-        root.style.setProperty('--secondary-color', settings.value.secondary_color)
+        root.style.setProperty('--primary-color', settings.value.primaryColor)
+        root.style.setProperty('--secondary-color', settings.value.secondaryColor)
 
         // Update gradient
-        const gradient = `linear-gradient(135deg, ${settings.value.primary_color} 0%, ${settings.value.secondary_color} 100%)`
+        const gradient = `linear-gradient(135deg, ${settings.value.primaryColor} 0%, ${settings.value.secondaryColor} 100%)`
         root.style.setProperty('--primary-gradient', gradient)
+
+        // Dynamically update the meta theme-color for PWA/browser
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+        if (themeColorMeta) {
+            themeColorMeta.setAttribute('content', settings.value.secondaryColor)
+        }
+    }
+
+    function initSettings() {
+        const cached = localStorage.getItem('settings')
+        if (cached) {
+            try {
+                settings.value = JSON.parse(cached)
+                applyColors()
+            } catch (e) {
+                console.error('Failed to parse cached settings', e)
+                localStorage.removeItem('settings')
+            }
+        }
     }
 
     return {
@@ -86,8 +105,10 @@ export const useSettingsStore = defineStore('settings', () => {
         primaryColor,
         secondaryColor,
         currencySymbol,
+        currentSettings,
         fetchSettings,
         updateSettings,
-        applyColors
+        applyColors,
+        initSettings
     }
 })

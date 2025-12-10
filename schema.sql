@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'cashier',
+    last_seen_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -105,16 +106,18 @@ CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id);
 -- Settings Table
 CREATE TABLE IF NOT EXISTS settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    business_name TEXT NOT NULL DEFAULT 'POS System',
+    business_name TEXT NOT NULL DEFAULT 'Set Up Your Business Name',
     primary_color TEXT NOT NULL DEFAULT '#667eea',
     secondary_color TEXT NOT NULL DEFAULT '#764ba2',
-    currency_symbol TEXT NOT NULL DEFAULT '$',
-    currency_code TEXT NOT NULL DEFAULT 'USD',
+    currency_symbol TEXT NOT NULL DEFAULT 'Ksh',
+    currency_code TEXT NOT NULL DEFAULT 'KES',
     tax_rate REAL DEFAULT 0,
     logo_url TEXT,
     address TEXT,
     phone TEXT,
     email TEXT,
+    timezone TEXT NOT NULL DEFAULT 'Africa/Nairobi',
+    setup_complete BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -124,3 +127,10 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Password: admin123 (bcrypt hashed with 10 salt rounds)
 INSERT OR IGNORE INTO users (username, password, role) VALUES 
 ('admin', '$2b$10$3oQIQ6MduZBgkfqO3pLsbO4twZbSmWlH09ZJCqzQv0ScK8Zc0Z2Qu', 'admin');
+
+-- Migrations Tracking Table
+CREATE TABLE IF NOT EXISTS _migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

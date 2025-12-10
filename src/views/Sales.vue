@@ -44,13 +44,13 @@
               <div class="sale-summary">
                 <div class="sale-main-info">
                   <span class="sale-id">#{{ sale.id }}</span>
-                  <span class="sale-time">{{ formatTime(sale.created_at) }}</span>
+                  <span class="sale-time">{{ formatTime(sale.createdAt) }}</span>
                 </div>
                 
                 <div class="sale-meta">
                   <div class="payment-badge">
-                    <component :is="getPaymentIcon(sale.payment_method)" class="icon-xs" />
-                    {{ sale.payment_method }}
+                    <component :is="getPaymentIcon(sale.paymentMethod || sale.payment_method)" class="icon-xs" />
+                    {{ sale.paymentMethod || sale.payment_method }}
                   </div>
                   <span class="sale-amount">{{ formatCurrency(sale.total) }}</span>
                   <ChevronDown class="expand-icon" :class="{ rotated: expandedSale === sale.id }" />
@@ -67,7 +67,7 @@
                   </div>
                   <div class="items-list">
                     <div v-for="item in sale.items" :key="item.id || item.product_id" class="item-row">
-                      <div class="item-name">{{ item.product_name || item.name || 'Unknown Item' }}</div>
+                      <div class="item-name">{{ item.productName || item.product_name || item.name || 'Unknown Item' }}</div>
                       <div class="item-qty text-right">{{ item.quantity }}</div>
                       <div class="item-price text-right">{{ formatCurrency(item.price) }}</div>
                       <div class="item-subtotal text-right">{{ formatCurrency(item.price * item.quantity) }}</div>
@@ -90,6 +90,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Receipt, ChevronDown, ChevronRight, Banknote, CreditCard } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
+import { apiGet } from '../utils/api'
 
 const sales = ref([])
 const loading = ref(false)
@@ -102,7 +103,11 @@ const salesByDate = computed(() => {
   const grouped = {}
   
   sales.value.forEach(sale => {
-    const date = new Date(sale.created_at).toDateString()
+    let dateStr = sale.createdAt || sale.created_at
+    if (dateStr && typeof dateStr === 'string') {
+      dateStr = dateStr.replace(' ', 'T')
+    }
+    const date = new Date(dateStr).toDateString()
     if (!grouped[date]) {
       grouped[date] = {
         date,
@@ -129,6 +134,19 @@ function toggleSale(id) {
   expandedSale.value = expandedSale.value === id ? null : id
 }
 
+function isToday(dateString) {
+  if (!dateString) return false
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
+  const date = new Date(dateString)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  return date.toDateString() === today.toDateString()
+}
+
 function formatDate(dateString) {
   const date = new Date(dateString)
   const today = new Date()
@@ -149,6 +167,10 @@ function formatDate(dateString) {
 }
 
 function formatTime(dateString) {
+  if (!dateString) return ''
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   return new Date(dateString).toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit'
@@ -163,7 +185,7 @@ async function fetchSales() {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('/api/sales')
+    const response = await apiGet('/api/sales')
     if (!response.ok) throw new Error('Failed to fetch sales')
     sales.value = await response.json()
     
@@ -268,7 +290,7 @@ onMounted(() => {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
 }
 
 .day-header {
@@ -332,7 +354,7 @@ onMounted(() => {
 }
 
 .sale-card {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: var(--border-width) solid var(--border-color);
   background: var(--bg-white);
   transition: all 0.2s;
 }
@@ -424,7 +446,7 @@ onMounted(() => {
   font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: var(--border-width) solid var(--border-color);
   margin-bottom: 0.5rem;
 }
 
@@ -443,7 +465,7 @@ onMounted(() => {
 .item-row {
   display: flex;
   padding: 0.5rem;
-  border-bottom: 1px dashed var(--border-color);
+  border-bottom: var(--border-width) dashed var(--border-color);
 }
 
 .item-row:last-child {

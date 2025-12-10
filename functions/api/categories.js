@@ -1,3 +1,8 @@
+import { getNairobiTimestamp } from '../utils/timezone.js'
+import { getDb } from '../../drizzle/db'
+import { categories } from '../../drizzle/schema'
+import { asc, count, sql } from 'drizzle-orm'
+
 export async function onRequestGet(context) {
     const { env, request } = context;
     const url = new URL(request.url);
@@ -5,18 +10,15 @@ export async function onRequestGet(context) {
     const limitParam = url.searchParams.get('limit');
 
     try {
+        const db = getDb(env);
+
         if (pageParam) {
             const page = parseInt(pageParam) || 1;
             const limit = parseInt(limitParam) || 20;
             const offset = (page - 1) * limit;
 
-            const { total } = await env.DB.prepare(
-                'SELECT COUNT(*) as total FROM categories'
-            ).first();
-
-            const { results } = await env.DB.prepare(
-                'SELECT * FROM categories ORDER BY name ASC LIMIT ? OFFSET ?'
-            ).bind(limit, offset).all();
+            const [{ total }] = await db.select({ total: count() }).from(categories);
+            const results = await db.select().from(categories).orderBy(asc(categories.name)).limit(limit).offset(offset);
 
             return new Response(JSON.stringify({
                 data: results,
@@ -30,9 +32,7 @@ export async function onRequestGet(context) {
                 headers: { 'Content-Type': 'application/json' }
             });
         } else {
-            const { results } = await env.DB.prepare(
-                'SELECT * FROM categories ORDER BY name ASC'
-            ).all();
+            const results = await db.select().from(categories).orderBy(asc(categories.name));
 
             return new Response(JSON.stringify(results), {
                 headers: { 'Content-Type': 'application/json' }
@@ -50,6 +50,7 @@ export async function onRequestPost(context) {
     const { request, env } = context;
 
     try {
+        const db = getDb(env);
         const body = await request.json();
         const { name, description } = body;
 
@@ -60,13 +61,15 @@ export async function onRequestPost(context) {
             });
         }
 
-        const result = await env.DB.prepare(
-            'INSERT INTO categories (name, description) VALUES (?, ?)'
-        ).bind(name, description || null).run();
+        const result = await db.insert(categories).values({
+            name,
+            description: description || null,
+            createdAt: getNairobiTimestamp()
+        }).returning({ id: categories.id });
 
         return new Response(JSON.stringify({
             success: true,
-            id: result.meta.last_row_id,
+            id: result[0].id,
             message: 'Category created successfully'
         }), {
             status: 201,

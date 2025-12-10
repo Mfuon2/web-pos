@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { apiPost } from '../utils/api'
 
 export const useCartStore = defineStore('cart', () => {
     const items = ref([])
@@ -65,11 +66,7 @@ export const useCartStore = defineStore('cart', () => {
         }
 
         try {
-            const response = await fetch('/api/sales', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(saleData)
-            })
+            const response = await apiPost('/api/sales', saleData)
 
             if (!response.ok) throw new Error('Failed to process sale')
 

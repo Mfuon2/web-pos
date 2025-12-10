@@ -3,6 +3,7 @@
     <Navbar />
     <router-view />
     <GlassDialog />
+    <UpdateDialog />
     
     <!-- First-Time Setup Wizard -->
     <SetupWizard 
@@ -29,28 +30,69 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Navbar from './components/Navbar.vue'
 import GlassDialog from './components/GlassDialog.vue'
 import SetupWizard from './components/SetupWizard.vue'
+import UpdateDialog from './components/UpdateDialog.vue'
 import { useSettingsStore } from './stores/settingsStore'
 import { useAuthStore } from './stores/authStore'
+import { useRouter } from 'vue-router'
 
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 const deferredPrompt = ref(null)
 const showInstallPrompt = ref(false)
 const showSetupWizard = ref(false)
 
-onMounted(async () => {
-  // Load settings on app mount
-  await settingsStore.fetchSettings()
+let activityCheckInterval = null
+
+// Throttle activity refresh to avoid excessive localStorage writes
+let lastActivityRefresh = 0
+const ACTIVITY_THROTTLE_MS = 60000 // Only refresh once per minute max
+
+function handleUserActivity() {
+  if (!authStore.isAuthenticated) return
   
-  // Show setup wizard if no settings and user is logged in
-  if (!settingsStore.hasSettings && authStore.isAuthenticated) {
-    showSetupWizard.value = true
+  const now = Date.now()
+  if (now - lastActivityRefresh > ACTIVITY_THROTTLE_MS) {
+    authStore.refreshActivity()
+    lastActivityRefresh = now
   }
+}
+
+function checkSession() {
+  if (authStore.isAuthenticated && !authStore.checkSessionTimeout()) {
+    // Session expired due to inactivity
+    router.push('/login')
+  }
+}
+
+onMounted(async () => {
+  // Initialize settings from cache (branding persistence)
+  settingsStore.initSettings()
+
+  // Load settings on app mount if user is logged in
+  if (authStore.isAuthenticated) {
+    await settingsStore.fetchSettings()
+    
+    // Show setup wizard if no settings
+    if (!settingsStore.hasSettings) {
+      showSetupWizard.value = true
+    }
+  }
+  
+  // Track user activity to keep session alive
+  // These events indicate the user is actively using the app
+  const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove']
+  activityEvents.forEach(event => {
+    document.addEventListener(event, handleUserActivity, { passive: true })
+  })
+  
+  // Check session validity periodically (every 5 minutes)
+  activityCheckInterval = setInterval(checkSession, 5 * 60 * 1000)
   
   window.addEventListener('beforeinstallprompt', (e) => {
     // Prevent Chrome 67 and earlier from automatically showing the prompt
@@ -60,6 +102,29 @@ onMounted(async () => {
     // Update UI to notify the user they can add to home screen
     showInstallPrompt.value = true
   })
+})
+
+onUnmounted(() => {
+  // Clean up event listeners
+  const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove']
+  activityEvents.forEach(event => {
+    document.removeEventListener(event, handleUserActivity)
+  })
+  
+  if (activityCheckInterval) {
+    clearInterval(activityCheckInterval)
+  }
+})
+
+// Watch for authentication changes
+watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
+  if (isAuthenticated) {
+    await settingsStore.fetchSettings()
+    
+    if (!settingsStore.hasSettings) {
+      showSetupWizard.value = true
+    }
+  }
 })
 
 async function installPWA() {

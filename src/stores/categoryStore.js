@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 
 export const useCategoryStore = defineStore('category', () => {
     const categories = ref([])
@@ -22,7 +23,7 @@ export const useCategoryStore = defineStore('category', () => {
                 url += `?page=${params.page}&limit=${params.limit || 20}`
             }
 
-            const response = await fetch(url)
+            const response = await apiGet(url)
             if (!response.ok) throw new Error('Failed to fetch categories')
 
             const data = await response.json()
@@ -45,11 +46,7 @@ export const useCategoryStore = defineStore('category', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch('/api/categories', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(categoryData)
-            })
+            const response = await apiPost('/api/categories', categoryData)
             if (!response.ok) throw new Error('Failed to add category')
             await fetchCategories()
         } catch (err) {
@@ -64,11 +61,7 @@ export const useCategoryStore = defineStore('category', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/categories/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(categoryData)
-            })
+            const response = await apiPut(`/api/categories/${id}`, categoryData)
             if (!response.ok) throw new Error('Failed to update category')
             await fetchCategories()
         } catch (err) {
@@ -83,9 +76,7 @@ export const useCategoryStore = defineStore('category', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await fetch(`/api/categories/${id}`, {
-                method: 'DELETE'
-            })
+            const response = await apiDelete(`/api/categories/${id}`)
             if (!response.ok) throw new Error('Failed to delete category')
             await fetchCategories()
         } catch (err) {

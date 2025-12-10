@@ -67,7 +67,7 @@
               <tr v-for="category in categories" :key="category.id">
                 <td><strong>{{ category.name }}</strong></td>
                 <td>{{ category.description || 'N/A' }}</td>
-                <td>{{ formatDate(category.created_at) }}</td>
+                <td>{{ formatDate(category.createdAt) }}</td>
                 <td class="actions">
                   <button @click="openCategoryModal(category)" class="action-btn edit-btn">
                     <Edit2 class="icon-sm" />
@@ -160,6 +160,7 @@
             <thead>
               <tr>
                 <th>Username</th>
+                <th>Status</th>
                 <th>Role</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -169,9 +170,15 @@
               <tr v-for="user in users" :key="user.id">
                 <td><strong>{{ user.username }}</strong></td>
                 <td>
+                  <span class="status-badge" :class="isUserOnline(user) ? 'online' : 'offline'">
+                    <span class="status-dot"></span>
+                    {{ isUserOnline(user) ? 'Online' : 'Offline' }}
+                  </span>
+                </td>
+                <td>
                   <span class="role-badge" :class="user.role">{{ user.role }}</span>
                 </td>
-                <td>{{ formatDate(user.created_at) }}</td>
+                <td>{{ formatDate(user.createdAt) }}</td>
                 <td class="actions">
                   <button @click="openUserModal(user)" class="action-btn edit-btn" title="Edit User">
                     <Edit2 class="icon-sm" />
@@ -182,7 +189,7 @@
                 </td>
               </tr>
               <tr v-if="users.length === 0">
-                <td colspan="4" class="empty-state">No users found.</td>
+                <td colspan="5" class="empty-state">No users found.</td>
               </tr>
             </tbody>
           </table>
@@ -289,6 +296,19 @@
                   placeholder="0.00"
                 />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label>Business Timezone</label>
+              <select v-model="settingsForm.timezone">
+                <option value="Africa/Nairobi">Africa/Nairobi (EAT - UTC+3)</option>
+                <option value="Africa/Lagos">Africa/Lagos (WAT - UTC+1)</option>
+                <option value="Africa/Cairo">Africa/Cairo (EET - UTC+2)</option>
+                <option value="Africa/Johannesburg">Africa/Johannesburg (SAST - UTC+2)</option>
+                <option value="Africa/Accra">Africa/Accra (GMT - UTC+0)</option>
+                <option value="Africa/Casablanca">Africa/Casablanca (WET - UTC+0/+1)</option>
+                <option value="UTC">UTC (Coordinated Universal Time)</option>
+              </select>
             </div>
           </div>
 
@@ -502,6 +522,7 @@ const settingsForm = ref({
   currency_symbol: '$',
   currency_code: 'USD',
   tax_rate: 0,
+  timezone: 'Africa/Nairobi',
   logo_url: '',
   address: '',
   phone: '',
@@ -509,13 +530,44 @@ const settingsForm = ref({
 })
 
 function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+/**
+ * Check if user is online based on lastSeenAt timestamp
+ * Consider user online if they've been active in the last 5 minutes
+ */
+function isUserOnline(user) {
+  if (!user.lastSeenAt) return false
+  
+  const lastSeen = new Date(user.lastSeenAt.replace(' ', 'T'))
+  const now = new Date()
+  const fiveMinutes = 5 * 60 * 1000 // 5 minutes in milliseconds
+  
+  return (now - lastSeen) < fiveMinutes
 }
 
 // Settings functions
 async function loadSettings() {
   if (currentSettings.value) {
-    settingsForm.value = { ...currentSettings.value }
+    // Map camelCase API response to snake_case form fields
+    settingsForm.value = {
+      business_name: currentSettings.value.businessName || '',
+      primary_color: currentSettings.value.primaryColor || '#667eea',
+      secondary_color: currentSettings.value.secondaryColor || '#764ba2',
+      currency_symbol: currentSettings.value.currencySymbol || '$',
+      currency_code: currentSettings.value.currencyCode || 'USD',
+      tax_rate: currentSettings.value.taxRate || 0,
+      timezone: currentSettings.value.timezone || 'Africa/Nairobi',
+      logo_url: currentSettings.value.logoUrl || '',
+      address: currentSettings.value.address || '',
+      phone: currentSettings.value.phone || '',
+      email: currentSettings.value.email || ''
+    }
   }
 }
 
@@ -718,7 +770,19 @@ onMounted(async () => {
 import { watch } from 'vue'
 watch(() => currentSettings.value, (newSettings) => {
   if (newSettings) {
-    settingsForm.value = { ...newSettings }
+    settingsForm.value = {
+      business_name: newSettings.businessName || '',
+      primary_color: newSettings.primaryColor || '#667eea',
+      secondary_color: newSettings.secondaryColor || '#764ba2',
+      currency_symbol: newSettings.currencySymbol || '$',
+      currency_code: newSettings.currencyCode || 'USD',
+      tax_rate: newSettings.taxRate || 0,
+      timezone: newSettings.timezone || 'Africa/Nairobi',
+      logo_url: newSettings.logoUrl || '',
+      address: newSettings.address || '',
+      phone: newSettings.phone || '',
+      email: newSettings.email || ''
+    }
   }
 })
 </script>
@@ -753,7 +817,7 @@ watch(() => currentSettings.value, (newSettings) => {
   display: flex;
   gap: 1rem;
   margin-bottom: var(--spacing-lg);
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: var(--border-width) solid var(--border-color);
   overflow-x: auto;
 }
 
@@ -806,7 +870,7 @@ watch(() => currentSettings.value, (newSettings) => {
 }
 
 .add-btn {
-  padding: 0.75rem 1.5rem;
+      padding: 0.3rem 1.0rem;
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
@@ -824,42 +888,7 @@ watch(() => currentSettings.value, (newSettings) => {
   box-shadow: var(--shadow-lg);
 }
 
-.table-container {
-  background: var(--bg-white);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  overflow-x: auto;
-}
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: var(--primary-gradient);
-  color: var(--text-white);
-}
-
-th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 500;
-}
-
-td {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-tbody tr:hover {
-  background: var(--bg-hover);
-}
 
 .empty-state {
   text-align: center;
@@ -867,36 +896,6 @@ tbody tr:hover {
   padding: 3rem !important;
 }
 
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  padding: 0.5rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.edit-btn {
-  background: var(--bg-hover);
-  color: var(--primary-color);
-}
-
-.edit-btn:hover {
-  background: var(--primary-color);
-  color: var(--text-white);
-}
-
-.delete-btn {
-  background: var(--danger-light);
-  color: var(--danger-bg);
-}
 
 .delete-btn:hover {
   background: var(--danger-bg);
@@ -972,17 +971,20 @@ tbody tr:hover {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
-  padding: 0.75rem;
-  border: 2px solid var(--border-color);
+  padding: 0.4rem 0.4rem;
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 1rem;
   transition: border-color 0.2s;
+  background-color: var(--bg-white);
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--primary-color);
 }
@@ -1058,7 +1060,49 @@ tbody tr:hover {
 .role-badge.cashier {
   background: var(--bg-hover);
   color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
+}
+
+/* Status Badge Styles */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-badge.online {
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+}
+
+.status-badge.online .status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  animation: pulse 2s infinite;
+}
+
+.status-badge.offline {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.status-badge.offline .status-dot {
+  background: #9ca3af;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* Mobile Responsive Styles */
@@ -1179,7 +1223,7 @@ tbody tr:hover {
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
 }
 
 .settings-section h3 {
@@ -1201,7 +1245,7 @@ tbody tr:hover {
 .color-picker {
   width: 60px;
   height: 44px;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: border-color 0.2s;
@@ -1214,7 +1258,7 @@ tbody tr:hover {
 .color-text {
   flex: 1;
   padding: 0.75rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-family: monospace;

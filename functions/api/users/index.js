@@ -1,4 +1,7 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs'
+import { getDb } from '../../../drizzle/db'
+import { users } from '../../../drizzle/schema'
+import { count, desc, eq } from 'drizzle-orm'
 
 export async function onRequestGet(context) {
     const { env, request } = context;
@@ -7,18 +10,21 @@ export async function onRequestGet(context) {
     const limitParam = url.searchParams.get('limit');
 
     try {
+        const db = getDb(env);
+
         if (pageParam) {
             const page = parseInt(pageParam) || 1;
             const limit = parseInt(limitParam) || 20;
             const offset = (page - 1) * limit;
 
-            const { total } = await env.DB.prepare(
-                'SELECT COUNT(*) as total FROM users'
-            ).first();
-
-            const { results } = await env.DB.prepare(
-                'SELECT id, username, role, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?'
-            ).bind(limit, offset).all();
+            const [{ total }] = await db.select({ total: count() }).from(users);
+            const results = await db.select({
+                id: users.id,
+                username: users.username,
+                role: users.role,
+                lastSeenAt: users.lastSeenAt,
+                createdAt: users.createdAt
+            }).from(users).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
 
             return new Response(JSON.stringify({
                 data: results,
@@ -32,9 +38,13 @@ export async function onRequestGet(context) {
                 headers: { 'Content-Type': 'application/json' }
             });
         } else {
-            const { results } = await env.DB.prepare(
-                'SELECT id, username, role, created_at FROM users ORDER BY created_at DESC'
-            ).all();
+            const results = await db.select({
+                id: users.id,
+                username: users.username,
+                role: users.role,
+                lastSeenAt: users.lastSeenAt,
+                createdAt: users.createdAt
+            }).from(users).orderBy(desc(users.createdAt));
 
             return new Response(JSON.stringify(results), {
                 headers: { 'Content-Type': 'application/json' }
@@ -52,14 +62,13 @@ export async function onRequestPost(context) {
     const { request, env } = context;
 
     try {
+        const db = getDb(env);
         const { username, password, role } = await request.json();
 
         // Check if user exists
-        const { results: existing } = await env.DB.prepare(
-            'SELECT id FROM users WHERE username = ?'
-        ).bind(username).all();
+        const existing = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).get();
 
-        if (existing.length > 0) {
+        if (existing) {
             return new Response(JSON.stringify({ error: 'Username already exists' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
@@ -70,9 +79,11 @@ export async function onRequestPost(context) {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        await env.DB.prepare(
-            'INSERT INTO users (username, password, role) VALUES (?, ?, ?)'
-        ).bind(username, hashedPassword, role || 'cashier').run();
+        await db.insert(users).values({
+            username,
+            password: hashedPassword,
+            role: role || 'cashier'
+        });
 
         return new Response(JSON.stringify({ success: true }), {
             status: 201,

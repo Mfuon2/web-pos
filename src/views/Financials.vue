@@ -91,7 +91,7 @@
       <!-- Purchase Orders Tab -->
       <div v-show="activeTab === 'purchase-orders'" class="tab-panel">
         <div class="section-header">
-          <h2>📦 Purchase Orders</h2>
+          <h2>Purchase Orders</h2>
           <button @click="showPurchaseOrderModal = true" class="add-btn">+ Add Purchase Order</button>
         </div>
         
@@ -109,8 +109,8 @@
             </thead>
             <tbody>
               <tr v-for="po in purchaseOrders" :key="po.id">
-                <td>{{ formatDate(po.created_at) }}</td>
-                <td>{{ getSupplierName(po.supplier_id) }}</td>
+                <td>{{ formatDate(po.createdAt) }}</td>
+                <td>{{ getSupplierName(po.supplierId) }}</td>
                 <td>
                   <span class="status-badge" :class="po.status">{{ po.status }}</span>
                 </td>
@@ -149,7 +149,7 @@
       <!-- Expenses Tab -->
       <div v-show="activeTab === 'expenses'" class="tab-panel">
         <div class="section-header">
-          <h2>📝 Expenses</h2>
+          <h2>Expenses</h2>
           <button @click="showExpenseModal = true; editingExpense = null" class="add-btn">+ Add Expense</button>
         </div>
         
@@ -166,7 +166,7 @@
             </thead>
             <tbody>
               <tr v-for="expense in expenses" :key="expense.id">
-                <td>{{ formatDate(expense.created_at) }}</td>
+                <td>{{ formatDate(expense.createdAt) }}</td>
                 <td><span class="category-badge">{{ expense.category }}</span></td>
                 <td>{{ expense.description }}</td>
                 <td class="amount">{{ formatCurrency(expense.amount) }}</td>
@@ -242,11 +242,15 @@ const showPurchaseOrderModal = ref(false)
 const editingExpense = ref(null)
 
 const currentMonthLabel = computed(() => {
-  const date = new Date(startDate.value)
+  const date = new Date(startDate.value.replace(' ', 'T'))
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 })
 
 function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   return new Date(dateString).toLocaleDateString() + ' ' + 
          new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
@@ -433,7 +437,7 @@ onMounted(() => {
 
 .date-filter input { 
   padding: 0.5rem; 
-  border: 2px solid var(--border-color); 
+  border: var(--border-width) solid var(--border-color); 
   border-radius: var(--radius-md); 
   font-size: 1rem;
 }
@@ -549,7 +553,7 @@ onMounted(() => {
 }
 
 .summary-card.profit { 
-  border: 2px solid var(--primary-color); 
+  border: var(--border-width) solid var(--primary-color); 
 }
 
 .summary-card h3 { 
@@ -610,7 +614,7 @@ onMounted(() => {
 }
 
 .add-btn { 
-  padding: 0.75rem 1.5rem; 
+      padding: 0.3rem 1.0rem;
   background: var(--primary-gradient); 
   color: var(--text-white); 
   border: none; 
@@ -625,44 +629,10 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); 
 }
 
-/* Tables */
-.table-container { 
-  background: var(--bg-white); 
-  border-radius: var(--radius-lg); 
-  overflow: hidden; 
-  box-shadow: var(--shadow-md); 
-  overflow-x: auto;
-}
-
 table { 
   width: 100%; 
   border-collapse: collapse; 
   min-width: 800px;
-}
-
-thead { 
-  background: var(--primary-gradient); 
-  color: var(--text-white); 
-}
-
-th { 
-  padding: 1rem; 
-  text-align: left; 
-  font-weight: 600; 
-}
-
-tbody tr { 
-  border-bottom: 1px solid var(--border-color); 
-  transition: background 0.2s; 
-}
-
-tbody tr:hover { 
-  background: var(--bg-hover); 
-}
-
-td { 
-  padding: 1rem; 
-  color: var(--text-primary); 
 }
 
 .empty-state {
@@ -699,41 +669,6 @@ td {
 .status-badge.received { 
   background: var(--success-bg); 
   color: var(--success-text); 
-}
-
-.amount-cell { 
-  font-weight: 600; 
-}
-
-/* Action Buttons */
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn { 
-  background: none; 
-  border: none; 
-  font-size: 1.2rem; 
-  cursor: pointer; 
-  padding: 0.25rem 0.5rem; 
-  margin: 0 0.25rem; 
-  transition: transform 0.2s; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.action-btn:hover { 
-  transform: scale(1.2); 
-}
-
-.edit-btn {
-  color: var(--primary-color);
-}
-
-.delete-btn {
-  color: var(--danger-bg);
 }
 
 .receive-btn {

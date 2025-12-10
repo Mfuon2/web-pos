@@ -86,7 +86,7 @@
         <div v-if="recentSales.length > 0" class="activity-list">
           <div v-for="sale in recentSales.slice(0, 5)" :key="sale.id" class="activity-item">
             <div class="activity-info">
-              <span class="activity-time">{{ formatTime(sale.created_at) }}</span>
+              <span class="activity-time">{{ formatTime(sale.createdAt || sale.created_at) }}</span>
               <span class="activity-desc">Sale #{{ sale.id }}</span>
             </div>
             <span class="activity-amount">{{ formatCurrency(sale.total) }}</span>
@@ -105,6 +105,7 @@
 import { ref, onMounted } from 'vue'
 import { LayoutDashboard, DollarSign, TrendingUp, Package, ShoppingCart, Receipt, Wallet } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
+import { apiGet } from '../utils/api'
 
 const loading = ref(false)
 const stats = ref({
@@ -118,6 +119,10 @@ const stats = ref({
 const recentSales = ref([])
 
 function formatTime(dateString) {
+  if (!dateString) return ''
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
   return new Date(dateString).toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit'
@@ -128,7 +133,7 @@ async function fetchDashboardData() {
   loading.value = true
   try {
     // Fetch sales data
-    const salesRes = await fetch('/api/sales')
+    const salesRes = await apiGet('/api/sales')
     const allSales = await salesRes.json()
     
     // Calculate today's stats
@@ -136,9 +141,17 @@ async function fetchDashboardData() {
     today.setHours(0, 0, 0, 0)
     
     const todaySales = allSales.filter(sale => {
-      const saleDate = new Date(sale.created_at)
+      let dateStr = sale.createdAt || sale.created_at
+      if (dateStr && typeof dateStr === 'string') {
+        dateStr = dateStr.replace(' ', 'T')
+      }
+      const saleDate = new Date(dateStr)
       saleDate.setHours(0, 0, 0, 0)
-      return saleDate.getTime() === today.getTime()
+      
+      // Debug logging
+      // console.log('Sale Date:', dateStr, saleDate.toDateString(), 'Today:', today.toDateString())
+      
+      return saleDate.toDateString() === today.toDateString()
     })
     
     stats.value.todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0)
@@ -147,7 +160,11 @@ async function fetchDashboardData() {
     // Calculate month stats
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const monthSales = allSales.filter(sale => {
-      const saleDate = new Date(sale.created_at)
+      let dateStr = sale.createdAt || sale.created_at
+      if (dateStr && typeof dateStr === 'string') {
+        dateStr = dateStr.replace(' ', 'T')
+      }
+      const saleDate = new Date(dateStr)
       return saleDate >= startOfMonth
     })
     
@@ -156,11 +173,21 @@ async function fetchDashboardData() {
     
     // Recent sales
     recentSales.value = allSales
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .sort((a, b) => {
+        let dateA = a.createdAt || a.created_at
+        let dateB = b.createdAt || b.created_at
+        if (dateA && typeof dateA === 'string') {
+            dateA = dateA.replace(' ', 'T')
+        }
+        if (dateB && typeof dateB === 'string') {
+            dateB = dateB.replace(' ', 'T')
+        }
+        return new Date(dateB) - new Date(dateA)
+      })
       .slice(0, 5)
     
     // Fetch products data
-    const productsRes = await fetch('/api/products')
+    const productsRes = await apiGet('/api/products')
     const products = await productsRes.json()
     
     stats.value.totalProducts = products.length
@@ -247,7 +274,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -324,7 +351,7 @@ onMounted(() => {
 
 .action-card {
   background: var(--bg-hover);
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.5rem;
   text-decoration: none;
@@ -390,7 +417,7 @@ onMounted(() => {
   padding: 1rem;
   background: var(--bg-hover);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
 }
 
 .activity-info {

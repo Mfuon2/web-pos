@@ -7,3 +7,8 @@ pages_build_output_dir = "dist"
 binding = "DB"
 database_name = "pos_database"
 database_id = "f76d66b5-3c71-4d46-9a1c-2d24c191bb8e"
+
+# Cloudflare R2 Bucket for product images
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "pos-product-images"

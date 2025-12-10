@@ -5,10 +5,20 @@
         <Package class="header-icon" />
         Inventory
       </h1>
-      <button @click="openAddModal" class="add-btn">+ Add Product</button>
+      <div class="header-actions">
+        <button @click="exportToExcel" class="export-btn" :disabled="exporting">
+          <Download class="icon-sm" />
+          {{ exporting ? 'Exporting...' : 'Export' }}
+        </button>
+        <button @click="showBulkUploadModal = true" class="upload-btn">
+          <Upload class="icon-sm" />
+          Upload Products
+        </button>
+        <button @click="openAddModal" class="add-btn">+ Add Product</button>
+      </div>
     </div>
     
-    <div class="inventory-table">
+    <div class="table-container">
       <table>
         <thead>
           <tr>
@@ -16,7 +26,9 @@
             <th>Barcode</th>
             <th>Price</th>
             <th>Cost</th>
+            <th>Expected Profit</th>
             <th>Stock</th>
+            <th>Total Value</th>
             <th>Category</th>
             <th>Actions</th>
           </tr>
@@ -30,12 +42,14 @@
             <td><code>{{ product.barcode || 'N/A' }}</code></td>
             <td>{{ formatCurrency(product.price) }}</td>
             <td>{{ formatCurrency(product.cost || 0) }}</td>
+            <td>{{ formatCurrency(product.price - (product.cost || 0)) }}</td>
             <td :class="{ 'low-stock': product.stock < 10 }">{{ product.stock }}</td>
+            <td>{{ formatCurrency(product.price * product.stock) }}</td>
             <td>{{ product.category || 'N/A' }}</td>
             <td class="actions">
               <button 
                 @click="openEditModal(product)" 
-                class="btn-icon edit" 
+                class="action-btn edit-btn"
                 title="Edit"
                 :disabled="!!product.deleted_at"
               >
@@ -43,7 +57,7 @@
               </button>
               <button 
                 @click="handleDelete(product.id)" 
-                class="btn-icon delete" 
+                class="action-btn delete-btn" 
                 title="Delete"
                 :disabled="!!product.deleted_at"
               >
@@ -103,12 +117,43 @@
               </select>
             </div>
           </div>
+          
+          <!-- Image Upload Section (Only for Edit) -->
+          <div v-if="isEditing" class="form-group image-upload-section">
+            <label>Product Image</label>
+            <div class="image-preview" v-if="imagePreview || formData.image">
+              <img :src="imagePreview || formData.image" alt="Product preview" />
+              <button type="button" class="remove-image-btn" @click="removeImage">
+                <Trash2 class="icon-sm" /> Remove Image
+              </button>
+            </div>
+            <div class="file-input-wrapper" v-else>
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                @change="handleImageSelect"
+                ref="imageInput"
+              />
+              <div class="file-input-placeholder">
+                <ImageIcon class="icon-md" />
+                <span>Click to select an image</span>
+                <small>JPG, PNG, or WebP (max 2MB)</small>
+              </div>
+            </div>
+          </div>
           <button type="submit" class="submit-btn">
             {{ isEditing ? 'Update Product' : 'Add Product' }}
           </button>
         </form>
       </div>
     </div>
+
+    <!-- Bulk Upload Modal -->
+    <BulkUploadModal 
+      v-if="showBulkUploadModal" 
+      @close="showBulkUploadModal = false"
+      @imported="handleBulkImported"
+    />
   </div>
 </template>
 
@@ -116,20 +161,91 @@
 import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '../stores/productStore'
 import { useCategoryStore } from '../stores/categoryStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { formatCurrency } from '../utils/currency'
-import { Edit2, Trash2, Package } from 'lucide-vue-next'
+import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
+import BulkUploadModal from '../components/BulkUploadModal.vue'
+import * as XLSX from 'xlsx'
+import { apiFetch } from '../utils/api'
 
 import { useDialogStore } from '../stores/dialogStore'
 
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
+const settingsStore = useSettingsStore()
 const dialogStore = useDialogStore()
 const products = computed(() => productStore.products)
 const categories = computed(() => categoryStore.categories)
 const pagination = computed(() => productStore.pagination)
 
+const exporting = ref(false)
+
+async function exportToExcel() {
+  exporting.value = true
+  try {
+    // Fetch all products for export (ignoring pagination)
+    // Note: In a real app with thousands of items, we might need a dedicated API endpoint
+    // For now, we'll assume the store can handle fetching all or we use the current list
+    // If we need ALL products, we might need to fetch them. 
+    // Let's assume we want to export what's currently available or fetch all if possible.
+    // For this implementation, I'll fetch all products temporarily.
+    
+    // Fetch all products
+    const allProducts = await productStore.getAllProducts() // We need to ensure this exists or implement it
+    
+    const businessName = settingsStore.businessName
+    const date = new Date().toLocaleDateString()
+    const time = new Date().toLocaleTimeString()
+    
+    // Prepare data
+    const data = [
+      [businessName], // Row 1: Business Name
+      [`Stock as at ${date} ${time}`], // Row 2: Date
+      [], // Row 3: Empty
+      ['Name', 'Barcode', 'Price', 'Cost', 'Expected Profit', 'Stock', 'Total Value', 'Category'] // Row 4: Headers
+    ]
+    
+    allProducts.forEach(p => {
+      data.push([
+        p.name,
+        p.barcode || 'N/A',
+        p.price,
+        p.cost || 0,
+        p.price - (p.cost || 0),
+        p.stock,
+        p.price * p.stock,
+        p.category || 'N/A'
+      ])
+    })
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(data)
+    
+    // Merge cells for title
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Merge Business Name across 8 columns
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }  // Merge Date across 8 columns
+    ]
+    
+    // Create workbook
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory')
+    
+    // Save file
+    XLSX.writeFile(wb, `Inventory_${date.replace(/\//g, '-')}.xlsx`)
+    
+    dialogStore.success('Inventory exported successfully')
+  } catch (error) {
+    console.error('Export failed:', error)
+    dialogStore.error('Export failed: ' + error.message)
+  } finally {
+    exporting.value = false
+  }
+}
+
 const showModal = ref(false)
+const showBulkUploadModal = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 
@@ -139,13 +255,43 @@ const formData = ref({
   price: 0,
   cost: 0,
   stock: 0,
-  category: ''
+  category: '',
+  image: null
 })
+
+const imageInput = ref(null)
+const pendingImageFile = ref(null)
+const imagePreview = ref(null)
+
+function generateBarcode() {
+  const startBarcode = 1000000001
+  
+  // Get all existing numeric barcodes
+  const existingBarcodes = productStore.products
+    .map(p => parseInt(p.barcode))
+    .filter(b => !isNaN(b) && b >= startBarcode)
+    
+  if (existingBarcodes.length === 0) {
+    return startBarcode.toString()
+  }
+  
+  // Find the max and add 1
+  const maxBarcode = Math.max(...existingBarcodes)
+  return (maxBarcode + 1).toString()
+}
 
 function openAddModal() {
   isEditing.value = false
   editingId.value = null
-  formData.value = { name: '', barcode: '', price: 0, cost: 0, stock: 0, category: '' }
+  formData.value = { 
+    name: '', 
+    barcode: generateBarcode(), 
+    price: 0, 
+    cost: 0, 
+    stock: 0, 
+    category: '',
+    image: null
+  }
   showModal.value = true
 }
 
@@ -153,11 +299,92 @@ function openEditModal(product) {
   isEditing.value = true
   editingId.value = product.id
   formData.value = { ...product }
+  // Reset image upload state
+  pendingImageFile.value = null
+  imagePreview.value = null
   showModal.value = true
 }
 
 function closeModal() {
   showModal.value = false
+  // Reset image input
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
+function handleImageSelect(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  // Validate file size (max 2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    dialogStore.error('Image too large. Please select an image under 2MB.')
+    event.target.value = ''
+    return
+  }
+  
+  // Validate file type
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    dialogStore.error('Invalid file type. Please select a JPG, PNG, or WebP image.')
+    event.target.value = ''
+    return
+  }
+  
+  // Store the file for upload on save
+  pendingImageFile.value = file
+  
+  // Create preview URL
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    imagePreview.value = e.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+async function removeImage() {
+  if (formData.value.image && editingId.value) {
+    // Extract filename from image URL
+    const filename = formData.value.image.split('/').pop()
+    try {
+      const response = await apiFetch('/api/products/image', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: editingId.value, filename })
+      })
+      if (!response.ok) throw new Error('Failed to delete image')
+    } catch (err) {
+      console.error('Image delete error:', err)
+    }
+  }
+  
+  formData.value.image = null
+  pendingImageFile.value = null
+  imagePreview.value = null
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
+async function uploadImage(productId) {
+  if (!pendingImageFile.value) return null
+  
+  const uploadFormData = new FormData()
+  uploadFormData.append('image', pendingImageFile.value)
+  uploadFormData.append('productId', productId)
+  
+  const response = await apiFetch('/api/products/image', {
+    method: 'POST',
+    body: uploadFormData
+  })
+  
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to upload image')
+  }
+  
+  const result = await response.json()
+  return result.imageUrl
 }
 
 async function handlePageChange(page) {
@@ -168,11 +395,23 @@ async function handleSubmit() {
   try {
     if (isEditing.value) {
       await productStore.updateProduct(editingId.value, formData.value)
+      
+      // Upload image if a new one was selected
+      if (pendingImageFile.value) {
+        await uploadImage(editingId.value)
+        await productStore.fetchProducts({ page: 1, limit: 20 }) // Refresh to get new image URL
+      }
+      
       dialogStore.success('Product updated successfully')
     } else {
       await productStore.addProduct(formData.value)
       dialogStore.success('Product added successfully')
     }
+    
+    // Reset image state
+    pendingImageFile.value = null
+    imagePreview.value = null
+    
     closeModal()
   } catch (error) {
     dialogStore.error('Operation failed: ' + error.message)
@@ -189,6 +428,11 @@ async function handleDelete(id) {
   } catch (error) {
     dialogStore.error('Delete failed: ' + error.message)
   }
+}
+
+function handleBulkImported() {
+  // Refresh data is already handled by the store action, but we can do extra cleanup if needed
+  // The modal emits this event after successful import and store refresh
 }
 
 onMounted(async () => {
@@ -216,8 +460,12 @@ onMounted(async () => {
   height: 32px;
   color: var(--primary-color);
 }
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
 .add-btn {
-  padding: 0.75rem 1.5rem;
+      padding: 0.3rem 1.0rem;
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
@@ -226,21 +474,29 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.3s ease;
 }
-.add-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
-.inventory-table { background: var(--bg-white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 800px; }
-thead { background: var(--primary-gradient); color: var(--text-white); }
-th {
-  padding: var(--spacing-lg);
-  text-align: left;
-  font-weight: 500;
-}
-tbody tr { border-bottom: 1px solid var(--border-color); transition: background 0.2s; }
-tbody tr:hover { background: var(--bg-hover); }
-td {
-  padding: var(--spacing-lg);
+.export-btn, .upload-btn {
+  padding: 0.3rem 1.0rem;
+  background: var(--bg-white);
   color: var(--text-primary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
+.export-btn:hover, .upload-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+.export-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.add-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+
 code {
   background: var(--bg-hover);
   padding: 0.25rem 0.5rem;
@@ -249,17 +505,7 @@ code {
 }
 .low-stock { color: var(--danger-bg); font-weight: 600; }
 .actions { display: flex; gap: 0.5rem; }
-.btn-icon {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: var(--radius-sm);
-  transition: background 0.2s;
-}
-.btn-icon:hover { background: var(--bg-hover); }
-.btn-icon.delete:hover { background: var(--danger-light); }
+
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
 .modal-content {
   background: var(--bg-white);
@@ -285,14 +531,17 @@ code {
 .close-btn:hover { color: var(--text-primary); }
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary); }
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: var(--spacing-md);
-  border: 2px solid var(--border-color);
+  border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
+  background-color: var(--bg-white);
 }
-.form-group input:focus { outline: none; border-color: var(--primary-color); }
+.form-group input:focus,
+.form-group select:focus { outline: none; border-color: var(--primary-color); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .submit-btn {
   width: 100%;
@@ -349,5 +598,89 @@ code {
   opacity: 0.3;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* Image Upload Styles */
+.image-upload-section {
+  margin-top: 1rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-input-wrapper:hover {
+  border-color: var(--primary-color);
+  background: var(--bg-hover);
+}
+
+.file-input-wrapper input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-input-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.file-input-placeholder .icon-md {
+  width: 32px;
+  height: 32px;
+  color: var(--primary-color);
+}
+
+.file-input-placeholder small {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.image-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.image-preview img {
+  max-width: 200px;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.remove-image-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--danger-bg);
+  color: var(--text-white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.remove-image-btn:hover {
+  opacity: 0.9;
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
 }
 </style>

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 
 export const useUserStore = defineStore('user', () => {
     const users = ref([])
@@ -22,7 +23,7 @@ export const useUserStore = defineStore('user', () => {
                 url += `?page=${params.page}&limit=${params.limit || 20}`
             }
 
-            const response = await fetch(url)
+            const response = await apiGet(url)
             if (!response.ok) throw new Error('Failed to fetch users')
 
             const data = await response.json()
@@ -43,11 +44,7 @@ export const useUserStore = defineStore('user', () => {
 
     async function addUser(userData) {
         try {
-            const response = await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
-            })
+            const response = await apiPost('/api/users', userData)
             if (!response.ok) {
                 const err = await response.json()
                 throw new Error(err.error || 'Failed to add user')
@@ -60,11 +57,7 @@ export const useUserStore = defineStore('user', () => {
 
     async function updateUser(id, updates) {
         try {
-            const response = await fetch(`/api/users/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            })
+            const response = await apiPut(`/api/users/${id}`, updates)
             if (!response.ok) throw new Error('Failed to update user')
             await fetchUsers()
         } catch (err) {
@@ -74,9 +67,7 @@ export const useUserStore = defineStore('user', () => {
 
     async function deleteUser(id) {
         try {
-            const response = await fetch(`/api/users/${id}`, {
-                method: 'DELETE'
-            })
+            const response = await apiDelete(`/api/users/${id}`)
             if (!response.ok) throw new Error('Failed to delete user')
             await fetchUsers()
         } catch (err) {
@@ -90,7 +81,6 @@ export const useUserStore = defineStore('user', () => {
         error,
         fetchUsers,
         addUser,
-        updateUser,
         updateUser,
         deleteUser,
         pagination
