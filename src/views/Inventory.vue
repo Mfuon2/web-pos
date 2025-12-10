@@ -117,6 +117,30 @@
               </select>
             </div>
           </div>
+          
+          <!-- Image Upload Section (Only for Edit) -->
+          <div v-if="isEditing" class="form-group image-upload-section">
+            <label>Product Image</label>
+            <div class="image-preview" v-if="imagePreview || formData.image">
+              <img :src="imagePreview || formData.image" alt="Product preview" />
+              <button type="button" class="remove-image-btn" @click="removeImage">
+                <Trash2 class="icon-sm" /> Remove Image
+              </button>
+            </div>
+            <div class="file-input-wrapper" v-else>
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                @change="handleImageSelect"
+                ref="imageInput"
+              />
+              <div class="file-input-placeholder">
+                <ImageIcon class="icon-md" />
+                <span>Click to select an image</span>
+                <small>JPG, PNG, or WebP (max 2MB)</small>
+              </div>
+            </div>
+          </div>
           <button type="submit" class="submit-btn">
             {{ isEditing ? 'Update Product' : 'Add Product' }}
           </button>
@@ -139,10 +163,11 @@ import { useProductStore } from '../stores/productStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { formatCurrency } from '../utils/currency'
-import { Edit2, Trash2, Package, Download, Upload } from 'lucide-vue-next'
+import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
 import BulkUploadModal from '../components/BulkUploadModal.vue'
 import * as XLSX from 'xlsx'
+import { apiFetch } from '../utils/api'
 
 import { useDialogStore } from '../stores/dialogStore'
 
@@ -230,8 +255,13 @@ const formData = ref({
   price: 0,
   cost: 0,
   stock: 0,
-  category: ''
+  category: '',
+  image: null
 })
+
+const imageInput = ref(null)
+const pendingImageFile = ref(null)
+const imagePreview = ref(null)
 
 function generateBarcode() {
   const startBarcode = 1000000001
@@ -259,7 +289,8 @@ function openAddModal() {
     price: 0, 
     cost: 0, 
     stock: 0, 
-    category: '' 
+    category: '',
+    image: null
   }
   showModal.value = true
 }
@@ -268,11 +299,92 @@ function openEditModal(product) {
   isEditing.value = true
   editingId.value = product.id
   formData.value = { ...product }
+  // Reset image upload state
+  pendingImageFile.value = null
+  imagePreview.value = null
   showModal.value = true
 }
 
 function closeModal() {
   showModal.value = false
+  // Reset image input
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
+function handleImageSelect(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  // Validate file size (max 2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    dialogStore.error('Image too large. Please select an image under 2MB.')
+    event.target.value = ''
+    return
+  }
+  
+  // Validate file type
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    dialogStore.error('Invalid file type. Please select a JPG, PNG, or WebP image.')
+    event.target.value = ''
+    return
+  }
+  
+  // Store the file for upload on save
+  pendingImageFile.value = file
+  
+  // Create preview URL
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    imagePreview.value = e.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+async function removeImage() {
+  if (formData.value.image && editingId.value) {
+    // Extract filename from image URL
+    const filename = formData.value.image.split('/').pop()
+    try {
+      const response = await apiFetch('/api/products/image', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: editingId.value, filename })
+      })
+      if (!response.ok) throw new Error('Failed to delete image')
+    } catch (err) {
+      console.error('Image delete error:', err)
+    }
+  }
+  
+  formData.value.image = null
+  pendingImageFile.value = null
+  imagePreview.value = null
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
+async function uploadImage(productId) {
+  if (!pendingImageFile.value) return null
+  
+  const uploadFormData = new FormData()
+  uploadFormData.append('image', pendingImageFile.value)
+  uploadFormData.append('productId', productId)
+  
+  const response = await apiFetch('/api/products/image', {
+    method: 'POST',
+    body: uploadFormData
+  })
+  
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to upload image')
+  }
+  
+  const result = await response.json()
+  return result.imageUrl
 }
 
 async function handlePageChange(page) {
@@ -283,11 +395,23 @@ async function handleSubmit() {
   try {
     if (isEditing.value) {
       await productStore.updateProduct(editingId.value, formData.value)
+      
+      // Upload image if a new one was selected
+      if (pendingImageFile.value) {
+        await uploadImage(editingId.value)
+        await productStore.fetchProducts({ page: 1, limit: 20 }) // Refresh to get new image URL
+      }
+      
       dialogStore.success('Product updated successfully')
     } else {
       await productStore.addProduct(formData.value)
       dialogStore.success('Product added successfully')
     }
+    
+    // Reset image state
+    pendingImageFile.value = null
+    imagePreview.value = null
+    
     closeModal()
   } catch (error) {
     dialogStore.error('Operation failed: ' + error.message)
@@ -474,5 +598,89 @@ code {
   opacity: 0.3;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* Image Upload Styles */
+.image-upload-section {
+  margin-top: 1rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-input-wrapper:hover {
+  border-color: var(--primary-color);
+  background: var(--bg-hover);
+}
+
+.file-input-wrapper input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-input-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.file-input-placeholder .icon-md {
+  width: 32px;
+  height: 32px;
+  color: var(--primary-color);
+}
+
+.file-input-placeholder small {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.image-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.image-preview img {
+  max-width: 200px;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.remove-image-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--danger-bg);
+  color: var(--text-white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.remove-image-btn:hover {
+  opacity: 0.9;
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
 }
 </style>

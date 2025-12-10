@@ -3,6 +3,7 @@
     <Navbar />
     <router-view />
     <GlassDialog />
+    <UpdateDialog />
     
     <!-- First-Time Setup Wizard -->
     <SetupWizard 
@@ -33,6 +34,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Navbar from './components/Navbar.vue'
 import GlassDialog from './components/GlassDialog.vue'
 import SetupWizard from './components/SetupWizard.vue'
+import UpdateDialog from './components/UpdateDialog.vue'
 import { useSettingsStore } from './stores/settingsStore'
 import { useAuthStore } from './stores/authStore'
 import { useRouter } from 'vue-router'

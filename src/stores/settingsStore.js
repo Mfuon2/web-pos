@@ -75,6 +75,12 @@ export const useSettingsStore = defineStore('settings', () => {
         // Update gradient
         const gradient = `linear-gradient(135deg, ${settings.value.primaryColor} 0%, ${settings.value.secondaryColor} 100%)`
         root.style.setProperty('--primary-gradient', gradient)
+
+        // Dynamically update the meta theme-color for PWA/browser
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+        if (themeColorMeta) {
+            themeColorMeta.setAttribute('content', settings.value.secondaryColor)
+        }
     }
 
     function initSettings() {

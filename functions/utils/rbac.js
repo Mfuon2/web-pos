@@ -9,6 +9,7 @@
 const ROUTE_PERMISSIONS = {
     // Public routes (no authentication required)
     '/api/auth/login': ['*'],
+    '/api/images': ['*'],  // Product images are public
 
     // Sales - accessible by cashiers and admins
     '/api/sales': ['admin', 'cashier'],

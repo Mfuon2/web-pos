@@ -10,7 +10,8 @@ const rateLimitStore = new Map()
 const RATE_LIMITS = {
     login: { maxRequests: 5, windowMs: 60 * 1000 },      // 5 requests per minute
     read: { maxRequests: 100, windowMs: 60 * 1000 },     // 100 requests per minute
-    write: { maxRequests: 30, windowMs: 60 * 1000 }      // 30 requests per minute
+    write: { maxRequests: 30, windowMs: 60 * 1000 },     // 30 requests per minute
+    images: { maxRequests: 200, windowMs: 60 * 1000 }    // 200 image requests per minute (higher for POS display)
 }
 
 /**
@@ -22,6 +23,9 @@ const RATE_LIMITS = {
 export function getRateLimitType(path, method) {
     if (path.includes('/auth/login')) {
         return 'login'
+    }
+    if (path.includes('/api/images')) {
+        return 'images'
     }
     if (method === 'GET') {
         return 'read'

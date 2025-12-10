@@ -31,8 +31,13 @@ export async function apiFetch(url, options = {}) {
     const token = getAuthToken()
 
     const headers = {
-        'Content-Type': 'application/json',
         ...options.headers
+    }
+
+    // Only set Content-Type for non-FormData requests
+    // FormData needs the browser to set the multipart/form-data boundary automatically
+    if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json'
     }
 
     if (token) {

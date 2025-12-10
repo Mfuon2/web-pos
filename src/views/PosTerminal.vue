@@ -4,11 +4,17 @@
     <div class="products-section" :class="{ 'mobile-hidden': showCartMobile }">
       <div class="controls">
         <input 
+          type="text"
+          inputmode="search"
           ref="searchInputRef"
           v-model="searchQuery" 
           placeholder="🔍 Search products or scan barcode..." 
           class="search-bar"
           @keyup.enter="handleBarcodeSearch"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
         />
         <select v-model="selectedCategory" class="category-filter">
           <option value="">All Categories</option>
@@ -241,9 +247,12 @@ onMounted(() => {
   padding: 0.5rem 0.75rem;
   border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
+  font-size: 16px; /* Prevents iOS zoom on focus */
   box-shadow: var(--shadow-sm);
   font-weight: 400;
+  -webkit-appearance: none; /* Remove iOS default styling */
+  appearance: none;
+  touch-action: manipulation; /* Better touch handling */
 }
 
 .search-bar:focus {
@@ -295,7 +304,7 @@ onMounted(() => {
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 0.5rem;
   overflow-y: auto;
   padding: 0.5rem;
