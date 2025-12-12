@@ -19,6 +19,14 @@
       </button>
       <button 
         class="tab" 
+        :class="{ active: activeTab === 'low_stock' }"
+        @click="activeTab = 'low_stock'"
+      >
+        <TrendingDown class="icon-sm" />
+        Restock (< 1)
+      </button>
+      <button 
+        class="tab" 
         :class="{ active: activeTab === 'borrowed' }"
         @click="activeTab = 'borrowed'"
       >
@@ -38,10 +46,10 @@
     <!-- Tab Content -->
     <div class="tab-content">
       
-      <!-- Inventory Tab -->
-      <div v-if="activeTab === 'inventory'" class="content-section">
+      <!-- Inventory Tab / Low Stock Tab -->
+      <div v-if="activeTab === 'inventory' || activeTab === 'low_stock'" class="content-section">
         <div class="section-header">
-          <h2>Product List</h2>
+          <h2>{{ activeTab === 'low_stock' ? 'Restock Needed (Stock < 1)' : 'Product List' }}</h2>
           <div class="header-actions">
             <button @click="exportToExcel" class="export-btn" :disabled="exporting">
               <Download class="icon-sm" />
@@ -119,12 +127,46 @@
       <div v-if="activeTab === 'borrowed'" class="content-section">
         <div class="section-header">
           <h2>Borrowed Inventory</h2>
-          <button class="add-btn" disabled>+ Record Borrowing</button>
         </div>
-        <div class="empty-state">
-          <ArrowDownLeft class="empty-icon-lg" />
-          <h3>No Borrowed Items</h3>
-          <p>Track items borrowed from suppliers or other stores here.</p>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Borrowed From</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in borrowedItems" :key="item.id">
+                <td>
+                  <strong>{{ item.product_name }}</strong>
+                  <br>
+                  <small>{{ item.product_barcode }}</small>
+                </td>
+                <td class="center-align-text">{{ item.quantity }}</td>
+                <td>{{ item.borrowed_from }}</td>
+                <td>{{ item.reason }}</td>
+                <td>
+                  <span class="status-badge" :class="item.status">{{ item.status }}</span>
+                </td>
+                <td>{{ formatDate(item.created_at) }}</td>
+                <td class="actions">
+                  <button @click="openEditBorrowedModal(item)" class="action-btn edit-btn" title="Edit">
+                    <Edit2 class="icon-sm" />
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="borrowedItems.length === 0">
+                <td colspan="7" class="empty-state">No borrowed items recorded.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -132,15 +174,93 @@
       <div v-if="activeTab === 'loaned'" class="content-section">
         <div class="section-header">
           <h2>Loaned Inventory</h2>
-          <button class="add-btn" disabled>+ Record Loan</button>
         </div>
-        <div class="empty-state">
-          <ArrowUpRight class="empty-icon-lg" />
-          <h3>No Loaned Items</h3>
-          <p>Track items loaned out to customers or other branches here.</p>
+        
+        <div class="table-container">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th>Borrower</th>
+                <th>Items</th>
+                <th>Collateral</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="loan in loans" :key="loan.id">
+                <td>
+                  <strong>{{ loan.borrower_name }}</strong>
+                  <div v-if="loan.borrower_contact"><small>{{ loan.borrower_contact }}</small></div>
+                </td>
+                <td>
+                  <ul class="loan-items-list">
+                    <li v-for="item in loan.items" :key="item.product_id">
+                      {{ item.quantity }}x {{ item.product_name }}
+                    </li>
+                  </ul>
+                </td>
+                <td>
+                  <div v-if="loan.collateral">
+                    <strong>{{ loan.collateral }}</strong>
+                    <div v-if="loan.collateral_description"><small>{{ loan.collateral_description }}</small></div>
+                  </div>
+                  <span v-else class="text-secondary">None</span>
+                </td>
+                <td>
+                  <span class="status-badge" :class="loan.status">{{ loan.status }}</span>
+                </td>
+                <td>{{ formatDate(loan.created_at) }}</td>
+                <td class="actions">
+                  <button @click="openEditLoanModal(loan)" class="action-btn edit-btn" title="Update / Return">
+                    <Edit2 class="icon-sm" />
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="loans.length === 0">
+                <td colspan="6" class="empty-state">No active loans.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
+    </div>
+
+    <!-- Edit Borrowed Item Modal -->
+    <div v-if="showEditBorrowedModal" class="modal-overlay" @click="closeEditBorrowedModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>Edit Borrowed Item</h2>
+          <button class="close-btn" @click="closeEditBorrowedModal">✕</button>
+        </div>
+        <form @submit.prevent="handleUpdateBorrowedItem">
+          <div class="form-group">
+            <label>Product</label>
+            <input type="text" :value="borrowedForm.productName" disabled class="disabled-input" />
+          </div>
+          <div class="form-group">
+            <label>Available Status *</label>
+            <select v-model="borrowedForm.status" required>
+              <option value="pending">Pending</option>
+              <option value="returned">Returned</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Borrowed From *</label>
+            <input v-model="borrowedForm.borrowed_from" type="text" required />
+          </div>
+          <div class="form-group">
+            <label>Reason / Notes</label>
+            <textarea v-model="borrowedForm.reason" rows="2"></textarea>
+          </div>
+          <button type="submit" class="submit-btn" :disabled="borrowedStore.loading">
+            {{ borrowedStore.loading ? 'Updating...' : 'Update Record' }}
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Modals (Keep existing modals) -->
@@ -221,33 +341,104 @@
       @close="showBulkUploadModal = false"
       @imported="handleBulkImported"
     />
+    <div v-if="showEditLoanModal" class="modal-overlay" @click.self="closeEditLoanModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Update Loan</h2>
+          <button class="close-btn" @click="closeEditLoanModal">✕</button>
+        </div>
+
+        <form @submit.prevent="handleUpdateLoan">
+           <div class="form-group">
+            <label>Status</label>
+            <select v-model="loanForm.status">
+              <option value="active">Active</option>
+              <option value="returned">Returned</option>
+              <option value="partially_returned">Partially Returned</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Borrower Name</label>
+            <input v-model="loanForm.borrower_name" type="text" required />
+          </div>
+
+           <div class="form-group">
+            <label>Contact</label>
+            <input v-model="loanForm.borrower_contact" type="text" />
+          </div>
+
+          <div class="form-group">
+            <label>Collateral</label>
+            <input v-model="loanForm.collateral" type="text" />
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <textarea v-model="loanForm.collateral_description" rows="2"></textarea>
+          </div>
+
+          <button type="submit" class="submit-btn" :disabled="loanStore.loading">
+            {{ loanStore.loading ? 'Updating...' : 'Update Loan' }}
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useProductStore } from '../stores/productStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { formatCurrency } from '../utils/currency'
-import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon, ArrowDownLeft, ArrowUpRight } from 'lucide-vue-next'
+import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon, ArrowDownLeft, ArrowUpRight, TrendingDown } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
 import BulkUploadModal from '../components/BulkUploadModal.vue'
 import * as XLSX from 'xlsx'
 import { apiFetch } from '../utils/api'
 
 import { useDialogStore } from '../stores/dialogStore'
+import { useBorrowedStore } from '../stores/borrowedStore'
+import { useLoanStore } from '../stores/loanStore'
 
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
 const settingsStore = useSettingsStore()
 const dialogStore = useDialogStore()
+const borrowedStore = useBorrowedStore()
+const loanStore = useLoanStore()
+
 const products = computed(() => productStore.products)
 const categories = computed(() => categoryStore.categories)
 const pagination = computed(() => productStore.pagination)
+const borrowedItems = computed(() => borrowedStore.borrowedItems)
 
-const activeTab = ref('inventory')
+const activeTab = ref('inventory') // inventory, low_stock, borrowed, loaned
 const exporting = ref(false)
+
+// Watch for tab changes to fetch appropriate data
+watch(activeTab, async (newTab) => {
+  if (newTab === 'inventory') {
+    await productStore.fetchProducts({ page: 1, limit: 20 })
+  } else if (newTab === 'low_stock') {
+    await productStore.fetchProducts({ page: 1, limit: 20, low_stock: true })
+  } else if (newTab === 'borrowed') {
+    await borrowedStore.fetchBorrowedItems()
+  } else if (newTab === 'loaned') {
+    await loanStore.fetchLoans()
+  }
+})
+
+async function handlePageChange(page) {
+  if (activeTab.value === 'low_stock') {
+    await productStore.fetchProducts({ page, limit: 20, low_stock: true })
+  } else {
+    await productStore.fetchProducts({ page, limit: 20 })
+  }
+}
 
 async function exportToExcel() {
   exporting.value = true
@@ -296,6 +487,96 @@ async function exportToExcel() {
     dialogStore.error('Export failed: ' + error.message)
   } finally {
     exporting.value = false
+  }
+}
+
+// Borrowed Item Edit Logic
+const showEditBorrowedModal = ref(false)
+const editingBorrowedDetail = ref(null)
+const borrowedForm = ref({
+  productName: '',
+  borrowed_from: '',
+  reason: '',
+  status: 'pending'
+})
+
+function openEditBorrowedModal(item) {
+  editingBorrowedDetail.value = item
+  borrowedForm.value = {
+    productName: item.product_name,
+    borrowed_from: item.borrowed_from,
+    reason: item.reason,
+    status: item.status || 'pending'
+  }
+  showEditBorrowedModal.value = true
+}
+
+function closeEditBorrowedModal() {
+  showEditBorrowedModal.value = false
+  editingBorrowedDetail.value = null
+}
+
+async function handleUpdateBorrowedItem() {
+  if (!editingBorrowedDetail.value) return
+  
+  try {
+    const updates = {
+      borrowed_from: borrowedForm.value.borrowed_from,
+      reason: borrowedForm.value.reason,
+      status: borrowedForm.value.status
+    }
+    
+    await borrowedStore.updateBorrowedItem(editingBorrowedDetail.value.id, updates)
+    dialogStore.success('Borrowed item updated')
+    closeEditBorrowedModal()
+  } catch (error) {
+    dialogStore.error('Update failed: ' + error.message)
+  }
+}
+
+// Loan Edit Logic
+const loans = computed(() => loanStore.loans)
+const showEditLoanModal = ref(false)
+const editingLoanDetail = ref(null)
+const loanForm = ref({
+  borrower_name: '',
+  borrower_contact: '',
+  collateral: '',
+  collateral_description: '',
+  status: 'active'
+})
+
+function openEditLoanModal(loan) {
+  editingLoanDetail.value = loan
+  loanForm.value = {
+    borrower_name: loan.borrower_name,
+    borrower_contact: loan.borrower_contact,
+    collateral: loan.collateral,
+    collateral_description: loan.collateral_description,
+    status: loan.status || 'active'
+  }
+  showEditLoanModal.value = true
+}
+
+function closeEditLoanModal() {
+  showEditLoanModal.value = false
+  editingLoanDetail.value = null
+}
+
+async function handleUpdateLoan() {
+  if (!editingLoanDetail.value) return
+  
+  try {
+    const updates = { ...loanForm.value }
+    // If status changed to returned, backend handles restocking?
+    // Current backend logic supports it if action is 'return_all' or if we just set status.
+    // Let's simple update for now, standard fields.
+    
+    await loanStore.updateLoan(editingLoanDetail.value.id, updates)
+    dialogStore.success('Loan updated')
+    closeEditLoanModal()
+  } catch (error) {
+    dialogStore.error('Update failed: ' + error.message)
   }
 }
 
@@ -432,9 +713,7 @@ async function uploadImage(productId) {
   return result.imageUrl
 }
 
-async function handlePageChange(page) {
-  await productStore.fetchProducts({ page, limit: 20 })
-}
+
 
 async function handleSubmit() {
   try {
@@ -477,7 +756,16 @@ function handleBulkImported() {
 onMounted(async () => {
   await productStore.fetchProducts({ page: 1, limit: 20 })
   await categoryStore.fetchCategories()
+  await borrowedStore.fetchBorrowedItems()
 })
+
+function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  if (typeof dateString === 'string') {
+    dateString = dateString.replace(' ', 'T')
+  }
+  return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
 </script>
 
 <style scoped>
@@ -836,5 +1124,56 @@ code {
 .icon-sm {
   width: 16px;
   height: 16px;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-badge.pending {
+  background-color: #fef3c7;
+  color: #d97706; /* Amber */
+  border: 1px solid #fde68a;
+}
+
+.status-badge.returned {
+  background-color: #dbeafe;
+  color: #2563eb; /* Blue/Info */
+  border: 1px solid #bfdbfe;
+}
+
+.status-badge.paid {
+  background-color: #dcfce7;
+  color: #16a34a; /* Green/Success */
+  border: 1px solid #bbf7d0;
+}
+
+/* Loan Statuses */
+.status-badge.active {
+  background-color: #f3e8ff;
+  color: #9333ea; /* Purple */
+  border: 1px solid #e9d5ff;
+}
+
+.status-badge.partially_returned {
+  background-color: #ffedd5;
+  color: #c2410c; /* Orange */
+  border: 1px solid #fed7aa;
+}
+
+.status-badge.overdue {
+  background-color: #fee2e2;
+  color: #dc2626; /* Red/Danger */
+  border: 1px solid #fecaca;
+}
+
+.loan-items-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
 }
 </style>

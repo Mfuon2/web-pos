@@ -1,13 +1,14 @@
 import { getNairobiTimestamp } from '../utils/timezone.js'
 import { getDb } from '../../drizzle/db'
 import { products } from '../../drizzle/schema'
-import { count, desc } from 'drizzle-orm'
+import { count, desc, lt } from 'drizzle-orm'
 
 export async function onRequestGet(context) {
     const { env, request } = context;
     const url = new URL(request.url);
     const pageParam = url.searchParams.get('page');
     const limitParam = url.searchParams.get('limit');
+    const lowStockParam = url.searchParams.get('low_stock');
 
     try {
         const db = getDb(env);
@@ -17,8 +18,16 @@ export async function onRequestGet(context) {
             const limit = parseInt(limitParam) || 20;
             const offset = (page - 1) * limit;
 
-            const [{ total }] = await db.select({ total: count() }).from(products);
-            const results = await db.select().from(products).orderBy(desc(products.createdAt)).limit(limit).offset(offset);
+            let countQuery = db.select({ total: count() }).from(products);
+            let dataQuery = db.select().from(products).orderBy(desc(products.createdAt)).limit(limit).offset(offset);
+
+            if (lowStockParam === 'true') {
+                countQuery = countQuery.where(lt(products.stock, 1));
+                dataQuery = db.select().from(products).where(lt(products.stock, 1)).orderBy(desc(products.createdAt)).limit(limit).offset(offset);
+            }
+
+            const [{ total }] = await countQuery;
+            const results = await dataQuery;
 
             return new Response(JSON.stringify({
                 data: results,
@@ -32,7 +41,13 @@ export async function onRequestGet(context) {
                 headers: { 'Content-Type': 'application/json' }
             });
         } else {
-            const results = await db.select().from(products).orderBy(desc(products.createdAt));
+            let query = db.select().from(products).orderBy(desc(products.createdAt));
+
+            if (lowStockParam === 'true') {
+                query = query.where(lt(products.stock, 1));
+            }
+
+            const results = await query;
 
             return new Response(JSON.stringify(results), {
                 headers: { 'Content-Type': 'application/json' }

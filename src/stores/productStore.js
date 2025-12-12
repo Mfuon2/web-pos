@@ -19,8 +19,20 @@ export const useProductStore = defineStore('product', () => {
         error.value = null
         try {
             let url = '/api/products'
+            const queryParams = new URLSearchParams()
+
             if (params.page) {
-                url += `?page=${params.page}&limit=${params.limit || 20}`
+                queryParams.append('page', params.page)
+                queryParams.append('limit', params.limit || 20)
+            }
+
+            if (params.low_stock) {
+                queryParams.append('low_stock', 'true')
+            }
+
+            const queryString = queryParams.toString()
+            if (queryString) {
+                url += `?${queryString}`
             }
 
             const response = await apiGet(url)

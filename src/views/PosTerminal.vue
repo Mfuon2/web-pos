@@ -99,6 +99,15 @@
         >
           {{ processing ? 'Processing...' : (!paymentMethod ? 'Select Payment Method' : 'Complete Sale') }}
         </button>
+        <button 
+          class="loan-btn" 
+          @click="initiateLoan" 
+          :disabled="processing || cart.length === 0" 
+          title="Loan out items"
+        >
+          <ArrowUpRight class="icon-sm" />
+          Loan Items
+        </button>
       </div>
     </div>
 
@@ -113,6 +122,23 @@
         </button>
       </div>
     </div>
+
+
+    <BorrowedItemModal
+      v-if="showBorrowedModal"
+      :product-name="currentDeficitItem?.product.name"
+      :deficit="currentDeficitItem?.deficit"
+      @confirm="handleBorrowingConfirm"
+      @close="handleBorrowingClose"
+    />
+
+    <LoanModal
+      v-if="showLoanModal"
+      :items="cart"
+      :loading="processing"
+      @confirm="handleLoanConfirm"
+      @close="showLoanModal = false"
+    />
   </div>
 </template>
 
@@ -121,14 +147,20 @@ import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '../stores/productStore'
 import { useCartStore } from '../stores/cartStore'
 import ProductCard from '../components/ProductCard.vue'
-import { ShoppingCart, Trash2, Banknote, Smartphone, X } from 'lucide-vue-next'
+import { ShoppingCart, Trash2, Banknote, Smartphone, X, ArrowUpRight } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
 
 import { useDialogStore } from '../stores/dialogStore'
+import { useBorrowedStore } from '../stores/borrowedStore'
+import { useLoanStore } from '../stores/loanStore'
+import BorrowedItemModal from '../components/BorrowedItemModal.vue'
+import LoanModal from '../components/LoanModal.vue'
 
 const productStore = useProductStore()
 const cartStore = useCartStore()
 const dialogStore = useDialogStore()
+const borrowedStore = useBorrowedStore()
+const loanStore = useLoanStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('')
@@ -187,6 +219,26 @@ function handleBarcodeSearch() {
 async function handleCheckout() {
   if (cart.value.length === 0) return
   
+  // Check for negative stock
+  const deficits = []
+  for (const item of cart.value) {
+    const product = products.value.find(p => p.id === item.product_id)
+    if (product && (product.stock - item.quantity) < 0) {
+      deficits.push({
+        product: product,
+        deficit: item.quantity - product.stock
+      })
+    }
+  }
+
+  if (deficits.length > 0) {
+    // Start borrowing workflow
+    pendingDeficits.value = deficits
+    currentDeficitIndex.value = 0
+    showBorrowedModal.value = true
+    return
+  }
+  
   // Confirm before completing the sale
   const confirmed = await dialogStore.confirm(
     `Complete sale of ${formatCurrency(cartTotal.value)} via ${paymentMethod.value}?`
@@ -194,15 +246,99 @@ async function handleCheckout() {
   
   if (!confirmed) return
   
+  await processCheckout()
+}
+
+async function processCheckout() {
   processing.value = true
   try {
+    // 1. Process Sale
     await cartStore.checkout(paymentMethod.value)
+    
+    // 2. Record Borrowed Items if any
+    if (collectedBorrowings.value.length > 0) {
+      for (const borrowing of collectedBorrowings.value) {
+        await borrowedStore.addBorrowedItem(borrowing)
+      }
+    }
+
     dialogStore.success('Sale completed successfully!')
     productStore.fetchProducts()
-    paymentMethod.value = null // Reset for next sale
-    showCartMobile.value = false // Close cart on mobile after sale
+    paymentMethod.value = null
+    showCartMobile.value = false
+    collectedBorrowings.value = [] // Reset
   } catch (err) {
     dialogStore.error('Checkout failed: ' + err.message)
+  } finally {
+    processing.value = false
+  }
+}
+
+// Borrowing Workflow State
+const showBorrowedModal = ref(false)
+const pendingDeficits = ref([])
+const currentDeficitIndex = ref(0)
+const collectedBorrowings = ref([])
+
+const currentDeficitItem = computed(() => {
+  if (pendingDeficits.value.length === 0) return null
+  return pendingDeficits.value[currentDeficitIndex.value]
+})
+
+function handleBorrowingConfirm(details) {
+  const currentItem = currentDeficitItem.value
+  
+  collectedBorrowings.value.push({
+    product_id: currentItem.product.id,
+    quantity: currentItem.deficit,
+    borrowed_from: details.borrowed_from,
+    reason: details.reason
+  })
+
+  // Move to next deficit or finish
+  if (currentDeficitIndex.value < pendingDeficits.value.length - 1) {
+    currentDeficitIndex.value++
+  } else {
+    showBorrowedModal.value = false
+    // All deficits resolved, proceed to checkout
+    processCheckout()
+  }
+}
+
+function handleBorrowingClose() {
+  showBorrowedModal.value = false
+  collectedBorrowings.value = []
+  dialogStore.info('Sale cancelled. Please adjust quantities or stock.')
+}
+
+// Loan Workflow State
+const showLoanModal = ref(false)
+
+function initiateLoan() {
+  if (cart.value.length === 0) return
+  showLoanModal.value = true
+}
+
+async function handleLoanConfirm(details) {
+  processing.value = true
+  try {
+    const loanData = {
+      ...details,
+      items: cart.value.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity
+      }))
+    }
+
+    await loanStore.createLoan(loanData)
+    
+    dialogStore.success('Loan recorded successfully!')
+    cartStore.clearCart()
+    productStore.fetchProducts()
+    showLoanModal.value = false
+    showCartMobile.value = false
+  } catch (err) {
+    dialogStore.error('Loan failed: ' + err.message)
   } finally {
     processing.value = false
   }
@@ -501,6 +637,34 @@ onMounted(() => {
   padding: 1rem;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
   z-index: 100;
+}
+
+.loan-btn {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.loan-btn:not(:disabled):hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.loan-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .cart-summary {
