@@ -84,20 +84,20 @@
           </button>
           <button 
             class="pay-btn"
-            :class="{ active: paymentMethod === 'card' }"
-            @click="paymentMethod = 'card'"
+            :class="{ active: paymentMethod === 'mpesa' }"
+            @click="paymentMethod = 'mpesa'"
           >
-            <CreditCard class="icon-sm" />
-            Card
+            <Smartphone class="icon-sm" />
+            M-Pesa
           </button>
         </div>
 
         <button 
           class="checkout-btn" 
           @click="handleCheckout"
-          :disabled="cart.length === 0 || processing"
+          :disabled="cart.length === 0 || processing || !paymentMethod"
         >
-          {{ processing ? 'Processing...' : 'Complete Sale' }}
+          {{ processing ? 'Processing...' : (!paymentMethod ? 'Select Payment Method' : 'Complete Sale') }}
         </button>
       </div>
     </div>
@@ -121,7 +121,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '../stores/productStore'
 import { useCartStore } from '../stores/cartStore'
 import ProductCard from '../components/ProductCard.vue'
-import { ShoppingCart, Trash2, Banknote, CreditCard, X } from 'lucide-vue-next'
+import { ShoppingCart, Trash2, Banknote, Smartphone, X } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
 
 import { useDialogStore } from '../stores/dialogStore'
@@ -132,7 +132,7 @@ const dialogStore = useDialogStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('')
-const paymentMethod = ref('cash')
+const paymentMethod = ref(null)
 const processing = ref(false)
 const showCartMobile = ref(false)
 const searchInputRef = ref(null)
@@ -199,6 +199,7 @@ async function handleCheckout() {
     await cartStore.checkout(paymentMethod.value)
     dialogStore.success('Sale completed successfully!')
     productStore.fetchProducts()
+    paymentMethod.value = null // Reset for next sale
     showCartMobile.value = false // Close cart on mobile after sale
   } catch (err) {
     dialogStore.error('Checkout failed: ' + err.message)

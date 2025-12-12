@@ -52,13 +52,13 @@
         </div>
       </div>
 
-      <!-- Card Sales Card -->
+      <!-- M-Pesa Sales Card -->
       <div class="summary-card">
-        <CreditCard class="card-icon" />
+        <Smartphone class="card-icon" />
         <div class="card-content">
-          <h3>Card Sales</h3>
-          <p class="amount">{{ formatCurrency(todayStats.cardSales) }}</p>
-          <span class="detail">{{ todayStats.cardCount }} transactions</span>
+          <h3>M-Pesa Sales</h3>
+          <p class="amount">{{ formatCurrency(todayStats.mpesaSales) }}</p>
+          <span class="detail">{{ todayStats.mpesaCount }} transactions</span>
         </div>
       </div>
     </div>
@@ -71,6 +71,7 @@
           <thead>
             <tr>
               <th>Item Sold</th>
+              <th class="center-align-text">Payment</th>
               <th class="center-align-text">Opening Qty</th>
               <th class="center-align-text">Sold Qty</th>
               <th class="center-align-text">Remaining Qty</th>
@@ -81,8 +82,9 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, index) in salesItems" :key="index">
+            <tr v-for="(item, index) in salesItems" :key="index" :class="{ 'low-stock-row': item.currentStock < 0 }">
               <td>{{ item.productName }}</td>
+              <td class="center-align-text payment-cell">{{ item.paymentMethod }}</td>
               <td class="center-align-text">{{ item.currentStock + item.quantity }}</td>
               <td class="center-align-text">{{ item.quantity }}</td>
               <td class="center-align-text">{{ item.currentStock }}</td>
@@ -94,7 +96,7 @@
           </tbody>
           <tfoot>
             <tr class="grand-total">
-              <td colspan="6"><strong>Totals</strong></td>
+              <td colspan="7"><strong>Totals</strong></td>
               <td class="right-align-text"><strong>{{ formatCurrency(todayStats.totalSales) }}</strong></td>
               <td class="profit"><strong>{{ formatCurrency(todayStats.totalProfit) }}</strong></td>
             </tr>
@@ -113,7 +115,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { TrendingUp, DollarSign, Banknote, CreditCard, Receipt, Download } from 'lucide-vue-next'
+import { TrendingUp, DollarSign, Banknote, Smartphone, Receipt, Download } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
 import { apiGet } from '../utils/api'
 import jsPDF from 'jspdf'
@@ -138,10 +140,12 @@ const salesItems = computed(() => {
   const items = []
   todaySales.value.forEach(sale => {
     if (sale.items && Array.isArray(sale.items)) {
+      const paymentMethod = sale.paymentMethod || sale.payment_method || 'N/A'
       sale.items.forEach(item => {
         items.push({
           ...item,
           saleId: sale.id,
+          paymentMethod: paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1),
           createdAt: sale.createdAt || sale.created_at
         })
       })
@@ -156,9 +160,9 @@ const todayStats = computed(() => {
     totalCost: 0,
     totalProfit: 0,
     cashSales: 0,
-    cardSales: 0,
+    mpesaSales: 0,
     cashCount: 0,
-    cardCount: 0,
+    mpesaCount: 0,
     transactionCount: 0,
     averageTransaction: 0
   }
@@ -172,8 +176,8 @@ const todayStats = computed(() => {
       stats.cashSales += sale.total
       stats.cashCount++
     } else {
-      stats.cardSales += sale.total
-      stats.cardCount++
+      stats.mpesaSales += sale.total
+      stats.mpesaCount++
     }
 
     if (sale.items) {
@@ -541,6 +545,13 @@ onMounted(() => {
   background: var(--bg-hover);
   border-radius: var(--radius-md);
   border: var(--border-width) solid var(--border-color);
+}
+
+.low-stock-row {
+  background-color: #fee2e2 !important; /* Faint red */
+}
+.low-stock-row:hover {
+  background-color: #fecaca !important; /* Slightly darker red on hover */
 }
 
 .sale-info {

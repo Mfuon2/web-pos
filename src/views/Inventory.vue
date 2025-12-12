@@ -3,80 +3,147 @@
     <div class="header">
       <h1>
         <Package class="header-icon" />
-        Inventory
+        Inventory Management
       </h1>
-      <div class="header-actions">
-        <button @click="exportToExcel" class="export-btn" :disabled="exporting">
-          <Download class="icon-sm" />
-          {{ exporting ? 'Exporting...' : 'Export' }}
-        </button>
-        <button @click="showBulkUploadModal = true" class="upload-btn">
-          <Upload class="icon-sm" />
-          Upload Products
-        </button>
-        <button @click="openAddModal" class="add-btn">+ Add Product</button>
-      </div>
     </div>
     
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Barcode</th>
-            <th>Price</th>
-            <th>Cost</th>
-            <th>Expected Profit</th>
-            <th>Stock</th>
-            <th>Total Value</th>
-            <th>Category</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="product in products" :key="product.id" :class="{ 'deleted-row': product.deleted_at }">
-            <td>
-              <span :class="{ 'strikethrough': product.deleted_at }">{{ product.name }}</span>
-              <span v-if="product.deleted_at" class="deleted-badge">Deleted</span>
-            </td>
-            <td><code>{{ product.barcode || 'N/A' }}</code></td>
-            <td>{{ formatCurrency(product.price) }}</td>
-            <td>{{ formatCurrency(product.cost || 0) }}</td>
-            <td>{{ formatCurrency(product.price - (product.cost || 0)) }}</td>
-            <td :class="{ 'low-stock': product.stock < 10 }">{{ product.stock }}</td>
-            <td>{{ formatCurrency(product.price * product.stock) }}</td>
-            <td>{{ product.category || 'N/A' }}</td>
-            <td class="actions">
-              <button 
-                @click="openEditModal(product)" 
-                class="action-btn edit-btn"
-                title="Edit"
-                :disabled="!!product.deleted_at"
-              >
-                <Edit2 class="icon-sm" />
-              </button>
-              <button 
-                @click="handleDelete(product.id)" 
-                class="action-btn delete-btn" 
-                title="Delete"
-                :disabled="!!product.deleted_at"
-              >
-                <Trash2 class="icon-sm" />
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <PaginationControls 
-        v-if="pagination.total > 0"
-        :current-page="pagination.page"
-        :total-pages="pagination.totalPages"
-        :total="pagination.total"
-        :limit="pagination.limit"
-        @page-change="handlePageChange"
-      />
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button 
+        class="tab" 
+        :class="{ active: activeTab === 'inventory' }"
+        @click="activeTab = 'inventory'"
+      >
+        <Package class="icon-sm" />
+        All Products
+      </button>
+      <button 
+        class="tab" 
+        :class="{ active: activeTab === 'borrowed' }"
+        @click="activeTab = 'borrowed'"
+      >
+        <ArrowDownLeft class="icon-sm" />
+        Borrowed
+      </button>
+      <button 
+        class="tab" 
+        :class="{ active: activeTab === 'loaned' }"
+        @click="activeTab = 'loaned'"
+      >
+        <ArrowUpRight class="icon-sm" />
+        Loaned
+      </button>
     </div>
 
+    <!-- Tab Content -->
+    <div class="tab-content">
+      
+      <!-- Inventory Tab -->
+      <div v-if="activeTab === 'inventory'" class="content-section">
+        <div class="section-header">
+          <h2>Product List</h2>
+          <div class="header-actions">
+            <button @click="exportToExcel" class="export-btn" :disabled="exporting">
+              <Download class="icon-sm" />
+              {{ exporting ? 'Exporting...' : 'Export' }}
+            </button>
+            <button @click="showBulkUploadModal = true" class="upload-btn">
+              <Upload class="icon-sm" />
+              Upload Products
+            </button>
+            <button @click="openAddModal" class="add-btn">+ Add Product</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Barcode</th>
+                <th>Price</th>
+                <th>Cost</th>
+                <th>Expected Profit</th>
+                <th>Stock</th>
+                <th>Total Value</th>
+                <th>Category</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="product in products" :key="product.id" :class="{ 'deleted-row': product.deleted_at }">
+                <td>
+                  <span :class="{ 'strikethrough': product.deleted_at }">{{ product.name }}</span>
+                  <span v-if="product.deleted_at" class="deleted-badge">Deleted</span>
+                </td>
+                <td><code>{{ product.barcode || 'N/A' }}</code></td>
+                <td>{{ formatCurrency(product.price) }}</td>
+                <td>{{ formatCurrency(product.cost || 0) }}</td>
+                <td>{{ formatCurrency(product.price - (product.cost || 0)) }}</td>
+                <td :class="{ 'low-stock': product.stock < 10 }">{{ product.stock }}</td>
+                <td>{{ formatCurrency(product.price * product.stock) }}</td>
+                <td>{{ product.category || 'N/A' }}</td>
+                <td class="actions">
+                  <button 
+                    @click="openEditModal(product)" 
+                    class="action-btn edit-btn"
+                    title="Edit"
+                    :disabled="!!product.deleted_at"
+                  >
+                    <Edit2 class="icon-sm" />
+                  </button>
+                  <button 
+                    @click="handleDelete(product.id)" 
+                    class="action-btn delete-btn" 
+                    title="Delete"
+                    :disabled="!!product.deleted_at"
+                  >
+                    <Trash2 class="icon-sm" />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <PaginationControls 
+            v-if="pagination.total > 0"
+            :current-page="pagination.page"
+            :total-pages="pagination.totalPages"
+            :total="pagination.total"
+            :limit="pagination.limit"
+            @page-change="handlePageChange"
+          />
+        </div>
+      </div>
+
+      <!-- Borrowed Tab -->
+      <div v-if="activeTab === 'borrowed'" class="content-section">
+        <div class="section-header">
+          <h2>Borrowed Inventory</h2>
+          <button class="add-btn" disabled>+ Record Borrowing</button>
+        </div>
+        <div class="empty-state">
+          <ArrowDownLeft class="empty-icon-lg" />
+          <h3>No Borrowed Items</h3>
+          <p>Track items borrowed from suppliers or other stores here.</p>
+        </div>
+      </div>
+
+      <!-- Loaned Tab -->
+      <div v-if="activeTab === 'loaned'" class="content-section">
+        <div class="section-header">
+          <h2>Loaned Inventory</h2>
+          <button class="add-btn" disabled>+ Record Loan</button>
+        </div>
+        <div class="empty-state">
+          <ArrowUpRight class="empty-icon-lg" />
+          <h3>No Loaned Items</h3>
+          <p>Track items loaned out to customers or other branches here.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Modals (Keep existing modals) -->
     <div v-if="showModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
@@ -163,7 +230,7 @@ import { useProductStore } from '../stores/productStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { formatCurrency } from '../utils/currency'
-import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon } from 'lucide-vue-next'
+import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon, ArrowDownLeft, ArrowUpRight } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
 import BulkUploadModal from '../components/BulkUploadModal.vue'
 import * as XLSX from 'xlsx'
@@ -179,31 +246,23 @@ const products = computed(() => productStore.products)
 const categories = computed(() => categoryStore.categories)
 const pagination = computed(() => productStore.pagination)
 
+const activeTab = ref('inventory')
 const exporting = ref(false)
 
 async function exportToExcel() {
   exporting.value = true
   try {
-    // Fetch all products for export (ignoring pagination)
-    // Note: In a real app with thousands of items, we might need a dedicated API endpoint
-    // For now, we'll assume the store can handle fetching all or we use the current list
-    // If we need ALL products, we might need to fetch them. 
-    // Let's assume we want to export what's currently available or fetch all if possible.
-    // For this implementation, I'll fetch all products temporarily.
-    
-    // Fetch all products
-    const allProducts = await productStore.getAllProducts() // We need to ensure this exists or implement it
+    const allProducts = await productStore.getAllProducts()
     
     const businessName = settingsStore.businessName
     const date = new Date().toLocaleDateString()
     const time = new Date().toLocaleTimeString()
     
-    // Prepare data
     const data = [
-      [businessName], // Row 1: Business Name
-      [`Stock as at ${date} ${time}`], // Row 2: Date
-      [], // Row 3: Empty
-      ['Name', 'Barcode', 'Price', 'Cost', 'Expected Profit', 'Stock', 'Total Value', 'Category'] // Row 4: Headers
+      [businessName],
+      [`Stock as at ${date} ${time}`],
+      [],
+      ['Name', 'Barcode', 'Price', 'Cost', 'Expected Profit', 'Stock', 'Total Value', 'Category']
     ]
     
     allProducts.forEach(p => {
@@ -219,20 +278,16 @@ async function exportToExcel() {
       ])
     })
     
-    // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(data)
     
-    // Merge cells for title
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Merge Business Name across 8 columns
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }  // Merge Date across 8 columns
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }
     ]
     
-    // Create workbook
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Inventory')
     
-    // Save file
     XLSX.writeFile(wb, `Inventory_${date.replace(/\//g, '-')}.xlsx`)
     
     dialogStore.success('Inventory exported successfully')
@@ -265,8 +320,6 @@ const imagePreview = ref(null)
 
 function generateBarcode() {
   const startBarcode = 1000000001
-  
-  // Get all existing numeric barcodes
   const existingBarcodes = productStore.products
     .map(p => parseInt(p.barcode))
     .filter(b => !isNaN(b) && b >= startBarcode)
@@ -275,7 +328,6 @@ function generateBarcode() {
     return startBarcode.toString()
   }
   
-  // Find the max and add 1
   const maxBarcode = Math.max(...existingBarcodes)
   return (maxBarcode + 1).toString()
 }
@@ -299,7 +351,6 @@ function openEditModal(product) {
   isEditing.value = true
   editingId.value = product.id
   formData.value = { ...product }
-  // Reset image upload state
   pendingImageFile.value = null
   imagePreview.value = null
   showModal.value = true
@@ -307,7 +358,6 @@ function openEditModal(product) {
 
 function closeModal() {
   showModal.value = false
-  // Reset image input
   if (imageInput.value) {
     imageInput.value.value = ''
   }
@@ -317,24 +367,20 @@ function handleImageSelect(event) {
   const file = event.target.files[0]
   if (!file) return
   
-  // Validate file size (max 2MB)
   if (file.size > 2 * 1024 * 1024) {
     dialogStore.error('Image too large. Please select an image under 2MB.')
     event.target.value = ''
     return
   }
   
-  // Validate file type
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     dialogStore.error('Invalid file type. Please select a JPG, PNG, or WebP image.')
     event.target.value = ''
     return
   }
   
-  // Store the file for upload on save
   pendingImageFile.value = file
   
-  // Create preview URL
   const reader = new FileReader()
   reader.onload = (e) => {
     imagePreview.value = e.target.result
@@ -344,7 +390,6 @@ function handleImageSelect(event) {
 
 async function removeImage() {
   if (formData.value.image && editingId.value) {
-    // Extract filename from image URL
     const filename = formData.value.image.split('/').pop()
     try {
       const response = await apiFetch('/api/products/image', {
@@ -395,23 +440,18 @@ async function handleSubmit() {
   try {
     if (isEditing.value) {
       await productStore.updateProduct(editingId.value, formData.value)
-      
-      // Upload image if a new one was selected
       if (pendingImageFile.value) {
         await uploadImage(editingId.value)
-        await productStore.fetchProducts({ page: 1, limit: 20 }) // Refresh to get new image URL
+        await productStore.fetchProducts({ page: 1, limit: 20 })
       }
-      
       dialogStore.success('Product updated successfully')
     } else {
       await productStore.addProduct(formData.value)
       dialogStore.success('Product added successfully')
     }
     
-    // Reset image state
     pendingImageFile.value = null
     imagePreview.value = null
-    
     closeModal()
   } catch (error) {
     dialogStore.error('Operation failed: ' + error.message)
@@ -431,8 +471,7 @@ async function handleDelete(id) {
 }
 
 function handleBulkImported() {
-  // Refresh data is already handled by the store action, but we can do extra cleanup if needed
-  // The modal emits this event after successful import and store refresh
+  // handled by store
 }
 
 onMounted(async () => {
@@ -447,7 +486,11 @@ onMounted(async () => {
   max-width: 1400px;
   margin: 0 auto;
 }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+
+.header { 
+  margin-bottom: 2rem; 
+}
+
 .header h1 { 
   margin: 0; 
   color: var(--text-primary);
@@ -455,17 +498,78 @@ onMounted(async () => {
   align-items: center;
   gap: 0.5rem;
 }
+
 .header-icon {
   width: 32px;
   height: 32px;
   color: var(--primary-color);
 }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: var(--spacing-lg);
+  border-bottom: var(--border-width) solid var(--border-color);
+  overflow-x: auto;
+}
+
+.tab {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+}
+
+.tab.active {
+  background: var(--primary-gradient);
+  color: var(--text-white);
+}
+
+.content-section {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.section-header h2 {
+  color: var(--text-primary);
+  margin: 0;
+  font-size: 1.25rem;
+}
+
 .header-actions {
   display: flex;
   gap: 1rem;
 }
+
 .add-btn {
-      padding: 0.3rem 1.0rem;
+  padding: 0.3rem 1.0rem;
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
@@ -474,6 +578,7 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.3s ease;
 }
+
 .export-btn, .upload-btn {
   padding: 0.3rem 1.0rem;
   background: var(--bg-white);
@@ -487,15 +592,21 @@ onMounted(async () => {
   align-items: center;
   gap: 0.5rem;
 }
+
 .export-btn:hover, .upload-btn:hover {
   background: var(--bg-hover);
   border-color: var(--text-secondary);
 }
-.export-btn:disabled {
+
+.export-btn:disabled, .add-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
-.add-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+
+.add-btn:not(:disabled):hover { 
+  transform: translateY(-2px); 
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); 
+}
 
 code {
   background: var(--bg-hover);
@@ -503,8 +614,25 @@ code {
   border-radius: var(--radius-sm);
   font-family: monospace;
 }
+
 .low-stock { color: var(--danger-bg); font-weight: 600; }
 .actions { display: flex; gap: 0.5rem; }
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  border: var(--border-width) dashed var(--border-color);
+}
+
+.empty-icon-lg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
 
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
 .modal-content {
@@ -518,9 +646,12 @@ code {
   max-height: 90vh;
   overflow-y: auto;
 }
+
 @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .modal-header h2 { margin: 0; color: var(--text-primary); }
+
 .close-btn {
   background: none;
   border: none;
@@ -528,9 +659,12 @@ code {
   cursor: pointer;
   color: var(--text-secondary);
 }
+
 .close-btn:hover { color: var(--text-primary); }
+
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary); }
+
 .form-group input,
 .form-group select {
   width: 100%;
@@ -540,9 +674,12 @@ code {
   font-size: var(--font-size-base);
   background-color: var(--bg-white);
 }
+
 .form-group input:focus,
 .form-group select:focus { outline: none; border-color: var(--primary-color); }
+
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
 .submit-btn {
   width: 100%;
   padding: var(--spacing-lg);
@@ -556,18 +693,41 @@ code {
   margin-top: var(--spacing-lg);
   transition: all 0.3s ease;
 }
+
 .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
 
 @media (max-width: 768px) {
   .inventory {
     padding: var(--spacing-lg);
   }
-  .header { flex-direction: column; gap: 1rem; align-items: stretch; }
+  
   .header h1 {
-    text-align: center;
     font-size: var(--font-size-xl);
   }
+
+  .tabs {
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
+  }
+  
+  .tab {
+    min-width: 120px;
+    padding: 0.75rem 1rem;
+    font-size: var(--font-size-sm);
+  }
+  
+  .section-header { 
+    flex-direction: column; 
+    gap: 1rem; 
+    align-items: stretch; 
+  }
+  
+  .header-actions {
+    flex-direction: column;
+  }
+  
   .form-row { grid-template-columns: 1fr; }
+  
   .modal-content {
     padding: var(--spacing-lg);
     width: 95%;
@@ -592,12 +752,6 @@ code {
   border-radius: 4px;
   margin-left: 0.5rem;
   vertical-align: middle;
-}
-
-.btn-icon:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  pointer-events: none;
 }
 
 /* Image Upload Styles */

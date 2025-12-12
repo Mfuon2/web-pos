@@ -54,7 +54,7 @@ export const useCartStore = defineStore('cart', () => {
         paymentMethod.value = 'cash'
     }
 
-    async function checkout() {
+    async function checkout(method = 'cash') {
         if (items.value.length === 0) {
             throw new Error('Cart is empty')
         }
@@ -62,7 +62,7 @@ export const useCartStore = defineStore('cart', () => {
         const saleData = {
             items: items.value,
             total: total.value,
-            payment_method: paymentMethod.value
+            payment_method: method
         }
 
         try {
