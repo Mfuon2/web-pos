@@ -10,103 +10,81 @@ import { isPublicRoute, hasPermission, createUnauthorizedResponse, createForbidd
 export async function onRequest(context) {
     const { request, next, env } = context
 
-    // CORS headers
-    const corsHeaders = {
+    // Security Headers
+    const securityHeaders = {
+        'X-Frame-Options': 'DENY',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
+        // CORS headers
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     }
 
+    // Helper to attach headers
+    const applyHeaders = (response) => {
+        Object.entries(securityHeaders).forEach(([key, value]) => {
+            response.headers.set(key, value)
+        })
+        return response
+    }
+
     // Handle preflight OPTIONS request
     if (request.method === 'OPTIONS') {
-        return new Response(null, {
-            headers: corsHeaders
-        })
+        return applyHeaders(new Response(null))
     }
 
     const url = new URL(request.url)
     const path = url.pathname
 
-    // Skip security for non-API routes (static files, etc.)
-    if (!path.startsWith('/api/')) {
-        return await next()
+    // API Security Checks (Rate Limit, Auth, RBAC)
+    if (path.startsWith('/api/')) {
+        try {
+            // 1. RATE LIMITING
+            let clientId = getClientIdentifier(request)
+            const limitType = getRateLimitType(path, request.method)
+            const rateLimitResult = checkRateLimit(clientId, limitType)
+
+            if (!rateLimitResult.allowed) {
+                const response = createRateLimitResponse(rateLimitResult)
+                return applyHeaders(response)
+            }
+
+            // 2. AUTHENTICATION
+            if (!isPublicRoute(path)) {
+                const token = getTokenFromRequest(request)
+
+                if (!token) {
+                    return applyHeaders(createUnauthorizedResponse())
+                }
+
+                const session = await validateSession(token, env)
+
+                if (!session) {
+                    return applyHeaders(createUnauthorizedResponse())
+                }
+
+                // 3. RBAC
+                if (!hasPermission(session, path)) {
+                    return applyHeaders(createForbiddenResponse())
+                }
+
+                context.session = session
+            }
+        } catch (error) {
+            return applyHeaders(new Response(JSON.stringify({
+                error: 'Internal Server Error',
+                message: error.message
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            }))
+        }
     }
 
-    try {
-        // 1. RATE LIMITING
-        // Get client identifier (will be enhanced with user ID after auth)
-        let clientId = getClientIdentifier(request)
-        const limitType = getRateLimitType(path, request.method)
-        const rateLimitResult = checkRateLimit(clientId, limitType)
-
-        if (!rateLimitResult.allowed) {
-            const response = createRateLimitResponse(rateLimitResult)
-            // Add CORS headers
-            Object.entries(corsHeaders).forEach(([key, value]) => {
-                response.headers.set(key, value)
-            })
-            return response
-        }
-
-        // 2. AUTHENTICATION
-        // Check if route requires authentication
-        if (!isPublicRoute(path)) {
-            const token = getTokenFromRequest(request)
-
-            if (!token) {
-                const response = createUnauthorizedResponse()
-                Object.entries(corsHeaders).forEach(([key, value]) => {
-                    response.headers.set(key, value)
-                })
-                return response
-            }
-
-            const session = await validateSession(token, env)
-
-            if (!session) {
-                const response = createUnauthorizedResponse()
-                Object.entries(corsHeaders).forEach(([key, value]) => {
-                    response.headers.set(key, value)
-                })
-                return response
-            }
-
-            // 3. RBAC - Role-Based Access Control
-            if (!hasPermission(session, path)) {
-                const response = createForbiddenResponse()
-                Object.entries(corsHeaders).forEach(([key, value]) => {
-                    response.headers.set(key, value)
-                })
-                return response
-            }
-
-            // Attach session to context for use in handlers
-            context.session = session
-        }
-
-        // Continue to the next handler
-        const response = await next()
-
-        // Add CORS and rate limit headers to response
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-            response.headers.set(key, value)
-        })
-        Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(([key, value]) => {
-            response.headers.set(key, value)
-        })
-
-        return response
-    } catch (error) {
-        // Global error handling
-        return new Response(JSON.stringify({
-            error: 'Internal Server Error',
-            message: error.message
-        }), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders
-            }
-        })
-    }
+    // Continue to next handler (API or Static Asset)
+    const response = await next()
+    return applyHeaders(response)
 }
