@@ -38,7 +38,12 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await apiPost('/api/expenses', expense)
+            const dataToSend = { ...expense };
+            if (expense.createdAt) {
+                // Ensure date is in proper format if provided
+                dataToSend.createdAt = expense.createdAt;
+            }
+            const response = await apiPost('/api/expenses', dataToSend)
             if (!response.ok) throw new Error('Failed to add expense')
             await fetchExpenses() // Refresh list
             return await response.json()
@@ -75,7 +80,11 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await apiPut(`/api/expenses/${id}`, expense)
+            const dataToSend = { ...expense };
+            if (expense.createdAt) {
+                dataToSend.createdAt = expense.createdAt;
+            }
+            const response = await apiPut(`/api/expenses/${id}`, dataToSend)
             if (!response.ok) throw new Error('Failed to update expense')
             await fetchExpenses() // Refresh list
             return await response.json()
@@ -151,7 +160,11 @@ export const useFinanceStore = defineStore('finance', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await apiPost('/api/purchase-orders', purchaseOrder)
+            const dataToSend = { ...purchaseOrder };
+            if (purchaseOrder.createdAt) {
+                dataToSend.createdAt = purchaseOrder.createdAt;
+            }
+            const response = await apiPost('/api/purchase-orders', dataToSend)
             if (!response.ok) throw new Error('Failed to add purchase order')
             await fetchPurchaseOrders() // Refresh list
             return await response.json()

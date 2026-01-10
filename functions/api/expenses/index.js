@@ -65,13 +65,13 @@ export async function onRequestPost(context) {
     try {
         const db = getDb(env);
         const body = await request.json();
-        const { category, amount, description } = body;
+        const { category, amount, description, createdAt } = body;
 
         const result = await db.insert(expenses).values({
             category,
             amount,
             description,
-            createdAt: getNairobiTimestamp()
+            createdAt: createdAt || getNairobiTimestamp()
         }).returning({ id: expenses.id });
 
         return new Response(JSON.stringify({

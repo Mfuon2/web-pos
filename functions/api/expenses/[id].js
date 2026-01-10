@@ -4,11 +4,11 @@ export async function onRequestPut(context) {
 
     try {
         const body = await request.json();
-        const { category, amount, description } = body;
+        const { category, amount, description, createdAt } = body;
 
         await env.DB.prepare(
-            'UPDATE expenses SET category = ?, amount = ?, description = ? WHERE id = ?'
-        ).bind(category, amount, description, id).run();
+            'UPDATE expenses SET category = ?, amount = ?, description = ?, created_at = ? WHERE id = ?'
+        ).bind(category, amount, description, createdAt, id).run();
 
         return new Response(JSON.stringify({
             success: true,

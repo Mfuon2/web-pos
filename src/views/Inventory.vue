@@ -305,8 +305,8 @@
             </div>
           </div>
           
-          <!-- Image Upload Section (Only for Edit) -->
-          <div v-if="isEditing" class="form-group image-upload-section">
+          <!-- Image Upload Section -->
+          <div class="form-group image-upload-section">
             <label>Product Image</label>
             <div class="image-preview" v-if="imagePreview || formData.image">
               <img :src="imagePreview || formData.image" alt="Product preview" />
@@ -314,18 +314,33 @@
                 <Trash2 class="icon-sm" /> Remove Image
               </button>
             </div>
-            <div class="file-input-wrapper" v-else>
+            <div class="upload-controls" v-else>
+              <div class="upload-buttons">
+                <button type="button" class="upload-opt-btn" @click="$refs.imageInput.click()">
+                  <ImageIcon class="icon-md" />
+                  <span>Browse Files</span>
+                </button>
+                <button type="button" class="upload-opt-btn camera-btn" @click="$refs.cameraInput.click()">
+                  <Camera class="icon-md" />
+                  <span>Take Photo</span>
+                </button>
+              </div>
               <input 
                 type="file" 
                 accept="image/jpeg,image/png,image/webp" 
                 @change="handleImageSelect"
                 ref="imageInput"
+                class="hidden-input"
               />
-              <div class="file-input-placeholder">
-                <ImageIcon class="icon-md" />
-                <span>Click to select an image</span>
-                <small>JPG, PNG, or WebP (max 2MB)</small>
-              </div>
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                capture="environment"
+                @change="handleImageSelect"
+                ref="cameraInput"
+                class="hidden-input"
+              />
+              <p class="upload-hint">JPG, PNG, or WebP (max 2MB)</p>
             </div>
           </div>
           <button type="submit" class="submit-btn">
@@ -394,7 +409,7 @@ import { useProductStore } from '../stores/productStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { formatCurrency } from '../utils/currency'
-import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon, ArrowDownLeft, ArrowUpRight, TrendingDown } from 'lucide-vue-next'
+import { Edit2, Trash2, Package, Download, Upload, Image as ImageIcon, Camera, ArrowDownLeft, ArrowUpRight, TrendingDown } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
 import BulkUploadModal from '../components/BulkUploadModal.vue'
 import * as XLSX from 'xlsx'
@@ -600,17 +615,11 @@ const pendingImageFile = ref(null)
 const imagePreview = ref(null)
 
 function generateBarcode() {
-  const startBarcode = 1000000001
-  const existingBarcodes = productStore.products
-    .map(p => parseInt(p.barcode))
-    .filter(b => !isNaN(b) && b >= startBarcode)
-    
-  if (existingBarcodes.length === 0) {
-    return startBarcode.toString()
-  }
-  
-  const maxBarcode = Math.max(...existingBarcodes)
-  return (maxBarcode + 1).toString()
+  // Use timestamp + small random number for unique barcode
+  // This avoids clashes even with paginated data
+  const timestamp = Date.now().toString().slice(-8)
+  const random = Math.floor(Math.random() * 100).toString().padStart(2, '0')
+  return `10${timestamp}${random}`
 }
 
 function openAddModal() {
@@ -725,7 +734,11 @@ async function handleSubmit() {
       }
       dialogStore.success('Product updated successfully')
     } else {
-      await productStore.addProduct(formData.value)
+      const result = await productStore.addProduct(formData.value)
+      if (pendingImageFile.value && result && result.id) {
+        await uploadImage(result.id)
+        await productStore.fetchProducts({ page: 1, limit: 20 })
+      }
       dialogStore.success('Product added successfully')
     }
     
@@ -1042,50 +1055,69 @@ code {
   vertical-align: middle;
 }
 
-/* Image Upload Styles */
 .image-upload-section {
-  margin-top: 1rem;
-}
-
-.file-input-wrapper {
-  position: relative;
-  border: 2px dashed var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.file-input-wrapper:hover {
-  border-color: var(--primary-color);
+  margin-top: 1.5rem;
   background: var(--bg-hover);
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
 }
 
-.file-input-wrapper input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
+.upload-controls {
+  text-align: center;
 }
 
-.file-input-placeholder {
+.upload-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.upload-opt-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text-secondary);
+  padding: 1.5rem 1rem;
+  background: var(--bg-white);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-primary);
 }
 
-.file-input-placeholder .icon-md {
-  width: 32px;
-  height: 32px;
+.upload-opt-btn:hover {
+  border-color: var(--primary-color);
+  background: var(--bg-hover);
+  transform: translateY(-2px);
+}
+
+.upload-opt-btn.camera-btn {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+}
+
+.upload-opt-btn .icon-md {
+  width: 28px;
+  height: 28px;
   color: var(--primary-color);
 }
 
-.file-input-placeholder small {
+.upload-opt-btn span {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.upload-hint {
   font-size: 0.75rem;
-  opacity: 0.7;
+  color: var(--text-secondary);
+  margin: 0.5rem 0 0;
+  opacity: 0.8;
+}
+
+.hidden-input {
+  display: none;
 }
 
 .image-preview {

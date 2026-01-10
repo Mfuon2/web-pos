@@ -450,7 +450,22 @@
 
           <div class="form-group">
             <label>{{ editingUser ? 'New Password (leave blank to keep current)' : 'Password *' }}</label>
-            <input v-model="userForm.password" type="password" :required="!editingUser" />
+            <div class="password-toggle-wrapper">
+              <input 
+                v-model="userForm.password" 
+                :type="showUserPassword ? 'text' : 'password'" 
+                :required="!editingUser" 
+              />
+              <button 
+                type="button" 
+                class="toggle-password" 
+                @click="showUserPassword = !showUserPassword"
+                tabindex="-1"
+              >
+                <Eye v-if="!showUserPassword" class="eye-icon" />
+                <EyeOff v-else class="eye-icon" />
+              </button>
+            </div>
           </div>
 
           <button type="submit" class="submit-btn">
@@ -467,7 +482,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useSupplierStore } from '../stores/supplierStore'
 import { useUserStore } from '../stores/userStore'
-import { Settings, Folder, Truck, Users, Plus, Edit2, Trash2, X, Palette } from 'lucide-vue-next'
+import { Settings, Folder, Truck, Users, Plus, Edit2, Trash2, X, Palette, Eye, EyeOff } from 'lucide-vue-next'
 import PaginationControls from '../components/PaginationControls.vue'
 
 import { useDialogStore } from '../stores/dialogStore'
@@ -495,6 +510,7 @@ const showUserModal = ref(false)
 const editingCategory = ref(null)
 const editingSupplier = ref(null)
 const editingUser = ref(null)
+const showUserPassword = ref(false)
 
 const categoryForm = ref({
   name: '',
@@ -1263,6 +1279,35 @@ watch(() => currentSettings.value, (newSettings) => {
   font-size: var(--font-size-sm);
   font-family: monospace;
   text-transform: uppercase;
+}
+
+.password-toggle-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle-wrapper input {
+  width: 100%;
+  padding-right: 3rem !important;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  transition: color 0.2s;
+}
+
+.toggle-password:hover {
+  color: var(--primary-color);
 }
 
 .settings-form .submit-btn {

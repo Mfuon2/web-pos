@@ -20,6 +20,10 @@
           </select>
         </div>
         <div class="form-group">
+          <label>Date</label>
+          <input v-model="formData.date" type="date" required />
+        </div>
+        <div class="form-group">
           <label>Amount</label>
           <input v-model.number="formData.amount" type="number" step="0.01" required />
         </div>
@@ -49,7 +53,8 @@ const emit = defineEmits(['close', 'save'])
 const formData = ref({
   category: props.expense?.category || 'Other',
   amount: props.expense?.amount || '',
-  description: props.expense?.description || ''
+  description: props.expense?.description || '',
+  date: props.expense?.createdAt ? new Date(props.expense.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
 })
 
 // Watch for changes to expense prop (for editing)
@@ -58,13 +63,20 @@ watch(() => props.expense, (newExpense) => {
     formData.value = {
       category: newExpense.category,
       amount: newExpense.amount,
-      description: newExpense.description
+      description: newExpense.description,
+      date: newExpense.createdAt ? new Date(newExpense.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     }
   }
 }, { immediate: true })
 
 function handleSubmit() {
-  emit('save', formData.value)
+  const dataToSubmit = {
+    category: formData.value.category,
+    amount: formData.value.amount,
+    description: formData.value.description,
+    createdAt: formData.value.date // Use the custom date
+  }
+  emit('save', dataToSubmit)
 }
 </script>
 
