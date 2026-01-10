@@ -75,7 +75,7 @@ export async function onRequestPost(context) {
     try {
         const db = getDb(env);
         const body = await request.json();
-        const { supplier_id, total, status: poStatus, received_at, notes, items } = body;
+        const { supplier_id, total, status: poStatus, received_at, notes, items, createdAt } = body;
 
         // Insert the purchase order
         const [poResult] = await db.insert(purchaseOrders).values({
@@ -84,7 +84,7 @@ export async function onRequestPost(context) {
             status: poStatus || 'pending',
             receivedAt: received_at || null,
             notes: notes || null,
-            createdAt: sql`datetime('now')`
+            createdAt: createdAt || sql`datetime('now')`
         }).returning({ id: purchaseOrders.id });
 
         const purchaseOrderId = poResult.id;

@@ -27,6 +27,11 @@
         </div>
 
         <div class="form-group">
+          <label>Date</label>
+          <input v-model="formData.date" type="date" required />
+        </div>
+
+        <div class="form-group">
           <label>Total Amount</label>
           <input v-model.number="formData.total" type="number" step="0.01" required />
         </div>
@@ -59,7 +64,8 @@ const formData = ref({
   supplier_id: null,
   total: '',
   status: 'received',
-  notes: ''
+  notes: '',
+  date: new Date().toISOString().split('T')[0]
 })
 
 onMounted(() => {
@@ -67,9 +73,10 @@ onMounted(() => {
 })
 
 function handleSubmit() {
-  // Include received_at if status is received
+  // Use the custom date for createdAt
   const dataToSubmit = {
     ...formData.value,
+    createdAt: formData.value.date,
     received_at: formData.value.status === 'received' ? new Date().toISOString() : null
   }
   emit('save', dataToSubmit)

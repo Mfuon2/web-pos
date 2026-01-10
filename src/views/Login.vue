@@ -30,10 +30,19 @@
             <Lock class="input-icon" />
             <input 
               v-model="password" 
-              type="password" 
+              :type="showPassword ? 'text' : 'password'" 
               placeholder="Enter password" 
               required 
             />
+            <button 
+              type="button" 
+              class="toggle-password" 
+              @click="showPassword = !showPassword"
+              tabindex="-1"
+            >
+              <Eye v-if="!showPassword" class="eye-icon" />
+              <EyeOff v-else class="eye-icon" />
+            </button>
           </div>
         </div>
 
@@ -55,7 +64,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { ShoppingBag, User, Lock } from 'lucide-vue-next'
+import { ShoppingBag, User, Lock, Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -65,6 +74,7 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
 
 const businessName = computed(() => settingsStore.businessName)
 
@@ -176,6 +186,31 @@ async function handleLogin() {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.toggle-password {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.toggle-password:hover {
+  color: var(--primary-color);
+}
+
+.eye-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .error-message {

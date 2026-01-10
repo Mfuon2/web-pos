@@ -88,7 +88,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Receipt, ChevronDown, ChevronRight, Banknote, CreditCard } from 'lucide-vue-next'
+import { Receipt, ChevronDown, ChevronRight, Banknote, Smartphone } from 'lucide-vue-next'
 import { formatCurrency } from '../utils/currency'
 import { apiGet } from '../utils/api'
 
@@ -178,7 +178,7 @@ function formatTime(dateString) {
 }
 
 function getPaymentIcon(method) {
-  return method === 'cash' ? Banknote : CreditCard
+  return method === 'cash' ? Banknote : Smartphone
 }
 
 async function fetchSales() {

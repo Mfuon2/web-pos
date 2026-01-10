@@ -134,3 +134,36 @@ CREATE TABLE IF NOT EXISTS _migrations (
     name TEXT NOT NULL UNIQUE,
     executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Borrowed Items Table
+CREATE TABLE IF NOT EXISTS borrowed_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    borrowed_from TEXT NOT NULL,
+    reason TEXT,
+    status TEXT DEFAULT 'pending', -- pending, returned, etc.
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Loans Table
+CREATE TABLE IF NOT EXISTS loans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    borrower_name TEXT NOT NULL,
+    borrower_contact TEXT,
+    collateral TEXT,
+    collateral_description TEXT,
+    status TEXT DEFAULT 'active', -- active, returned, partially_returned
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Loan Items Table (One-to-Many with loans)
+CREATE TABLE IF NOT EXISTS loan_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    FOREIGN KEY (loan_id) REFERENCES loans(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
