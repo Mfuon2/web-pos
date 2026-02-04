@@ -116,10 +116,19 @@
       <div v-if="activeTab === 'suppliers'" class="content-section">
         <div class="section-header">
           <h2>Suppliers & Vendors</h2>
-          <button @click="openSupplierModal()" class="add-btn">
-            <Plus class="icon-sm" />
-            Add Supplier
-          </button>
+          <div class="header-actions">
+            <button
+              @click="showBulkSupplierModal = true"
+              class="add-btn secondary-btn"
+            >
+              <UploadCloud class="icon-sm" />
+              Bulk Add
+            </button>
+            <button @click="openSupplierModal()" class="add-btn">
+              <Plus class="icon-sm" />
+              Add Supplier
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -138,7 +147,7 @@
                 <td>
                   <strong>{{ supplier.name }}</strong>
                 </td>
-                <td>{{ supplier.contact_person || "N/A" }}</td>
+                <td>{{ supplier.contactPerson || "N/A" }}</td>
                 <td>{{ supplier.phone || "N/A" }}</td>
                 <td>{{ supplier.email || "N/A" }}</td>
                 <td class="actions">
@@ -464,7 +473,7 @@
           </div>
           <div class="form-group">
             <label>Contact Person</label>
-            <input v-model="supplierForm.contact_person" type="text" />
+            <input v-model="supplierForm.contactPerson" type="text" />
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -555,6 +564,12 @@
       @close="showBulkCategoryModal = false"
       @success="handleCategoryPageChange(1)"
     />
+    <!-- Bulk Supplier Modal -->
+    <BulkSupplierModal
+      v-if="showBulkSupplierModal"
+      @close="showBulkSupplierModal = false"
+      @success="handleSupplierPageChange(1)"
+    />
   </div>
 </template>
 
@@ -579,6 +594,7 @@ import {
 } from "lucide-vue-next";
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkCategoryModal from "../components/BulkCategoryModal.vue";
+import BulkSupplierModal from "../components/BulkSupplierModal.vue";
 
 import { useDialogStore } from "../stores/dialogStore";
 import { useSettingsStore } from "../stores/settingsStore";
@@ -602,6 +618,7 @@ const activeTab = ref("categories");
 const showCategoryModal = ref(false);
 const showBulkCategoryModal = ref(false);
 const showSupplierModal = ref(false);
+const showBulkSupplierModal = ref(false);
 const showUserModal = ref(false);
 const editingCategory = ref(null);
 const editingSupplier = ref(null);
@@ -615,7 +632,7 @@ const categoryForm = ref({
 
 const supplierForm = ref({
   name: "",
-  contact_person: "",
+  contactPerson: "",
   phone: "",
   email: "",
   address: "",
@@ -766,7 +783,7 @@ function openSupplierModal(supplier = null) {
     editingSupplier.value = null;
     supplierForm.value = {
       name: "",
-      contact_person: "",
+      contactPerson: "",
       phone: "",
       email: "",
       address: "",
@@ -780,7 +797,7 @@ function closeSupplierModal() {
   editingSupplier.value = null;
   supplierForm.value = {
     name: "",
-    contact_person: "",
+    contactPerson: "",
     phone: "",
     email: "",
     address: "",
