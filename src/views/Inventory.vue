@@ -512,11 +512,10 @@ import PaginationControls from "../components/PaginationControls.vue";
 import BulkUploadModal from "../components/BulkUploadModal.vue";
 import * as XLSX from "xlsx";
 import { apiFetch } from "../utils/api";
-
 import { useDialogStore } from "../stores/dialogStore";
 import { useBorrowedStore } from "../stores/borrowedStore";
 import { useLoanStore } from "../stores/loanStore";
-
+import { generateBarcode } from "../utils/stringUtils";
 const productStore = useProductStore();
 const categoryStore = useCategoryStore();
 const settingsStore = useSettingsStore();
@@ -723,16 +722,6 @@ const formData = ref({
 const imageInput = ref(null);
 const pendingImageFile = ref(null);
 const imagePreview = ref(null);
-
-function generateBarcode() {
-  // Use timestamp + small random number for unique barcode
-  // This avoids clashes even with paginated data
-  const timestamp = Date.now().toString().slice(-8);
-  const random = Math.floor(Math.random() * 100)
-    .toString()
-    .padStart(2, "0");
-  return `10${timestamp}${random}`;
-}
 
 function openAddModal() {
   isEditing.value = false;

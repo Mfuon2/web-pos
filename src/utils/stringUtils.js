@@ -39,24 +39,62 @@ export function levenshteinDistance(a, b) {
 }
 
 /**
- * Checks if two strings are "almost" matching based on a threshold.
+ * Checks if two strings are "almost" matching based on a threshold or token overlap.
  * @param {string} s1
  * @param {string} s2
- * @param {number} threshold - Maximum distance allowed (default is 2)
+ * @param {number} threshold - Maximum distance allowed for fallback
  * @returns {boolean}
  */
 export function isAlmostMatch(s1, s2, threshold = 2) {
-  const str1 = s1.toLowerCase().trim();
-  const str2 = s2.toLowerCase().trim();
+  const str1 = s1
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, "");
+  const str2 = s2
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, "");
 
   if (str1 === str2) return true;
 
+  const tokens1 = str1.split(/\s+/);
+  const tokens2 = str2.split(/\s+/);
+
+  // 1. Check for significant token overlap (first 2 words match)
+  // Common for "Brand Name Volume" patterns
+  if (tokens1.length >= 2 && tokens2.length >= 2) {
+    if (tokens1[0] === tokens2[0] && tokens1[1] === tokens2[1]) {
+      return true;
+    }
+  }
+
+  // 2. Check overlap percentage
+  const set1 = new Set(tokens1);
+  const set2 = new Set(tokens2);
+  const intersection = tokens1.filter((x) => set2.has(x));
+  const overlapRatio =
+    intersection.length / Math.max(tokens1.length, tokens2.length);
+
+  if (overlapRatio >= 0.6) return true;
+
+  // 3. Fallback to Levenshtein distance
   const distance = levenshteinDistance(str1, str2);
-  // Adjust threshold based on string length to avoid false positives on short strings
   const dynamicThreshold = Math.min(
     threshold,
     Math.floor(Math.min(str1.length, str2.length) / 3),
   );
 
   return distance <= Math.max(1, dynamicThreshold);
+}
+
+/**
+ * Generates a unique barcode using timestamp and random number.
+ * @returns {string}
+ */
+export function generateBarcode() {
+  const timestamp = Date.now().toString().slice(-8);
+  const random = Math.floor(Math.random() * 100)
+    .toString()
+    .padStart(2, "0");
+  return `10${timestamp}${random}`;
 }
