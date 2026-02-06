@@ -87,7 +87,7 @@
                 <th>Stock</th>
                 <th>Total Value</th>
                 <th>Category</th>
-                <th>Actions</th>
+                <th v-if="activeTab === 'inventory'">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -117,7 +117,7 @@
                 </td>
                 <td>{{ formatCurrency(product.price * product.stock) }}</td>
                 <td>{{ product.category || "N/A" }}</td>
-                <td class="actions">
+                <td class="actions" v-if="activeTab === 'inventory'">
                   <button
                     @click="openEditModal(product)"
                     class="action-btn edit-btn"
