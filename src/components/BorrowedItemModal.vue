@@ -1,54 +1,68 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-content">
+    <div class="modal-content wide">
       <div class="modal-header">
-        <h2>Record Borrowed Item</h2>
+        <h2>Record Borrowed Items</h2>
         <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
-      
+
       <div class="info-alert">
         <AlertCircle class="icon-sm" />
-        <p>Stock is insufficient. Record borrowing to proceed.</p>
+        <p>
+          {{
+            items.length > 1
+              ? "Multiple items have insufficient stock."
+              : "Item has insufficient stock."
+          }}
+          Record borrowings to proceed.
+        </p>
       </div>
 
       <form @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label>Product</label>
-          <input type="text" :value="productName" disabled class="disabled-input" />
-        </div>
+        <div class="items-container">
+          <div
+            v-for="(item, index) in borrowingData"
+            :key="item.product_id"
+            class="borrow-item-row"
+          >
+            <div class="item-header">
+              <h3>{{ item.name }}</h3>
+              <span class="deficit-badge">Need: {{ item.quantity }}</span>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Required Quantity</label>
-            <input type="number" :value="deficit" disabled class="disabled-input" />
+            <div class="form-row">
+              <div class="form-group">
+                <label>Borrowing From *</label>
+                <input
+                  v-model="item.borrowed_from"
+                  type="text"
+                  required
+                  placeholder="e.g. Supplier X, Shop B"
+                  :ref="
+                    (el) => {
+                      if (index === 0) firstInput = el;
+                    }
+                  "
+                />
+              </div>
+              <div class="form-group">
+                <label>Reason / Notes</label>
+                <input
+                  v-model="item.reason"
+                  type="text"
+                  placeholder="e.g. Urgent customer order"
+                />
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Borrowing From *</label>
-            <input 
-              v-model="formData.borrowed_from" 
-              type="text" 
-              required 
-              placeholder="e.g. Supplier X, Shop B"
-              ref="borrowedFromInput"
-            />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Reason / Notes</label>
-          <textarea 
-            v-model="formData.reason" 
-            placeholder="e.g. Urgent customer order"
-            rows="2"
-          ></textarea>
         </div>
 
         <div class="actions">
           <button type="button" class="cancel-btn" @click="$emit('close')">
             Cancel Sale
           </button>
-          <button type="submit" class="submit-btn" :disabled="!formData.borrowed_from">
-            Confirm & Borrow
+          <button type="submit" class="submit-btn" :disabled="!isFormValid">
+            Confirm & Borrow All
           </button>
         </div>
       </form>
@@ -57,35 +71,53 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { AlertCircle } from 'lucide-vue-next'
+import { ref, computed, onMounted } from "vue";
+import { AlertCircle } from "lucide-vue-next";
 
 const props = defineProps({
-  productName: String,
-  deficit: Number
-})
+  items: {
+    type: Array, // Array of { product: {id, name}, deficit: number }
+    required: true,
+  },
+});
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits(["close", "confirm"]);
 
-const formData = ref({
-  borrowed_from: '',
-  reason: ''
-})
+const borrowingData = ref(
+  props.items.map((item) => ({
+    product_id: item.product.id,
+    name: item.product.name,
+    quantity: item.deficit,
+    borrowed_from: "",
+    reason: "",
+  })),
+);
 
-const borrowedFromInput = ref(null)
+const firstInput = ref(null);
+
+const isFormValid = computed(() => {
+  return borrowingData.value.every(
+    (item) => item.borrowed_from.trim().length > 0,
+  );
+});
 
 function handleSubmit() {
-  emit('confirm', {
-    borrowed_from: formData.value.borrowed_from,
-    reason: formData.value.reason
-  })
+  emit(
+    "confirm",
+    borrowingData.value.map((item) => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      borrowed_from: item.borrowed_from,
+      reason: item.reason,
+    })),
+  );
 }
 
 onMounted(() => {
-  if (borrowedFromInput.value) {
-    borrowedFromInput.value.focus()
+  if (firstInput.value) {
+    firstInput.value.focus();
   }
-})
+});
 </script>
 
 <style scoped>
@@ -114,8 +146,14 @@ onMounted(() => {
 }
 
 @keyframes slideIn {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -125,7 +163,10 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
-.modal-header h2 { margin: 0; color: var(--text-primary); }
+.modal-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
 
 .close-btn {
   background: none;
@@ -136,7 +177,9 @@ onMounted(() => {
 }
 
 .info-alert {
-  background: var(--warning-bg); /* Use locally if var not defined or generic warning color */
+  background: var(
+    --warning-bg
+  ); /* Use locally if var not defined or generic warning color */
   background-color: #fff7ed;
   color: #c2410c;
   padding: 0.75rem;
@@ -148,10 +191,17 @@ onMounted(() => {
   border: 1px solid #fed7aa;
 }
 
-.form-group { margin-bottom: 1rem; }
-.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary); }
+.form-group {
+  margin-bottom: 1rem;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
 
-.form-group input, 
+.form-group input,
 .form-group textarea {
   width: 100%;
   padding: 0.6rem;
@@ -201,7 +251,55 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
-.icon-sm { width: 20px; height: 20px; }
+.modal-content.wide {
+  max-width: 700px;
+}
+
+.items-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 2rem;
+  padding-right: 0.5rem;
+}
+
+.borrow-item-row {
+  background: var(--bg-hover);
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.item-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.deficit-badge {
+  background: var(--warning-bg);
+  background-color: #ffedd5;
+  color: #9a3412;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.icon-sm {
+  width: 20px;
+  height: 20px;
+}
 </style>
