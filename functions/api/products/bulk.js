@@ -57,11 +57,12 @@ export async function onRequestPost(context) {
         name: products.name,
         barcode: products.barcode,
         price: products.price,
-        stock: products.stock,
+        stock: stock.count,
         categoryName: categories.name,
       })
       .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id));
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(stock, eq(products.id, stock.productId));
 
     let maxBarcode = 1000000000;
     const existingProductsMap = new Map(); // Key: "name|category|price", Value: product
@@ -129,45 +130,54 @@ export async function onRequestPost(context) {
     // Perform Updates
     for (const update of productsToUpdate) {
       await db
-        .update(products)
-        .set({ stock: update.stock })
-        .where(eq(products.id, update.id));
+        .update(stock)
+        .set({ count: update.stock, updatedAt: timestamp })
+        .where(eq(stock.productId, update.id));
     }
 
     // Perform Inserts using raw SQL to avoid Drizzle including null for id column
     // Batch inserts to avoid D1's SQL variable limit (max ~100 variables per query)
     if (productsToInsert.length > 0) {
-      const insertColumns = [
+      const productColumns = [
         "name",
         "barcode",
         "price",
         "cost",
-        "stock",
         "category_id",
         "created_at",
       ];
-      const BATCH_SIZE = 10; // 10 products * 7 columns = 70 variables per batch
+      const BATCH_SIZE = 10;
 
       // Process inserts in batches
       for (let i = 0; i < productsToInsert.length; i += BATCH_SIZE) {
         const batch = productsToInsert.slice(i, i + BATCH_SIZE);
-        const placeholders = batch
-          .map(() => `(?, ?, ?, ?, ?, ?, ?)`)
-          .join(", ");
-        const values = batch.flatMap((p) => [
-          p.name,
-          p.barcode,
-          p.price,
-          p.cost,
-          p.stock,
-          p.categoryId,
-          p.createdAt,
-        ]);
 
-        const insertQuery = `INSERT INTO products (${insertColumns.join(", ")}) VALUES ${placeholders}`;
-        await env.DB.prepare(insertQuery)
-          .bind(...values)
-          .run();
+        // 1. Insert products and get their IDs
+        // Note: SQLite batching is safer with individual IDs if we need them,
+        // but for bulk import we can use RETURNING or just rely on barcode/timestamp if needed.
+        // However, we need to link STOCK to the new IDs.
+
+        for (const p of batch) {
+          const [result] = await db
+            .insert(products)
+            .values({
+              name: p.name,
+              barcode: p.barcode,
+              price: p.price,
+              cost: p.cost,
+              categoryId: p.categoryId,
+              createdAt: p.createdAt,
+            })
+            .returning({ id: products.id });
+
+          const productId = result.id;
+
+          await db.insert(stock).values({
+            productId: productId,
+            count: p.stock,
+            updatedAt: timestamp,
+          });
+        }
       }
 
       // Fetch all inserted products in batches to avoid variable limit on SELECT too
@@ -177,9 +187,10 @@ export async function onRequestPost(context) {
         const batchBarcodes = allBarcodes.slice(i, i + BATCH_SIZE);
         const barcodePlaceholders = batchBarcodes.map(() => "?").join(", ");
         const fetchQuery = `
-                    SELECT p.*, c.name as category 
+                    SELECT p.*, c.name as category, s.count as stock
                     FROM products p 
                     LEFT JOIN categories c ON p.category_id = c.id 
+                    LEFT JOIN stock s ON p.id = s.product_id
                     WHERE p.barcode IN (${barcodePlaceholders})`;
         const insertedResults = await env.DB.prepare(fetchQuery)
           .bind(...batchBarcodes)

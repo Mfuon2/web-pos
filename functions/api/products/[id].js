@@ -9,11 +9,22 @@ export async function onRequestPut(context) {
     await env.DB.prepare(
       `
       UPDATE products 
-      SET name = ?, price = ?, stock = ?, barcode = ?, category_id = ?, cost = ?
+      SET name = ?, price = ?, barcode = ?, category_id = ?, cost = ?
       WHERE id = ?
     `,
     )
-      .bind(name, price, stock, barcode, categoryId || null, cost, id)
+      .bind(name, price, barcode, categoryId || null, cost, id)
+      .run();
+
+    // Update stock in its own table
+    await env.DB.prepare(
+      `
+      UPDATE stock
+      SET count = ?, updated_at = datetime('now')
+      WHERE product_id = ?
+    `,
+    )
+      .bind(stock, id)
       .run();
 
     return new Response(JSON.stringify({ success: true }), {

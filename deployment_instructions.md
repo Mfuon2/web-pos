@@ -1,8 +1,10 @@
-# Deployment Instructions: Product-Category Standardization
+# Deployment Instructions
+
+## 1. Product-Category Standardization
 
 This change refactors the `products` table to use a `categoryId` foreign key instead of a string-based `category` name.
 
-## 1. Local Development Deployment
+### Local Development Deployment
 
 If you have already applied the schema change and run the migration once:
 
@@ -11,11 +13,11 @@ If you have already applied the schema change and run the migration once:
   curl -X POST http://localhost:8788/api/migrate-categories
   ```
 
-## 2. Production / Remote Deployment
+### Production / Remote Deployment
 
 To apply these changes to your production (remote) database, follow these steps in order:
 
-### Step 1: Add the new column
+#### Step 1: Add the new column
 
 Run the following Wrangler command to add the `category_id` column to your remote D1 database:
 
@@ -23,11 +25,11 @@ Run the following Wrangler command to add the `category_id` column to your remot
 npx wrangler d1 execute pos_database --remote --command="ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id);"
 ```
 
-### Step 2: Push the code changes
+#### Step 2: Push the code changes
 
 Deploy your updated backend and frontend code to Cloudflare Pages.
 
-### Step 3: Run the migration script
+#### Step 3: Run the migration script
 
 Send a POST request to your production endpoint to migrate the data and remove the old column:
 
@@ -35,14 +37,45 @@ Send a POST request to your production endpoint to migrate the data and remove t
 curl -X POST https://your-app.pages.dev/api/migrate-categories
 ```
 
+---
+
+## 2. Product-Stock Separation
+
+This change separates the `stock` count from the `products` table into a dedicated `stock` table.
+
+### Local Development Deployment
+
+Run the migration script to create the new table, transfer data, and remove the old column:
+
+```bash
+curl -X POST http://localhost:8788/api/migrate-stock-separation
+```
+
+### Production / Remote Deployment
+
+To apply these changes to your production (remote) database:
+
+#### Step 1: Push the code changes
+
+Deploy your updated backend and frontend code to Cloudflare Pages. This ensures the API knows how to handle the new `stock` table.
+
+#### Step 2: Run the migration script
+
+Send a POST request to your production endpoint to migrate the data and remove the old column:
+
+```bash
+curl -X POST https://your-app.pages.dev/api/migrate-stock-separation
+```
+
 _(Replace `your-app.pages.dev` with your actual production URL)_
 
 > [!WARNING]
-> Ensure you run Step 3 immediately after deploying the code to avoid data inconsistencies.
+> Ensure you run the migration script immediately after deploying the code to avoid data inconsistencies.
 
-### Step 4: Final Cleanup
+### Final Cleanup
 
-Once the migration is successful, you can delete the following files:
+Once both migrations are successful and you've verified everything is working, you can delete the migration scripts:
 
 - `functions/api/migrate-categories.js`
+- `functions/api/migrate-stock-separation.js`
 - `deployment_instructions.md`

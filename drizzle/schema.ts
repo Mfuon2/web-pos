@@ -8,11 +8,19 @@ export const products = sqliteTable("products", {
   barcode: text("barcode").unique(),
   price: real("price").notNull(),
   cost: real("cost").default(0),
-  stock: integer("stock").default(0),
   categoryId: integer("category_id").references(() => categories.id),
   image: text("image"),
   deletedAt: text("deleted_at"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Stock Table
+export const stock = sqliteTable("stock", {
+  productId: integer("product_id")
+    .primaryKey()
+    .references(() => products.id),
+  count: integer("count").notNull().default(0),
+  updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Suppliers Table

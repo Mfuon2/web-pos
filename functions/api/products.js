@@ -1,6 +1,6 @@
 import { getNairobiTimestamp } from "../utils/timezone.js";
 import { getDb } from "../../drizzle/db";
-import { products, categories } from "../../drizzle/schema";
+import { products, categories, stock } from "../../drizzle/schema";
 import { count, desc, lt, eq } from "drizzle-orm";
 
 export async function onRequestGet(context) {
@@ -18,7 +18,11 @@ export async function onRequestGet(context) {
       const limit = parseInt(limitParam) || 20;
       const offset = (page - 1) * limit;
 
-      let countQuery = db.select({ total: count() }).from(products);
+      let countQuery = db
+        .select({ total: count() })
+        .from(products)
+        .leftJoin(stock, eq(products.id, stock.productId));
+
       let dataQuery = db
         .select({
           id: products.id,
@@ -26,7 +30,7 @@ export async function onRequestGet(context) {
           barcode: products.barcode,
           price: products.price,
           cost: products.cost,
-          stock: products.stock,
+          stock: stock.count,
           category: categories.name,
           categoryId: products.categoryId,
           image: products.image,
@@ -35,13 +39,14 @@ export async function onRequestGet(context) {
         })
         .from(products)
         .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(stock, eq(products.id, stock.productId))
         .orderBy(desc(products.createdAt))
         .limit(limit)
         .offset(offset);
 
       if (lowStockParam === "true") {
-        countQuery = countQuery.where(lt(products.stock, 1));
-        dataQuery = dataQuery.where(lt(products.stock, 1));
+        countQuery = countQuery.where(lt(stock.count, 1));
+        dataQuery = dataQuery.where(lt(stock.count, 1));
       }
 
       const [{ total }] = await countQuery;
@@ -69,7 +74,7 @@ export async function onRequestGet(context) {
           barcode: products.barcode,
           price: products.price,
           cost: products.cost,
-          stock: products.stock,
+          stock: stock.count,
           category: categories.name,
           categoryId: products.categoryId,
           image: products.image,
@@ -78,10 +83,11 @@ export async function onRequestGet(context) {
         })
         .from(products)
         .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(stock, eq(products.id, stock.productId))
         .orderBy(desc(products.createdAt));
 
       if (lowStockParam === "true") {
-        query = query.where(lt(products.stock, 1));
+        query = query.where(lt(stock.count, 1));
       }
 
       const results = await query;
@@ -104,14 +110,13 @@ export async function onRequestPost(context) {
   try {
     const db = getDb(env);
     const body = await request.json();
-    const { name, price, stock, barcode, categoryId, cost } = body;
+    const { name, price, stock: stockCount, barcode, categoryId, cost } = body;
 
     const result = await db
       .insert(products)
       .values({
         name,
         price,
-        stock,
         barcode,
         categoryId: categoryId || null,
         cost: cost || 0,
@@ -119,10 +124,19 @@ export async function onRequestPost(context) {
       })
       .returning({ id: products.id });
 
+    const productId = result[0].id;
+
+    // Insert initial stock
+    await db.insert(stock).values({
+      productId,
+      count: stockCount || 0,
+      updatedAt: getNairobiTimestamp(),
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
-        id: result[0].id,
+        id: productId,
       }),
       {
         status: 201,

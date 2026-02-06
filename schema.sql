@@ -7,12 +7,18 @@ CREATE TABLE IF NOT EXISTS products (
     barcode TEXT UNIQUE,
     price REAL NOT NULL,
     cost REAL DEFAULT 0,
-    stock INTEGER DEFAULT 0,
     category TEXT,
     category_id INTEGER REFERENCES categories(id),
     image TEXT,
     deleted_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Stock Table
+CREATE TABLE IF NOT EXISTS stock (
+    product_id INTEGER PRIMARY KEY REFERENCES products(id),
+    count INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Suppliers Table
