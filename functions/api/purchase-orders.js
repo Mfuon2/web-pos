@@ -26,6 +26,8 @@ export async function onRequestGet(context) {
 
     if (status) {
       conditions.push(eq(purchaseOrders.status, status));
+    } else {
+      conditions.push(sql`${purchaseOrders.status} != 'deleted'`);
     }
 
     let query = db
