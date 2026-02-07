@@ -106,6 +106,36 @@ curl -X POST https://your-app.pages.dev/api/migrate-borrowed-items-v2
 curl -X POST https://your-app.pages.dev/api/migrate-expenses-v2
 ```
 
+## 4. Loan Item Returns & Substitutions
+
+This change adds the `loan_item_returns` table to track individual return events and substitutions.
+
+### Local Development Deployment
+
+Run the migration script against your local database:
+
+```bash
+node scripts/migrate.js --local
+```
+
+### Production / Remote Deployment
+
+To apply these changes to your production (remote) database:
+
+#### Step 1: Push the code changes
+
+Deploy your updated backend and frontend code to Cloudflare Pages.
+
+#### Step 2: Run the migration script
+
+Run the migration script using the `--remote` flag:
+
+```bash
+node scripts/migrate.js --remote
+```
+
+---
+
 ### Final Cleanup
 
 Once all migrations are successful and you've verified everything is working, you must perform the following cleanup:

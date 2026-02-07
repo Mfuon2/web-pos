@@ -174,6 +174,18 @@ CREATE TABLE IF NOT EXISTS loan_items (
     loan_id INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL,
+    returned_quantity INTEGER DEFAULT 0,
     FOREIGN KEY (loan_id) REFERENCES loans(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Loan Item Returns Table (for tracking partial returns and substitutions)
+CREATE TABLE IF NOT EXISTS loan_item_returns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_item_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    replacement_product_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (loan_item_id) REFERENCES loan_items(id),
+    FOREIGN KEY (replacement_product_id) REFERENCES products(id)
 );

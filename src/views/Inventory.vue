@@ -287,16 +287,32 @@
                   <span v-else class="text-secondary">None</span>
                 </td>
                 <td>
-                  <span class="status-badge" :class="loan.status">{{
-                    loan.status
-                  }}</span>
+                  <div class="status-container">
+                    <span class="status-badge" :class="loan.status">{{
+                      loan.status
+                    }}</span>
+                    <div
+                      v-if="loan.status === 'partially_returned'"
+                      class="return-progress"
+                    >
+                      <small>{{ getLoanReturnProgress(loan) }}</small>
+                    </div>
+                  </div>
                 </td>
                 <td>{{ formatDate(loan.created_at) }}</td>
                 <td class="actions">
                   <button
+                    @click="openManageLoanModal(loan)"
+                    class="action-btn manage-btn"
+                    title="Manage Returns"
+                    v-if="loan.status !== 'returned'"
+                  >
+                    <Check class="icon-sm" />
+                  </button>
+                  <button
                     @click="openEditLoanModal(loan)"
                     class="action-btn edit-btn"
-                    title="Update / Return"
+                    title="Update Details"
                   >
                     <Edit2 class="icon-sm" />
                   </button>
@@ -624,7 +640,7 @@
         <form @submit.prevent="handleUpdateLoan">
           <div class="form-group">
             <label>Status</label>
-            <select v-model="loanForm.status">
+            <select v-model="loanForm.status" disabled class="disabled-input">
               <option value="active">Active</option>
               <option value="returned">Returned</option>
               <option value="partially_returned">Partially Returned</option>
@@ -663,6 +679,143 @@
             {{ loanStore.loading ? "Updating..." : "Update Loan" }}
           </button>
         </form>
+      </div>
+    </div>
+
+    <!-- Manage Loan Modal -->
+    <div
+      v-if="showManageLoanModal"
+      class="modal-overlay"
+      @click.self="closeManageLoanModal"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Manage Loan - {{ editingLoanDetail?.borrower_name }}</h2>
+          <button class="close-btn" @click="closeManageLoanModal">✕</button>
+        </div>
+
+        <div class="management-info" v-if="editingLoanDetail">
+          <p>
+            <strong>Borrower:</strong> {{ editingLoanDetail.borrower_name }}
+          </p>
+          <p v-if="editingLoanDetail.collateral">
+            <strong>Collateral:</strong> {{ editingLoanDetail.collateral }}
+          </p>
+          <p>
+            <strong>Date:</strong>
+            {{ formatDate(editingLoanDetail.created_at) }}
+          </p>
+        </div>
+
+        <div class="management-actions">
+          <div
+            v-for="item in editingLoanDetail?.items"
+            :key="item.product_id"
+            class="action-section"
+          >
+            <h3>{{ item.product_name }}</h3>
+            <p class="hint">
+              {{ item.returned_quantity || 0 }} / {{ item.quantity }} returned
+            </p>
+
+            <div
+              v-if="item.returns && item.returns.length > 0"
+              class="returns-history"
+            >
+              <h4>Return History:</h4>
+              <ul>
+                <li v-for="ret in item.returns" :key="ret.id">
+                  <span v-if="ret.replacement_product_id">
+                    Verified: {{ ret.quantity }} substituted with
+                    <strong>{{ ret.replacement_name }}</strong>
+                  </span>
+                  <span v-else>
+                    Verified: {{ ret.quantity }} returned as original
+                  </span>
+                  <small class="text-secondary">
+                    ({{ formatDate(ret.created_at) }})
+                  </small>
+                </li>
+              </ul>
+            </div>
+
+            <form
+              @submit.prevent="handleReturnLoanItems(item)"
+              class="inline-form"
+              v-if="(item.returned_quantity || 0) < item.quantity"
+            >
+              <div class="form-group">
+                <label>Qty to Return</label>
+                <input
+                  class="price-input"
+                  type="number"
+                  v-model.number="managementLoanForm[item.product_id].quantity"
+                  :max="item.quantity - (item.returned_quantity || 0)"
+                  min="1"
+                  required
+                />
+              </div>
+
+              <div class="substitution-section">
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    v-model="managementLoanForm[item.product_id].isSubstitution"
+                  />
+                  Substitute Item?
+                </label>
+
+                <div
+                  v-if="managementLoanForm[item.product_id].isSubstitution"
+                  class="form-group"
+                >
+                  <label>Replace with:</label>
+                  <select
+                    v-model="
+                      managementLoanForm[item.product_id].replacementProductId
+                    "
+                    required
+                    class="product-select"
+                  >
+                    <option value="" disabled>Select Product</option>
+                    <option
+                      v-for="prod in products"
+                      :key="prod.id"
+                      :value="prod.id"
+                    >
+                      {{ prod.name }} (Stock: {{ prod.stock }})
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                class="submit-btn"
+                :disabled="loanStore.loading"
+              >
+                {{ loanStore.loading ? "Recording..." : "Return" }}
+              </button>
+            </form>
+            <div v-else class="text-success">
+              <Check class="icon-sm" /> All items returned
+            </div>
+          </div>
+
+          <div class="divider">OR</div>
+
+          <button
+            @click="handleReturnAllLoan"
+            class="submit-btn"
+            :disabled="loanStore.loading"
+          >
+            {{
+              loanStore.loading
+                ? "Processing..."
+                : "Return All Outstanding Items"
+            }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -905,6 +1058,7 @@ async function handleMarkAsPaid() {
 // Loan Edit Logic
 const loans = computed(() => loanStore.loans);
 const showEditLoanModal = ref(false);
+const showManageLoanModal = ref(false);
 const editingLoanDetail = ref(null);
 const loanForm = ref({
   borrower_name: "",
@@ -913,6 +1067,100 @@ const loanForm = ref({
   collateral_description: "",
   status: "active",
 });
+const managementLoanForm = ref({});
+
+function getLoanReturnProgress(loan) {
+  if (!loan || !loan.items) return "0 / 0 returned";
+  const total = loan.items.reduce((sum, i) => sum + i.quantity, 0);
+  const returned = loan.items.reduce(
+    (sum, i) => sum + (i.returned_quantity || 0),
+    0,
+  );
+  return `${returned} / ${total} returned`;
+}
+
+function openManageLoanModal(loan) {
+  editingLoanDetail.value = loan;
+  managementLoanForm.value = {};
+  loan.items.forEach((item) => {
+    managementLoanForm.value[item.product_id] = {
+      quantity: item.quantity - (item.returned_quantity || 0),
+      isSubstitution: false,
+      replacementProductId: "",
+    };
+  });
+  showManageLoanModal.value = true;
+}
+
+function closeManageLoanModal() {
+  showManageLoanModal.value = false;
+  editingLoanDetail.value = null;
+}
+
+async function handleReturnLoanItems(item) {
+  const formData = managementLoanForm.value[item.product_id];
+  const qty = formData.quantity;
+
+  if (!qty || qty <= 0) return;
+
+  const payload = {
+    product_id: item.product_id,
+    quantity: qty,
+  };
+
+  if (formData.isSubstitution && formData.replacementProductId) {
+    payload.replacement_product_id = formData.replacementProductId;
+  }
+
+  try {
+    await loanStore.updateLoan(editingLoanDetail.value.id, {
+      action: "return_items",
+      items_to_return: [payload],
+    });
+    dialogStore.success("Items returned");
+    // Refresh local detail from store
+    const updatedLoan = loanStore.loans.find(
+      (l) => l.id === editingLoanDetail.value.id,
+    );
+    if (updatedLoan) {
+      editingLoanDetail.value = updatedLoan;
+      // Reset form for this item
+      const remaining = item.quantity - (item.returned_quantity || 0) - qty;
+      // Note: item.returned_quantity is old. updatedLoan has new values.
+      const updatedItem = updatedLoan.items.find(
+        (i) => i.product_id === item.product_id,
+      );
+
+      managementLoanForm.value[item.product_id] = {
+        quantity: updatedItem
+          ? updatedItem.quantity - (updatedItem.returned_quantity || 0)
+          : 0,
+        isSubstitution: false,
+        replacementProductId: "",
+      };
+    }
+  } catch (error) {
+    dialogStore.error("Operation failed: " + error.message);
+  }
+}
+
+async function handleReturnAllLoan() {
+  const confirmed = await dialogStore.confirm(
+    "Are you sure you want to return all outstanding items for this loan?",
+  );
+  if (!confirmed) return;
+
+  try {
+    await loanStore.updateLoan(editingLoanDetail.value.id, {
+      action: "return_all",
+      status: "returned",
+    });
+    dialogStore.success("All items returned");
+    closeManageLoanModal();
+  } catch (error) {
+    dialogStore.error("Operation failed: " + error.message);
+  }
+}
 
 function openEditLoanModal(loan) {
   editingLoanDetail.value = loan;
@@ -1762,5 +2010,71 @@ code {
 
 .mt-2 {
   margin-top: 0.5rem;
+}
+
+.substitution-section {
+  padding: 0.75rem;
+  background: var(--bg-hover);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.substitution-section .form-group {
+  margin-top: 0.75rem;
+}
+
+.product-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-white);
+  color: var(--text-primary);
+}
+
+.returns-history {
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.returns-history h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.returns-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.returns-history li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.returns-history li:last-child {
+  border-bottom: none;
 }
 </style>

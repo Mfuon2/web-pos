@@ -31,10 +31,32 @@ export async function onRequestGet(context) {
     `,
     ).all();
 
-    // Attach items to loans
+    // Fetch return history/substitutions
+    // We can do this efficiently by getting all returns for these items
+    const itemIds = items.map((i) => i.id).join(",");
+    let returns = [];
+    if (itemIds) {
+      const { results: returnData } = await env.DB.prepare(
+        `
+        SELECT 
+          lur.*, p.name as replacement_name 
+        FROM loan_item_returns lur
+        LEFT JOIN products p ON lur.replacement_product_id = p.id
+        WHERE lur.loan_item_id IN (${itemIds})
+      `,
+      ).all();
+      returns = returnData;
+    }
+
+    // Attach items to loans, and returns to items
     const loansWithItems = loans.map((loan) => ({
       ...loan,
-      items: items.filter((i) => i.loan_id === loan.id),
+      items: items
+        .filter((i) => i.loan_id === loan.id)
+        .map((item) => ({
+          ...item,
+          returns: returns.filter((r) => r.loan_item_id === item.id),
+        })),
     }));
 
     return Response.json(loansWithItems);
@@ -152,62 +174,143 @@ export async function onRequestPut(context) {
 
     if (!id) return Response.json({ error: "Missing ID" }, { status: 400 });
 
-    if (status) {
-      // If status is becoming 'returned', we should restock items?
-      // This logic can gets complex if partial return.
-      // User requirement: "option of updating the loaned listing".
-      // Let's assume for now just updating textual details or entire status.
+    const { action } = body;
 
-      // If changing status to 'returned', verify if we need to restock.
-      // We'll require a specific 'action' flag if we want to restock.
+    if (action === "return_all") {
+      // Get items first
+      const { results: loanItems } = await env.DB.prepare(
+        `SELECT * FROM loan_items WHERE loan_id = ?`,
+      )
+        .bind(id)
+        .all();
 
-      const { action } = body; // 'return_items'
+      const statements = [];
+      // Update status
+      statements.push(
+        env.DB.prepare(
+          `UPDATE loans SET status = 'returned' WHERE id = ?`,
+        ).bind(id),
+      );
 
-      if (action === "return_all") {
-        // Get items first
-        const { results: loanItems } = await env.DB.prepare(
-          `SELECT * FROM loan_items WHERE loan_id = ?`,
-        )
-          .bind(id)
-          .all();
-
-        const statements = [];
-        // Update status
-        statements.push(
-          env.DB.prepare(
-            `UPDATE loans SET status = 'returned' WHERE id = ?`,
-          ).bind(id),
-        );
-
-        // Restock
-        for (const item of loanItems) {
+      // Restock
+      for (const item of loanItems) {
+        const remaining = item.quantity - (item.returned_quantity || 0);
+        if (remaining > 0) {
           statements.push(
             env.DB.prepare(
               `UPDATE stock SET count = count + ?, updated_at = datetime('now') WHERE product_id = ?`,
-            ).bind(item.quantity, item.product_id),
+            ).bind(remaining, item.product_id),
+          );
+          statements.push(
+            env.DB.prepare(
+              `UPDATE loan_items SET returned_quantity = quantity WHERE id = ?`,
+            ).bind(item.id),
           );
         }
+      }
 
-        await env.DB.batch(statements);
-        return Response.json({
-          success: true,
-          message: "Loan returned and items restocked",
-        });
+      await env.DB.batch(statements);
+      return Response.json({
+        success: true,
+        message: "Loan returned and items restocked",
+      });
+    }
+
+    if (action === "return_items") {
+      const { items_to_return } = body;
+      if (!items_to_return || !Array.isArray(items_to_return)) {
+        return Response.json(
+          { error: "Missing items_to_return" },
+          { status: 400 },
+        );
+      }
+
+      const statements = [];
+      for (const item of items_to_return) {
+        // 1. Update loan_items returned quantity
+        statements.push(
+          env.DB.prepare(
+            `UPDATE loan_items SET returned_quantity = returned_quantity + ? WHERE loan_id = ? AND product_id = ?`,
+          ).bind(item.quantity, id, item.product_id),
+        );
+
+        // 2. Update stock: either original product or replacement
+        const stockProductId = item.replacement_product_id || item.product_id;
+        statements.push(
+          env.DB.prepare(
+            `UPDATE stock SET count = count + ?, updated_at = datetime('now') WHERE product_id = ?`,
+          ).bind(item.quantity, stockProductId),
+        );
+
+        // 3. Record in loan_item_returns
+        // Need to get loan_item_id first? Or just rely on loan_id + product_id?
+        // Let's look up loan_item_id.
+        // Doing this inside a loop with awaits is fine for small batches, but batch is better.
+        // But we can't easily get loan_item_id inside a batch without a subquery.
+        // Let's use a subquery for the INSERT.
+
+        statements.push(
+          env.DB.prepare(
+            `INSERT INTO loan_item_returns (loan_item_id, quantity, replacement_product_id)
+             SELECT id, ?, ? FROM loan_items WHERE loan_id = ? AND product_id = ?`,
+          ).bind(
+            item.quantity,
+            item.replacement_product_id || null,
+            id,
+            item.product_id,
+          ),
+        );
+      }
+
+      await env.DB.batch(statements);
+
+      // Update overall loan status
+      const { results: allItems } = await env.DB.prepare(
+        `SELECT quantity, returned_quantity FROM loan_items WHERE loan_id = ?`,
+      )
+        .bind(id)
+        .all();
+
+      const totalQty = allItems.reduce((sum, i) => sum + i.quantity, 0);
+      const totalReturned = allItems.reduce(
+        (sum, i) => sum + (i.returned_quantity || 0),
+        0,
+      );
+
+      let newStatus = "active";
+      if (totalReturned >= totalQty) {
+        newStatus = "returned";
+      } else if (totalReturned > 0) {
+        newStatus = "partially_returned";
       }
 
       await env.DB.prepare(`UPDATE loans SET status = ? WHERE id = ?`)
+        .bind(newStatus, id)
+        .run();
+
+      return Response.json({
+        success: true,
+        message: "Return recorded",
+        status: newStatus,
+      });
+    }
+
+    // If no specific return action, handle general updates
+    if (status) {
+      await env.DB.prepare(`UPDATE loans SET status = ? WHERE id = ?`)
         .bind(status, id)
         .run();
-    } else {
-      // Just update details
+    }
+
+    if (body.borrower_name !== undefined) {
       await env.DB.prepare(
         `UPDATE loans SET borrower_name = ?, borrower_contact = ?, collateral = ?, collateral_description = ? WHERE id = ?`,
       )
         .bind(
-          body.borrower_name,
-          body.borrower_contact,
-          body.collateral,
-          body.collateral_description,
+          body.borrower_name || "",
+          body.borrower_contact || "",
+          body.collateral || "",
+          body.collateral_description || "",
           id,
         )
         .run();
