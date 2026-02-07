@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     category TEXT NOT NULL,
     amount REAL NOT NULL,
     description TEXT,
+    incurred_date DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -150,6 +151,8 @@ CREATE TABLE IF NOT EXISTS borrowed_items (
     borrowed_from TEXT NOT NULL,
     reason TEXT,
     status TEXT DEFAULT 'pending', -- pending, returned, etc.
+    returned_quantity INTEGER DEFAULT 0,
+    paid_quantity INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id)
 );

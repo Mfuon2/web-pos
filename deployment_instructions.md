@@ -69,13 +69,54 @@ curl -X POST https://your-app.pages.dev/api/migrate-stock-separation
 
 _(Replace `your-app.pages.dev` with your actual production URL)_
 
-> [!WARNING]
-> Ensure you run the migration script immediately after deploying the code to avoid data inconsistencies.
+---
+
+## 3. Borrowed Item Management Refactor
+
+This change adds `returned_quantity` and `paid_quantity` tracking, along with automated expense recording for borrowed items.
+
+### Local Development Deployment
+
+Run the migration scripts in order:
+
+```bash
+curl -X POST http://localhost:8788/api/migrate-borrowed-items
+curl -X POST http://localhost:8788/api/migrate-borrowed-items-v2
+curl -X POST http://localhost:8788/api/migrate-expenses-v2
+```
+
+### Production / Remote Deployment
+
+To apply these changes to your production (remote) database:
+
+#### Step 1: Push the code changes
+
+Deploy your updated backend and frontend code to Cloudflare Pages.
+
+> [!IMPORTANT]
+> The migration scripts and temporary RBAC changes must be pushed to allow the migrations to run.
+
+#### Step 2: Run the migration scripts
+
+Send POST requests to your production endpoint in order:
+
+```bash
+curl -X POST https://your-app.pages.dev/api/migrate-borrowed-items
+curl -X POST https://your-app.pages.dev/api/migrate-borrowed-items-v2
+curl -X POST https://your-app.pages.dev/api/migrate-expenses-v2
+```
 
 ### Final Cleanup
 
-Once both migrations are successful and you've verified everything is working, you can delete the migration scripts:
+Once all migrations are successful and you've verified everything is working, you must perform the following cleanup:
 
-- `functions/api/migrate-categories.js`
-- `functions/api/migrate-stock-separation.js`
-- `deployment_instructions.md`
+1.  **Delete Migration Scripts**: Remove the following files:
+    - `functions/api/migrate-categories.js`
+    - `functions/api/migrate-stock-separation.js`
+    - `functions/api/migrate-borrowed-items.js`
+    - `functions/api/migrate-borrowed-items-v2.js`
+    - `functions/api/migrate-expenses-v2.js`
+
+2.  **Revert Security Changes**: If you modified `functions/utils/rbac.js` to make the migration script public, ensure those changes are reverted and redeployed.
+
+3.  **Delete This File**: Once everything is deployed and verified, you can delete `deployment_instructions.md`.

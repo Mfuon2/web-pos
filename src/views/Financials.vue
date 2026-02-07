@@ -253,25 +253,34 @@
             </thead>
             <tbody>
               <tr v-for="expense in expenses" :key="expense.id">
-                <td>{{ formatDate(expense.createdAt) }}</td>
+                <td>
+                  {{
+                    formatJustDate(expense.incurredDate || expense.createdAt)
+                  }}
+                </td>
                 <td>
                   <span class="category-badge">{{ expense.category }}</span>
                 </td>
                 <td>{{ expense.description }}</td>
                 <td class="amount">{{ formatCurrency(expense.amount) }}</td>
                 <td class="actions">
-                  <button
-                    @click="handleEditExpense(expense)"
-                    class="action-btn edit-btn"
+                  <template v-if="expense.category !== 'Borrowed Items'">
+                    <button
+                      @click="handleEditExpense(expense)"
+                      class="action-btn edit-btn"
+                    >
+                      <Edit2 class="icon-sm" />
+                    </button>
+                    <button
+                      @click="handleDeleteExpense(expense.id)"
+                      class="action-btn delete-btn"
+                    >
+                      <Trash2 class="icon-sm" />
+                    </button>
+                  </template>
+                  <span v-else class="managed-badge"
+                    >Managed Automatically</span
                   >
-                    <Edit2 class="icon-sm" />
-                  </button>
-                  <button
-                    @click="handleDeleteExpense(expense.id)"
-                    class="action-btn delete-btn"
-                  >
-                    <Trash2 class="icon-sm" />
-                  </button>
                 </td>
               </tr>
               <tr v-if="expenses.length === 0">
@@ -457,6 +466,14 @@ function formatDate(dateString) {
       minute: "2-digit",
     })
   );
+}
+
+function formatJustDate(dateString) {
+  if (!dateString) return "N/A";
+  if (typeof dateString === "string" && dateString.includes(" ")) {
+    dateString = dateString.replace(" ", "T");
+  }
+  return new Date(dateString).toLocaleDateString();
 }
 
 function getSupplierName(id) {
@@ -928,13 +945,19 @@ table {
 
 /* Badges */
 .category-badge {
-  background: #edf2f7;
-  color: var(--primary-color);
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-lg);
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: capitalize;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.managed-badge {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  white-space: nowrap;
 }
 
 .status-badge {

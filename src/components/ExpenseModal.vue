@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click="$emit('close')">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
-        <h2>{{ expense ? 'Edit Expense' : 'Record Expense' }}</h2>
+        <h2>{{ expense ? "Edit Expense" : "Record Expense" }}</h2>
         <button class="close-btn" @click="$emit('close')">
           <X class="icon" />
         </button>
@@ -20,63 +20,86 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Date</label>
-          <input v-model="formData.date" type="date" required />
+          <label>Incurred Date</label>
+          <input v-model="formData.incurredDate" type="date" required />
         </div>
         <div class="form-group">
           <label>Amount</label>
-          <input v-model.number="formData.amount" type="number" step="0.01" required />
+          <input
+            v-model.number="formData.amount"
+            type="number"
+            step="0.01"
+            required
+          />
         </div>
         <div class="form-group">
           <label>Description</label>
           <textarea v-model="formData.description" rows="3"></textarea>
         </div>
-        <button type="submit" class="submit-btn">{{ expense ? 'Update Expense' : 'Save Expense' }}</button>
+        <button type="submit" class="submit-btn">
+          {{ expense ? "Update Expense" : "Save Expense" }}
+        </button>
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { X } from 'lucide-vue-next'
+import { ref, watch } from "vue";
+import { X } from "lucide-vue-next";
+
+import { getNairobiTime } from "../utils/timezone";
 
 const props = defineProps({
   expense: {
     type: Object,
-    default: null
-  }
-})
+    default: null,
+  },
+});
 
-const emit = defineEmits(['close', 'save'])
+const emit = defineEmits(["close", "save"]);
+
+const formatForInput = (dateString) => {
+  if (!dateString) return "";
+  // If it's a full datetime, just take the date part
+  return dateString.split(" ")[0].split("T")[0];
+};
 
 const formData = ref({
-  category: props.expense?.category || 'Other',
-  amount: props.expense?.amount || '',
-  description: props.expense?.description || '',
-  date: props.expense?.createdAt ? new Date(props.expense.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-})
+  category: props.expense?.category || "Other",
+  amount: props.expense?.amount || "",
+  description: props.expense?.description || "",
+  incurredDate: props.expense?.incurredDate
+    ? formatForInput(props.expense.incurredDate)
+    : new Date().toISOString().split("T")[0],
+});
 
 // Watch for changes to expense prop (for editing)
-watch(() => props.expense, (newExpense) => {
-  if (newExpense) {
-    formData.value = {
-      category: newExpense.category,
-      amount: newExpense.amount,
-      description: newExpense.description,
-      date: newExpense.createdAt ? new Date(newExpense.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+watch(
+  () => props.expense,
+  (newExpense) => {
+    if (newExpense) {
+      formData.value = {
+        category: newExpense.category,
+        amount: newExpense.amount,
+        description: newExpense.description,
+        incurredDate: formatForInput(
+          newExpense.incurredDate || newExpense.createdAt,
+        ),
+      };
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+);
 
 function handleSubmit() {
   const dataToSubmit = {
     category: formData.value.category,
     amount: formData.value.amount,
     description: formData.value.description,
-    createdAt: formData.value.date // Use the custom date
-  }
-  emit('save', dataToSubmit)
+    incurredDate: formData.value.incurredDate,
+  };
+  emit("save", dataToSubmit);
 }
 </script>
 
@@ -106,8 +129,14 @@ function handleSubmit() {
 }
 
 @keyframes slideIn {
-  from { transform: translateY(-50px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {

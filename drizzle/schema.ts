@@ -62,6 +62,7 @@ export const expenses = sqliteTable("expenses", {
   category: text("category").notNull(),
   amount: real("amount").notNull(),
   description: text("description"),
+  incurredDate: text("incurred_date"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 

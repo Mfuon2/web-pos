@@ -179,16 +179,56 @@
                 <td>{{ item.borrowed_from }}</td>
                 <td>{{ item.reason }}</td>
                 <td>
-                  <span class="status-badge" :class="item.status">{{
-                    item.status
-                  }}</span>
+                  <div class="status-container">
+                    <span class="status-badge" :class="item.status">{{
+                      item.status
+                    }}</span>
+                    <div
+                      v-if="
+                        item.status !== 'pending' ||
+                        (item.returned_quantity === 0 &&
+                          item.paid_quantity === 0)
+                      "
+                      class="return-progress"
+                    >
+                      <small v-if="item.returned_quantity > 0"
+                        >{{ item.returned_quantity }} returned</small
+                      >
+                      <small v-if="item.paid_quantity > 0"
+                        >{{ item.paid_quantity }} paid</small
+                      >
+                      <small
+                        v-if="
+                          item.returned_quantity === 0 &&
+                          item.paid_quantity === 0
+                        "
+                        >0 / {{ item.quantity }} settled</small
+                      >
+                      <small
+                        v-else-if="
+                          item.returned_quantity + item.paid_quantity <
+                          item.quantity
+                        "
+                        >({{ item.returned_quantity + item.paid_quantity }} /
+                        {{ item.quantity }})</small
+                      >
+                    </div>
+                  </div>
                 </td>
                 <td>{{ formatDate(item.created_at) }}</td>
                 <td class="actions">
                   <button
+                    @click="openManageBorrowedModal(item)"
+                    class="action-btn manage-btn"
+                    title="Manage Returns / Payment"
+                    v-if="item.status !== 'returned' && item.status !== 'paid'"
+                  >
+                    <Check class="icon-sm" />
+                  </button>
+                  <button
                     @click="openEditBorrowedModal(item)"
                     class="action-btn edit-btn"
-                    title="Edit"
+                    title="Edit Details"
                   >
                     <Edit2 class="icon-sm" />
                   </button>
@@ -294,7 +334,11 @@
           </div>
           <div class="form-group">
             <label>Available Status *</label>
-            <select v-model="borrowedForm.status" required>
+            <select
+              v-model="borrowedForm.status"
+              disabled
+              class="disabled-input"
+            >
               <option value="pending">Pending</option>
               <option value="returned">Returned</option>
               <option value="paid">Paid</option>
@@ -319,7 +363,141 @@
       </div>
     </div>
 
-    <!-- Modals (Keep existing modals) -->
+    <!-- Manage Borrowed Item Modal -->
+    <div
+      v-if="showManageBorrowedModal"
+      class="modal-overlay"
+      @click="closeManageBorrowedModal"
+    >
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>Manage Borrowed Item</h2>
+          <button class="close-btn" @click="closeManageBorrowedModal">✕</button>
+        </div>
+        <div class="management-info" v-if="editingBorrowedDetail">
+          <p>
+            <strong>Product:</strong> {{ editingBorrowedDetail.product_name }}
+          </p>
+          <p>
+            <strong>Borrowed From:</strong>
+            {{ editingBorrowedDetail.borrowed_from }}
+          </p>
+          <p>
+            <strong>Total Quantity:</strong>
+            {{ editingBorrowedDetail.quantity }}
+          </p>
+          <p>
+            <strong>Settled:</strong>
+            {{
+              (editingBorrowedDetail.returned_quantity || 0) +
+              (editingBorrowedDetail.paid_quantity || 0)
+            }}
+            ({{ editingBorrowedDetail.returned_quantity || 0 }} ret,
+            {{ editingBorrowedDetail.paid_quantity || 0 }} paid)
+          </p>
+          <p>
+            <strong>Remaining:</strong>
+            {{
+              editingBorrowedDetail.quantity -
+              ((editingBorrowedDetail.returned_quantity || 0) +
+                (editingBorrowedDetail.paid_quantity || 0))
+            }}
+          </p>
+        </div>
+
+        <div class="management-actions">
+          <div class="action-section">
+            <h3>Record Return</h3>
+            <form @submit.prevent="handleReturnItems" class="inline-form">
+              <div class="form-group">
+                <label>Quantity to Return</label>
+                <input
+                  type="number"
+                  v-model.number="managementForm.returnQuantity"
+                  :max="
+                    editingBorrowedDetail.quantity -
+                    ((editingBorrowedDetail.returned_quantity || 0) +
+                      (editingBorrowedDetail.paid_quantity || 0))
+                  "
+                  min="1"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                class="submit-btn"
+                :disabled="
+                  borrowedStore.loading ||
+                  editingBorrowedDetail.quantity -
+                    ((editingBorrowedDetail.returned_quantity || 0) +
+                      (editingBorrowedDetail.paid_quantity || 0)) <=
+                    0
+                "
+              >
+                {{ borrowedStore.loading ? "Recording..." : "Confirm Return" }}
+              </button>
+            </form>
+          </div>
+
+          <div class="divider">OR</div>
+
+          <div class="action-section">
+            <h3>Mark as Paid</h3>
+            <div class="inline-form">
+              <div class="form-group">
+                <label>Quantity to Pay For</label>
+                <input
+                  type="number"
+                  v-model.number="managementForm.payQuantity"
+                  :max="
+                    editingBorrowedDetail.quantity -
+                    ((editingBorrowedDetail.returned_quantity || 0) +
+                      (editingBorrowedDetail.paid_quantity || 0))
+                  "
+                  min="1"
+                  required
+                />
+              </div>
+              <div class="form-group price-input-group">
+                <label>Price per Item</label>
+                <input
+                  class="price-input"
+                  type="number"
+                  step="0.01"
+                  v-model.number="managementForm.unitPrice"
+                  min="0"
+                  required
+                />
+              </div>
+              <button
+                @click="handleMarkAsPaid"
+                class="submit-btn paid-btn"
+                :disabled="
+                  borrowedStore.loading ||
+                  editingBorrowedDetail.quantity -
+                    ((editingBorrowedDetail.returned_quantity || 0) +
+                      (editingBorrowedDetail.paid_quantity || 0)) <=
+                    0
+                "
+              >
+                {{
+                  borrowedStore.loading ? "Processing..." : "Confirm Payment"
+                }}
+              </button>
+            </div>
+            <p class="hint mt-2" v-if="managementForm.payQuantity > 0">
+              This will record an expense of
+              {{
+                formatCurrency(
+                  (Number(managementForm.unitPrice) || 0) *
+                    Number(managementForm.payQuantity),
+                )
+              }}.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
     <div v-if="showModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
@@ -507,6 +685,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   TrendingDown,
+  Check,
 } from "lucide-vue-next";
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkUploadModal from "../components/BulkUploadModal.vue";
@@ -644,7 +823,6 @@ async function handleUpdateBorrowedItem() {
     const updates = {
       borrowed_from: borrowedForm.value.borrowed_from,
       reason: borrowedForm.value.reason,
-      status: borrowedForm.value.status,
     };
 
     await borrowedStore.updateBorrowedItem(
@@ -655,6 +833,72 @@ async function handleUpdateBorrowedItem() {
     closeEditBorrowedModal();
   } catch (error) {
     dialogStore.error("Update failed: " + error.message);
+  }
+}
+
+// Manage Borrowed Modal Logic
+const showManageBorrowedModal = ref(false);
+const managementForm = ref({
+  returnQuantity: 1,
+  payQuantity: 1,
+  unitPrice: 0,
+});
+
+function openManageBorrowedModal(item) {
+  editingBorrowedDetail.value = item;
+  const remaining =
+    item.quantity - ((item.returned_quantity || 0) + (item.paid_quantity || 0));
+  managementForm.value.returnQuantity = remaining > 0 ? remaining : 1;
+  managementForm.value.payQuantity = remaining > 0 ? remaining : 1;
+  managementForm.value.unitPrice = item.product_price || 0;
+  showManageBorrowedModal.value = true;
+}
+
+function closeManageBorrowedModal() {
+  showManageBorrowedModal.value = false;
+  editingBorrowedDetail.value = null;
+}
+
+async function handleReturnItems() {
+  if (!editingBorrowedDetail.value) return;
+
+  try {
+    await borrowedStore.manageBorrowedItem(
+      editingBorrowedDetail.value.id,
+      "return",
+      {
+        returned_quantity: managementForm.value.returnQuantity,
+      },
+    );
+    dialogStore.success("Return recorded successfully");
+    closeManageBorrowedModal();
+  } catch (error) {
+    dialogStore.error("Operation failed: " + error.message);
+  }
+}
+
+async function handleMarkAsPaid() {
+  if (!editingBorrowedDetail.value) return;
+
+  const confirmed = await dialogStore.confirm(
+    `Are you sure you want to mark ${managementForm.value.payQuantity} items as paid? This will record an expense.`,
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await borrowedStore.manageBorrowedItem(
+      editingBorrowedDetail.value.id,
+      "pay",
+      {
+        paid_quantity: managementForm.value.payQuantity,
+        unitPrice: managementForm.value.unitPrice,
+      },
+    );
+    dialogStore.success("Payment recorded and expense created");
+    closeManageBorrowedModal();
+  } catch (error) {
+    dialogStore.error("Operation failed: " + error.message);
   }
 }
 
@@ -1133,17 +1377,20 @@ code {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   padding: var(--spacing-md);
   border: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   background-color: var(--bg-white);
+  font-family: inherit;
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: var(--primary-color);
 }
@@ -1221,6 +1468,25 @@ code {
 .strikethrough {
   text-decoration: line-through;
   color: var(--text-secondary);
+}
+
+.action-btn.delete-btn {
+  color: #ef4444;
+}
+
+.action-btn.manage-btn {
+  background-color: #10b981;
+  color: white;
+  border-radius: var(--radius-md);
+  padding: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn.manage-btn:hover {
+  background-color: #059669;
+  transform: scale(1.1);
 }
 
 .deleted-badge {
@@ -1366,6 +1632,18 @@ code {
   border: 1px solid #bbf7d0;
 }
 
+.status-badge.partial {
+  background-color: #ffedd5;
+  color: #c2410c; /* Orange */
+  border: 1px solid #fed7aa;
+}
+
+.status-badge.settled {
+  background-color: #e0e7ff;
+  color: #4338ca; /* Indigo/Settled */
+  border: 1px solid #c7d2fe;
+}
+
 /* Loan Statuses */
 .status-badge.active {
   background-color: #f3e8ff;
@@ -1385,9 +1663,104 @@ code {
   border: 1px solid #fecaca;
 }
 
-.loan-items-list {
-  margin: 0;
-  padding-left: 1.2rem;
+.status-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.return-progress {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.management-info {
+  background: var(--bg-hover);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.5rem;
+}
+
+.management-info p {
+  margin: 0.5rem 0;
   font-size: 0.9rem;
+}
+
+.management-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.action-section {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.action-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.inline-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.inline-form .form-group {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.inline-form .price-input-group {
+  flex: 2;
+}
+
+.price-input {
+  min-width: 80px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.divider:not(:empty)::before {
+  margin-right: 0.5em;
+}
+
+.divider:not(:empty)::after {
+  margin-left: 0.5em;
+}
+
+.paid-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.paid-btn:hover {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
 }
 </style>
