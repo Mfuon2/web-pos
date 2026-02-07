@@ -15,6 +15,7 @@ export async function onRequestGet(context) {
         id: sales.id,
         total: sales.total,
         paymentMethod: sales.paymentMethod,
+        saleDate: sales.saleDate,
         createdAt: sales.createdAt,
       })
       .from(sales)
@@ -62,7 +63,7 @@ export async function onRequestPost(context) {
   try {
     const db = getDb(env);
     const body = await request.json();
-    const { items, total, payment_method } = body;
+    const { items, total, payment_method, sale_date } = body;
 
     // Get Nairobi timestamp
     const timestamp = getNairobiTimestamp();
@@ -73,6 +74,7 @@ export async function onRequestPost(context) {
       .values({
         total,
         paymentMethod: payment_method,
+        saleDate: sale_date,
         createdAt: timestamp,
       })
       .returning({ id: sales.id });
@@ -101,6 +103,7 @@ export async function onRequestPost(context) {
       JSON.stringify({
         success: true,
         sale_id: saleId,
+        sale_date: sale_date,
         created_at: timestamp,
       }),
       {

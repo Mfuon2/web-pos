@@ -41,6 +41,7 @@ export const sales = sqliteTable("sales", {
   total: real("total").notNull(),
   paymentMethod: text("payment_method"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+  saleDate: text("sale_date"),
 });
 
 // Sale Items Table

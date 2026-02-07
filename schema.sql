@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS sales (
     items TEXT, -- Kept for backward compatibility or denormalized data
     total REAL NOT NULL,
     payment_method TEXT,
+    sale_date DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

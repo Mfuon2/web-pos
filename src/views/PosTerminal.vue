@@ -81,6 +81,19 @@
           <span>{{ formatCurrency(cartTotal) }}</span>
         </div>
 
+        <div class="date-selector">
+          <label>
+            <Calendar class="icon-sm" />
+            Sales Date:
+          </label>
+          <input
+            type="date"
+            v-model="saleDate"
+            :max="maxDate"
+            class="date-input"
+          />
+        </div>
+
         <div class="payment-methods">
           <button
             class="pay-btn"
@@ -170,6 +183,7 @@ import {
   Smartphone,
   X,
   ArrowUpRight,
+  Calendar,
 } from "lucide-vue-next";
 import { formatCurrency } from "../utils/currency";
 
@@ -191,6 +205,17 @@ const paymentMethod = ref(null);
 const processing = ref(false);
 const showCartMobile = ref(false);
 const searchInputRef = ref(null);
+
+const getLocalDate = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const maxDate = getLocalDate();
+const saleDate = ref(getLocalDate());
 
 const products = computed(() => productStore.products);
 const loading = computed(() => productStore.loading);
@@ -279,11 +304,12 @@ async function processCheckout() {
   processing.value = true;
   try {
     // 1. Process Sale
-    await cartStore.checkout(paymentMethod.value);
+    await cartStore.checkout(paymentMethod.value, saleDate.value);
 
     dialogStore.success("Sale completed successfully!");
     productStore.fetchProducts();
     paymentMethod.value = null;
+    saleDate.value = getLocalDate(); // Reset date
     showCartMobile.value = false;
   } catch (err) {
     dialogStore.error("Checkout failed: " + err.message);
@@ -572,6 +598,34 @@ onMounted(() => {
   font-weight: bold;
   margin-bottom: 1.5rem;
   color: var(--text-primary);
+}
+
+.date-selector {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.date-selector label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.date-input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .payment-methods {
