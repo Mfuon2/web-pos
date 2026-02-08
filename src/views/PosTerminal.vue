@@ -3,12 +3,12 @@
     <!-- Products Section -->
     <div class="products-section" :class="{ 'mobile-hidden': showCartMobile }">
       <div class="controls">
-        <input 
+        <input
           type="text"
           inputmode="search"
           ref="searchInputRef"
-          v-model="searchQuery" 
-          placeholder="🔍 Search products or scan barcode..." 
+          v-model="searchQuery"
+          placeholder="🔍 Search products or scan barcode..."
           class="search-bar"
           @keyup.enter="handleBarcodeSearch"
           autocomplete="off"
@@ -18,19 +18,21 @@
         />
         <select v-model="selectedCategory" class="category-filter">
           <option value="">All Categories</option>
-          <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          <option v-for="cat in categories" :key="cat" :value="cat">
+            {{ cat }}
+          </option>
         </select>
       </div>
 
       <div v-if="loading" class="loading">Loading products...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
-      
+
       <div v-else class="products-grid">
-        <ProductCard 
-          v-for="product in filteredProducts" 
-          :key="product.id" 
-          :product="product" 
-          @add-to-cart="addToCart" 
+        <ProductCard
+          v-for="product in filteredProducts"
+          :key="product.id"
+          :product="product"
+          @add-to-cart="addToCart"
         />
       </div>
     </div>
@@ -42,16 +44,22 @@
           <ShoppingCart class="header-icon" />
           Current Sale
         </h2>
-        <button class="close-cart-btn mobile-only" @click="showCartMobile = false">
+        <button
+          class="close-cart-btn mobile-only"
+          @click="showCartMobile = false"
+        >
           <X class="icon-sm" />
         </button>
       </div>
-      
+
       <div class="cart-items">
-        <div v-if="cart.length === 0" class="empty-cart">
-          Cart is empty
-        </div>
-        <div v-else v-for="item in cart" :key="item.product_id" class="cart-item">
+        <div v-if="cart.length === 0" class="empty-cart">Cart is empty</div>
+        <div
+          v-else
+          v-for="item in cart"
+          :key="item.product_id"
+          class="cart-item"
+        >
           <div class="item-info">
             <h4>{{ item.name }}</h4>
             <p>{{ formatCurrency(item.price) }} x {{ item.quantity }}</p>
@@ -72,9 +80,22 @@
           <span>Total:</span>
           <span>{{ formatCurrency(cartTotal) }}</span>
         </div>
-        
+
+        <div class="date-selector">
+          <label>
+            <Calendar class="icon-sm" />
+            Sales Date:
+          </label>
+          <input
+            type="date"
+            v-model="saleDate"
+            :max="maxDate"
+            class="date-input"
+          />
+        </div>
+
         <div class="payment-methods">
-          <button 
+          <button
             class="pay-btn"
             :class="{ active: paymentMethod === 'cash' }"
             @click="paymentMethod = 'cash'"
@@ -82,7 +103,7 @@
             <Banknote class="icon-sm" />
             Cash
           </button>
-          <button 
+          <button
             class="pay-btn"
             :class="{ active: paymentMethod === 'mpesa' }"
             @click="paymentMethod = 'mpesa'"
@@ -92,17 +113,23 @@
           </button>
         </div>
 
-        <button 
-          class="checkout-btn" 
+        <button
+          class="checkout-btn"
           @click="handleCheckout"
           :disabled="cart.length === 0 || processing || !paymentMethod"
         >
-          {{ processing ? 'Processing...' : (!paymentMethod ? 'Select Payment Method' : 'Complete Sale') }}
+          {{
+            processing
+              ? "Processing..."
+              : !paymentMethod
+                ? "Select Payment Method"
+                : "Complete Sale"
+          }}
         </button>
-        <button 
-          class="loan-btn" 
-          @click="initiateLoan" 
-          :disabled="processing || cart.length === 0" 
+        <button
+          class="loan-btn"
+          @click="initiateLoan"
+          :disabled="processing || cart.length === 0"
           title="Loan out items"
         >
           <ArrowUpRight class="icon-sm" />
@@ -114,8 +141,12 @@
     <!-- Mobile Bottom Bar (Only visible on mobile when cart is hidden) -->
     <div class="mobile-bottom-bar mobile-only" v-if="!showCartMobile">
       <div class="cart-summary" @click="showCartMobile = true">
-        <span class="cart-count-badge" v-if="cartItemCount > 0">{{ cartItemCount }}</span>
-        <span class="cart-total-preview">Total: {{ formatCurrency(cartTotal) }}</span>
+        <span class="cart-count-badge" v-if="cartItemCount > 0">{{
+          cartItemCount
+        }}</span>
+        <span class="cart-total-preview"
+          >Total: {{ formatCurrency(cartTotal) }}</span
+        >
         <button class="view-cart-btn">
           <ShoppingCart class="icon-sm" />
           View Cart
@@ -123,11 +154,9 @@
       </div>
     </div>
 
-
     <BorrowedItemModal
       v-if="showBorrowedModal"
-      :product-name="currentDeficitItem?.product.name"
-      :deficit="currentDeficitItem?.deficit"
+      :items="pendingDeficits"
       @confirm="handleBorrowingConfirm"
       @close="handleBorrowingClose"
     />
@@ -143,214 +172,213 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useProductStore } from '../stores/productStore'
-import { useCartStore } from '../stores/cartStore'
-import ProductCard from '../components/ProductCard.vue'
-import { ShoppingCart, Trash2, Banknote, Smartphone, X, ArrowUpRight } from 'lucide-vue-next'
-import { formatCurrency } from '../utils/currency'
+import { ref, computed, onMounted } from "vue";
+import { useProductStore } from "../stores/productStore";
+import { useCartStore } from "../stores/cartStore";
+import ProductCard from "../components/ProductCard.vue";
+import {
+  ShoppingCart,
+  Trash2,
+  Banknote,
+  Smartphone,
+  X,
+  ArrowUpRight,
+  Calendar,
+} from "lucide-vue-next";
+import { formatCurrency } from "../utils/currency";
 
-import { useDialogStore } from '../stores/dialogStore'
-import { useBorrowedStore } from '../stores/borrowedStore'
-import { useLoanStore } from '../stores/loanStore'
-import BorrowedItemModal from '../components/BorrowedItemModal.vue'
-import LoanModal from '../components/LoanModal.vue'
+import { useDialogStore } from "../stores/dialogStore";
+import { useBorrowedStore } from "../stores/borrowedStore";
+import { useLoanStore } from "../stores/loanStore";
+import BorrowedItemModal from "../components/BorrowedItemModal.vue";
+import LoanModal from "../components/LoanModal.vue";
 
-const productStore = useProductStore()
-const cartStore = useCartStore()
-const dialogStore = useDialogStore()
-const borrowedStore = useBorrowedStore()
-const loanStore = useLoanStore()
+const productStore = useProductStore();
+const cartStore = useCartStore();
+const dialogStore = useDialogStore();
+const borrowedStore = useBorrowedStore();
+const loanStore = useLoanStore();
 
-const searchQuery = ref('')
-const selectedCategory = ref('')
-const paymentMethod = ref(null)
-const processing = ref(false)
-const showCartMobile = ref(false)
-const searchInputRef = ref(null)
+const searchQuery = ref("");
+const selectedCategory = ref("");
+const paymentMethod = ref(null);
+const processing = ref(false);
+const showCartMobile = ref(false);
+const searchInputRef = ref(null);
 
-const products = computed(() => productStore.products)
-const loading = computed(() => productStore.loading)
-const error = computed(() => productStore.error)
-const cart = computed(() => cartStore.items)
-const cartTotal = computed(() => cartStore.total)
-const cartItemCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0))
+const getLocalDate = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const maxDate = getLocalDate();
+const saleDate = ref(getLocalDate());
+
+const products = computed(() => productStore.products);
+const loading = computed(() => productStore.loading);
+const error = computed(() => productStore.error);
+const cart = computed(() => cartStore.items);
+const cartTotal = computed(() => cartStore.total);
+const cartItemCount = computed(() =>
+  cart.value.reduce((sum, item) => sum + item.quantity, 0),
+);
 
 const categories = computed(() => {
-  const cats = new Set(products.value.map(p => p.category).filter(Boolean))
-  return Array.from(cats)
-})
+  const cats = new Set(products.value.map((p) => p.category).filter(Boolean));
+  return Array.from(cats);
+});
 
 const filteredProducts = computed(() => {
-  return products.value.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                         (product.barcode && product.barcode.includes(searchQuery.value))
-    const matchesCategory = !selectedCategory.value || product.category === selectedCategory.value
-    const isNotDeleted = !product.deleted_at
-    return matchesSearch && matchesCategory && isNotDeleted
-  })
-})
+  return products.value.filter((product) => {
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (product.barcode && product.barcode.includes(searchQuery.value));
+    const matchesCategory =
+      !selectedCategory.value || product.category === selectedCategory.value;
+    const isNotDeleted = !product.deleted_at;
+    return matchesSearch && matchesCategory && isNotDeleted;
+  });
+});
 
 function addToCart(product) {
-  cartStore.addItem(product)
+  cartStore.addItem(product);
   // Optional: Show a toast notification here
 }
 
 function updateQuantity(productId, change) {
-  const item = cart.value.find(i => i.product_id === productId)
+  const item = cart.value.find((i) => i.product_id === productId);
   if (item) {
-    const newQuantity = item.quantity + change
-    cartStore.updateQuantity(productId, newQuantity)
+    const newQuantity = item.quantity + change;
+    cartStore.updateQuantity(productId, newQuantity);
   }
 }
 
 function removeFromCart(productId) {
-  cartStore.removeItem(productId)
+  cartStore.removeItem(productId);
 }
 
 function handleBarcodeSearch() {
-  const product = products.value.find(p => p.barcode === searchQuery.value)
+  const product = products.value.find((p) => p.barcode === searchQuery.value);
   if (product) {
-    addToCart(product)
-    searchQuery.value = ''
+    addToCart(product);
+    searchQuery.value = "";
   }
 }
 
 async function handleCheckout() {
-  if (cart.value.length === 0) return
-  
+  if (cart.value.length === 0) return;
+
   // Check for negative stock
-  const deficits = []
+  const deficits = [];
   for (const item of cart.value) {
-    const product = products.value.find(p => p.id === item.product_id)
-    if (product && (product.stock - item.quantity) < 0) {
+    const product = products.value.find((p) => p.id === item.product_id);
+    if (product && product.stock - item.quantity < 0) {
       deficits.push({
         product: product,
-        deficit: item.quantity - product.stock
-      })
+        deficit: item.quantity - Math.max(0, product.stock),
+      });
     }
   }
 
   if (deficits.length > 0) {
     // Start borrowing workflow
-    pendingDeficits.value = deficits
-    currentDeficitIndex.value = 0
-    showBorrowedModal.value = true
-    return
+    pendingDeficits.value = deficits;
+    showBorrowedModal.value = true;
+    return;
   }
-  
+
   // Confirm before completing the sale
   const confirmed = await dialogStore.confirm(
-    `Complete sale of ${formatCurrency(cartTotal.value)} via ${paymentMethod.value}?`
-  )
-  
-  if (!confirmed) return
-  
-  await processCheckout()
+    `Complete sale of ${formatCurrency(cartTotal.value)} via ${paymentMethod.value}?`,
+  );
+
+  if (!confirmed) return;
+
+  await processCheckout();
 }
 
 async function processCheckout() {
-  processing.value = true
+  processing.value = true;
   try {
     // 1. Process Sale
-    await cartStore.checkout(paymentMethod.value)
-    
-    // 2. Record Borrowed Items if any
-    if (collectedBorrowings.value.length > 0) {
-      for (const borrowing of collectedBorrowings.value) {
-        await borrowedStore.addBorrowedItem(borrowing)
-      }
-    }
+    await cartStore.checkout(paymentMethod.value, saleDate.value);
 
-    dialogStore.success('Sale completed successfully!')
-    productStore.fetchProducts()
-    paymentMethod.value = null
-    showCartMobile.value = false
-    collectedBorrowings.value = [] // Reset
+    dialogStore.success("Sale completed successfully!");
+    productStore.fetchProducts();
+    paymentMethod.value = null;
+    saleDate.value = getLocalDate(); // Reset date
+    showCartMobile.value = false;
   } catch (err) {
-    dialogStore.error('Checkout failed: ' + err.message)
+    dialogStore.error("Checkout failed: " + err.message);
   } finally {
-    processing.value = false
+    processing.value = false;
   }
 }
 
 // Borrowing Workflow State
-const showBorrowedModal = ref(false)
-const pendingDeficits = ref([])
-const currentDeficitIndex = ref(0)
-const collectedBorrowings = ref([])
+const showBorrowedModal = ref(false);
+const pendingDeficits = ref([]);
 
-const currentDeficitItem = computed(() => {
-  if (pendingDeficits.value.length === 0) return null
-  return pendingDeficits.value[currentDeficitIndex.value]
-})
-
-function handleBorrowingConfirm(details) {
-  const currentItem = currentDeficitItem.value
-  
-  collectedBorrowings.value.push({
-    product_id: currentItem.product.id,
-    quantity: currentItem.deficit,
-    borrowed_from: details.borrowed_from,
-    reason: details.reason
-  })
-
-  // Move to next deficit or finish
-  if (currentDeficitIndex.value < pendingDeficits.value.length - 1) {
-    currentDeficitIndex.value++
-  } else {
-    showBorrowedModal.value = false
-    // All deficits resolved, proceed to checkout
-    processCheckout()
+async function handleBorrowingConfirm(borrowings) {
+  try {
+    for (const borrowing of borrowings) {
+      await borrowedStore.addBorrowedItem(borrowing);
+    }
+    showBorrowedModal.value = false;
+    await processCheckout();
+  } catch (err) {
+    dialogStore.error("Failed to record borrowings: " + err.message);
   }
 }
 
 function handleBorrowingClose() {
-  showBorrowedModal.value = false
-  collectedBorrowings.value = []
-  dialogStore.info('Sale cancelled. Please adjust quantities or stock.')
+  showBorrowedModal.value = false;
+  dialogStore.alert("Sale cancelled. Please adjust quantities or stock.");
 }
 
 // Loan Workflow State
-const showLoanModal = ref(false)
+const showLoanModal = ref(false);
 
 function initiateLoan() {
-  if (cart.value.length === 0) return
-  showLoanModal.value = true
+  if (cart.value.length === 0) return;
+  showLoanModal.value = true;
 }
 
 async function handleLoanConfirm(details) {
-  processing.value = true
+  processing.value = true;
   try {
     const loanData = {
       ...details,
-      items: cart.value.map(item => ({
+      items: cart.value.map((item) => ({
         product_id: item.product_id,
-        quantity: item.quantity
-      }))
-    }
+        quantity: item.quantity,
+      })),
+    };
 
-    await loanStore.createLoan(loanData)
-    
-    dialogStore.success('Loan recorded successfully!')
-    cartStore.clearCart()
-    productStore.fetchProducts()
-    showLoanModal.value = false
-    showCartMobile.value = false
+    await loanStore.createLoan(loanData);
+
+    dialogStore.success("Loan recorded successfully!");
+    cartStore.clearCart();
+    productStore.fetchProducts();
+    showLoanModal.value = false;
+    showCartMobile.value = false;
   } catch (err) {
-    dialogStore.error('Loan failed: ' + err.message)
+    dialogStore.error("Loan failed: " + err.message);
   } finally {
-    processing.value = false
+    processing.value = false;
   }
 }
 
 onMounted(() => {
-  productStore.fetchProducts()
+  productStore.fetchProducts();
   // Auto-focus search input for faster barcode scanning
   if (searchInputRef.value) {
-    searchInputRef.value.focus()
+    searchInputRef.value.focus();
   }
-})
+});
 </script>
 
 <style scoped>
@@ -464,7 +492,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--border-color);
-  box-shadow: -4px 0 12px rgba(0,0,0,0.05);
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.05);
 }
 
 .cart-header {
@@ -572,6 +600,34 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
+.date-selector {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.date-selector label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.date-input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
 .payment-methods {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -635,7 +691,7 @@ onMounted(() => {
   right: 0;
   background: var(--bg-white);
   padding: 1rem;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   z-index: 100;
 }
 

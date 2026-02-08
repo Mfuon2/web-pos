@@ -20,10 +20,17 @@
     </div>
 
     <div v-else class="sales-timeline">
-      <div v-for="dailySales in salesByDate" :key="dailySales.date" class="day-group">
+      <div
+        v-for="dailySales in salesByDate"
+        :key="dailySales.date"
+        class="day-group"
+      >
         <div class="day-header" @click="toggleDay(dailySales.date)">
           <div class="day-info">
-            <ChevronRight class="toggle-icon" :class="{ rotated: expandedDays.includes(dailySales.date) }" />
+            <ChevronRight
+              class="toggle-icon"
+              :class="{ rotated: expandedDays.includes(dailySales.date) }"
+            />
             <h2>{{ formatDate(dailySales.date) }}</h2>
             <span class="sales-count-badge">{{ dailySales.sales.length }}</span>
           </div>
@@ -34,31 +41,54 @@
 
         <transition name="slide">
           <div v-if="expandedDays.includes(dailySales.date)" class="sales-list">
-            <div 
-              v-for="sale in dailySales.sales" 
-              :key="sale.id" 
+            <div
+              v-for="(sale, index) in dailySales.sales"
+              :key="sale.id"
               class="sale-card"
               :class="{ expanded: expandedSale === sale.id }"
               @click.stop="toggleSale(sale.id)"
             >
               <div class="sale-summary">
                 <div class="sale-main-info">
-                  <span class="sale-id">#{{ sale.id }}</span>
-                  <span class="sale-time">{{ formatTime(sale.createdAt) }}</span>
+                  <span class="sale-id"
+                    >#{{ dailySales.sales.length - index }}</span
+                  >
+                  <span class="sale-time">
+                    {{ formatTime(sale.createdAt) }}
+                    <span class="item-count">
+                      ({{ sale.items ? sale.items.length : 0 }} items)
+                    </span>
+                  </span>
                 </div>
-                
+
                 <div class="sale-meta">
                   <div class="payment-badge">
-                    <component :is="getPaymentIcon(sale.paymentMethod || sale.payment_method)" class="icon-xs" />
+                    <component
+                      :is="
+                        getPaymentIcon(
+                          sale.paymentMethod || sale.payment_method,
+                        )
+                      "
+                      class="icon-xs"
+                    />
                     {{ sale.paymentMethod || sale.payment_method }}
                   </div>
-                  <span class="sale-amount">{{ formatCurrency(sale.total) }}</span>
-                  <ChevronDown class="expand-icon" :class="{ rotated: expandedSale === sale.id }" />
+                  <span class="sale-amount">{{
+                    formatCurrency(sale.total)
+                  }}</span>
+                  <ChevronDown
+                    class="expand-icon"
+                    :class="{ rotated: expandedSale === sale.id }"
+                  />
                 </div>
               </div>
 
               <transition name="slide">
-                <div v-if="expandedSale === sale.id" class="sale-details-panel" @click.stop>
+                <div
+                  v-if="expandedSale === sale.id"
+                  class="sale-details-panel"
+                  @click.stop
+                >
                   <div class="items-table-header">
                     <span>Item</span>
                     <span class="text-right">Qty</span>
@@ -66,13 +96,31 @@
                     <span class="text-right">Total</span>
                   </div>
                   <div class="items-list">
-                    <div v-for="item in sale.items" :key="item.id || item.product_id" class="item-row">
-                      <div class="item-name">{{ item.productName || item.product_name || item.name || 'Unknown Item' }}</div>
+                    <div
+                      v-for="item in sale.items"
+                      :key="item.id || item.product_id"
+                      class="item-row"
+                    >
+                      <div class="item-name">
+                        {{
+                          item.productName ||
+                          item.product_name ||
+                          item.name ||
+                          "Unknown Item"
+                        }}
+                      </div>
                       <div class="item-qty text-right">{{ item.quantity }}</div>
-                      <div class="item-price text-right">{{ formatCurrency(item.price) }}</div>
-                      <div class="item-subtotal text-right">{{ formatCurrency(item.price * item.quantity) }}</div>
+                      <div class="item-price text-right">
+                        {{ formatCurrency(item.price) }}
+                      </div>
+                      <div class="item-subtotal text-right">
+                        {{ formatCurrency(item.price * item.quantity) }}
+                      </div>
                     </div>
-                    <div v-if="!sale.items || sale.items.length === 0" class="no-items">
+                    <div
+                      v-if="!sale.items || sale.items.length === 0"
+                      class="no-items"
+                    >
                       No items recorded for this sale.
                     </div>
                   </div>
@@ -87,130 +135,155 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { Receipt, ChevronDown, ChevronRight, Banknote, Smartphone } from 'lucide-vue-next'
-import { formatCurrency } from '../utils/currency'
-import { apiGet } from '../utils/api'
+import { ref, computed, onMounted } from "vue";
+import {
+  Receipt,
+  ChevronDown,
+  ChevronRight,
+  Banknote,
+  Smartphone,
+} from "lucide-vue-next";
+import { formatCurrency } from "../utils/currency";
+import { apiGet } from "../utils/api";
 
-const sales = ref([])
-const loading = ref(false)
-const error = ref(null)
-const expandedSale = ref(null)
-const expandedDays = ref([])
+const sales = ref([]);
+const loading = ref(false);
+const error = ref(null);
+const expandedSale = ref(null);
+const expandedDays = ref([]);
 
 // Group sales by date
 const salesByDate = computed(() => {
-  const grouped = {}
-  
-  sales.value.forEach(sale => {
-    let dateStr = sale.createdAt || sale.created_at
-    if (dateStr && typeof dateStr === 'string') {
-      dateStr = dateStr.replace(' ', 'T')
-    }
-    const date = new Date(dateStr).toDateString()
-    if (!grouped[date]) {
-      grouped[date] = {
-        date,
-        sales: [],
-        total: 0
+  const grouped = {};
+
+  sales.value.forEach((sale) => {
+    let dateStr;
+    // Prioritize saleDate, fallback to createdAt
+    if (sale.saleDate || sale.sale_date) {
+      const rawDate = sale.saleDate || sale.sale_date;
+      // Ensure YYYY-MM-DD is treated as local time
+      dateStr = rawDate.includes("T") ? rawDate : `${rawDate}T00:00:00`;
+    } else {
+      dateStr = sale.createdAt || sale.created_at;
+      if (dateStr && typeof dateStr === "string") {
+        dateStr = dateStr.replace(" ", "T");
       }
     }
-    grouped[date].sales.push(sale)
-    grouped[date].total += sale.total
-  })
 
-  return Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date))
-})
+    const date = new Date(dateStr).toDateString();
+    if (!grouped[date]) {
+      grouped[date] = {
+        date: date,
+        sales: [],
+        total: 0,
+      };
+    }
+    grouped[date].sales.push(sale);
+    grouped[date].total += sale.total;
+  });
+
+  // Sort groups by date descending
+  const sortedGroups = Object.values(grouped).sort(
+    (a, b) => new Date(b.date) - new Date(a.date),
+  );
+
+  // Sort sales within each group by ID descending (newest first)
+  sortedGroups.forEach((group) => {
+    group.sales.sort((a, b) => b.id - a.id);
+  });
+
+  return sortedGroups;
+});
 
 function toggleDay(date) {
   if (expandedDays.value.includes(date)) {
-    expandedDays.value = expandedDays.value.filter(d => d !== date)
+    expandedDays.value = expandedDays.value.filter((d) => d !== date);
   } else {
-    expandedDays.value.push(date)
+    expandedDays.value.push(date);
   }
 }
 
 function toggleSale(id) {
-  expandedSale.value = expandedSale.value === id ? null : id
+  expandedSale.value = expandedSale.value === id ? null : id;
 }
 
 function isToday(dateString) {
-  if (!dateString) return false
-  if (typeof dateString === 'string') {
-    dateString = dateString.replace(' ', 'T')
+  if (!dateString) return false;
+  if (typeof dateString === "string") {
+    dateString = dateString.replace(" ", "T");
   }
-  const date = new Date(dateString)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
 
-  return date.toDateString() === today.toDateString()
+  return date.toDateString() === today.toDateString();
 }
 
 function formatDate(dateString) {
-  const date = new Date(dateString)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
 
   if (date.toDateString() === today.toDateString()) {
-    return 'Today'
+    return "Today";
   } else if (date.toDateString() === yesterday.toDateString()) {
-    return 'Yesterday'
+    return "Yesterday";
   } else {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    })
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
   }
 }
 
 function formatTime(dateString) {
-  if (!dateString) return ''
-  if (typeof dateString === 'string') {
-    dateString = dateString.replace(' ', 'T')
+  if (!dateString) return "";
+  if (typeof dateString === "string") {
+    dateString = dateString.replace(" ", "T");
   }
-  return new Date(dateString).toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
-    minute: '2-digit'
-  })
+  return new Date(dateString).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function getPaymentIcon(method) {
-  return method === 'cash' ? Banknote : Smartphone
+  return method === "cash" ? Banknote : Smartphone;
 }
 
 async function fetchSales() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    const response = await apiGet('/api/sales')
-    if (!response.ok) throw new Error('Failed to fetch sales')
-    sales.value = await response.json()
-    
+    const response = await apiGet("/api/sales");
+    if (!response.ok) throw new Error("Failed to fetch sales");
+    sales.value = await response.json();
+
     // Auto-expand today
-    const today = new Date().toDateString()
-    if (salesByDate.value.some(g => g.date === today)) {
-      expandedDays.value.push(today)
+    const today = new Date().toDateString();
+    if (salesByDate.value.some((g) => g.date === today)) {
+      expandedDays.value.push(today);
     }
   } catch (err) {
-    error.value = err.message
-    console.error('Error fetching sales:', err)
+    error.value = err.message;
+    console.error("Error fetching sales:", err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 onMounted(() => {
-  fetchSales()
-})
+  fetchSales();
+});
 </script>
 
 <style scoped>
 .sales-container {
   padding: var(--spacing-xl);
-  max-width: 1400px; 
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -253,7 +326,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error {
@@ -391,6 +466,15 @@ onMounted(() => {
   font-size: var(--font-size-sm);
   color: var(--text-primary);
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.item-count {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: normal;
 }
 
 .sale-meta {
@@ -478,7 +562,9 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.item-qty, .item-price, .item-subtotal {
+.item-qty,
+.item-price,
+.item-subtotal {
   width: 80px;
   color: var(--text-secondary);
 }
@@ -514,17 +600,16 @@ onMounted(() => {
   .sales-container {
     padding: var(--spacing-lg);
   }
-  
+
   .sale-summary {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .sale-meta {
     width: 100%;
     justify-content: space-between;
   }
 }
-
 </style>

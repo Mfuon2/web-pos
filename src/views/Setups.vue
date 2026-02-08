@@ -7,32 +7,32 @@
 
     <!-- Tab Navigation -->
     <div class="tabs">
-      <button 
-        class="tab" 
+      <button
+        class="tab"
         :class="{ active: activeTab === 'categories' }"
         @click="activeTab = 'categories'"
       >
         <Folder class="icon-sm" />
         Categories
       </button>
-      <button 
-        class="tab" 
+      <button
+        class="tab"
         :class="{ active: activeTab === 'suppliers' }"
         @click="activeTab = 'suppliers'"
       >
         <Truck class="icon-sm" />
         Suppliers
       </button>
-      <button 
-        class="tab" 
+      <button
+        class="tab"
         :class="{ active: activeTab === 'users' }"
         @click="activeTab = 'users'"
       >
         <Users class="icon-sm" />
         Users
       </button>
-      <button 
-        class="tab" 
+      <button
+        class="tab"
         :class="{ active: activeTab === 'settings' }"
         @click="activeTab = 'settings'"
       >
@@ -47,10 +47,19 @@
       <div v-if="activeTab === 'categories'" class="content-section">
         <div class="section-header">
           <h2>Product Categories</h2>
-          <button @click="openCategoryModal()" class="add-btn">
-            <Plus class="icon-sm" />
-            Add Category
-          </button>
+          <div class="header-actions">
+            <button
+              @click="showBulkCategoryModal = true"
+              class="add-btn secondary-btn"
+            >
+              <UploadCloud class="icon-sm" />
+              Bulk Add
+            </button>
+            <button @click="openCategoryModal()" class="add-btn">
+              <Plus class="icon-sm" />
+              Add Category
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -65,24 +74,34 @@
             </thead>
             <tbody>
               <tr v-for="category in categories" :key="category.id">
-                <td><strong>{{ category.name }}</strong></td>
-                <td>{{ category.description || 'N/A' }}</td>
+                <td>
+                  <strong>{{ category.name }}</strong>
+                </td>
+                <td>{{ category.description || "N/A" }}</td>
                 <td>{{ formatDate(category.createdAt) }}</td>
                 <td class="actions">
-                  <button @click="openCategoryModal(category)" class="action-btn edit-btn">
+                  <button
+                    @click="openCategoryModal(category)"
+                    class="action-btn edit-btn"
+                  >
                     <Edit2 class="icon-sm" />
                   </button>
-                  <button @click="handleDeleteCategory(category.id)" class="action-btn delete-btn">
+                  <button
+                    @click="handleDeleteCategory(category.id)"
+                    class="action-btn delete-btn"
+                  >
                     <Trash2 class="icon-sm" />
                   </button>
                 </td>
               </tr>
               <tr v-if="categories.length === 0">
-                <td colspan="4" class="empty-state">No categories found. Add your first category.</td>
+                <td colspan="4" class="empty-state">
+                  No categories found. Add your first category.
+                </td>
               </tr>
             </tbody>
           </table>
-          <PaginationControls 
+          <PaginationControls
             v-if="categoryPagination.total > 0"
             :current-page="categoryPagination.page"
             :total-pages="categoryPagination.totalPages"
@@ -97,10 +116,19 @@
       <div v-if="activeTab === 'suppliers'" class="content-section">
         <div class="section-header">
           <h2>Suppliers & Vendors</h2>
-          <button @click="openSupplierModal()" class="add-btn">
-            <Plus class="icon-sm" />
-            Add Supplier
-          </button>
+          <div class="header-actions">
+            <button
+              @click="showBulkSupplierModal = true"
+              class="add-btn secondary-btn"
+            >
+              <UploadCloud class="icon-sm" />
+              Bulk Add
+            </button>
+            <button @click="openSupplierModal()" class="add-btn">
+              <Plus class="icon-sm" />
+              Add Supplier
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -116,25 +144,35 @@
             </thead>
             <tbody>
               <tr v-for="supplier in suppliers" :key="supplier.id">
-                <td><strong>{{ supplier.name }}</strong></td>
-                <td>{{ supplier.contact_person || 'N/A' }}</td>
-                <td>{{ supplier.phone || 'N/A' }}</td>
-                <td>{{ supplier.email || 'N/A' }}</td>
+                <td>
+                  <strong>{{ supplier.name }}</strong>
+                </td>
+                <td>{{ supplier.contactPerson || "N/A" }}</td>
+                <td>{{ supplier.phone || "N/A" }}</td>
+                <td>{{ supplier.email || "N/A" }}</td>
                 <td class="actions">
-                  <button @click="openSupplierModal(supplier)" class="action-btn edit-btn">
+                  <button
+                    @click="openSupplierModal(supplier)"
+                    class="action-btn edit-btn"
+                  >
                     <Edit2 class="icon-sm" />
                   </button>
-                  <button @click="handleDeleteSupplier(supplier.id)" class="action-btn delete-btn">
+                  <button
+                    @click="handleDeleteSupplier(supplier.id)"
+                    class="action-btn delete-btn"
+                  >
                     <Trash2 class="icon-sm" />
                   </button>
                 </td>
               </tr>
               <tr v-if="suppliers.length === 0">
-                <td colspan="5" class="empty-state">No suppliers found. Add your first supplier.</td>
+                <td colspan="5" class="empty-state">
+                  No suppliers found. Add your first supplier.
+                </td>
               </tr>
             </tbody>
           </table>
-          <PaginationControls 
+          <PaginationControls
             v-if="supplierPagination.total > 0"
             :current-page="supplierPagination.page"
             :total-pages="supplierPagination.totalPages"
@@ -168,22 +206,37 @@
             </thead>
             <tbody>
               <tr v-for="user in users" :key="user.id">
-                <td><strong>{{ user.username }}</strong></td>
                 <td>
-                  <span class="status-badge" :class="isUserOnline(user) ? 'online' : 'offline'">
+                  <strong>{{ user.username }}</strong>
+                </td>
+                <td>
+                  <span
+                    class="status-badge"
+                    :class="isUserOnline(user) ? 'online' : 'offline'"
+                  >
                     <span class="status-dot"></span>
-                    {{ isUserOnline(user) ? 'Online' : 'Offline' }}
+                    {{ isUserOnline(user) ? "Online" : "Offline" }}
                   </span>
                 </td>
                 <td>
-                  <span class="role-badge" :class="user.role">{{ user.role }}</span>
+                  <span class="role-badge" :class="user.role">{{
+                    user.role
+                  }}</span>
                 </td>
                 <td>{{ formatDate(user.createdAt) }}</td>
                 <td class="actions">
-                  <button @click="openUserModal(user)" class="action-btn edit-btn" title="Edit User">
+                  <button
+                    @click="openUserModal(user)"
+                    class="action-btn edit-btn"
+                    title="Edit User"
+                  >
                     <Edit2 class="icon-sm" />
                   </button>
-                  <button @click="handleDeleteUser(user.id)" class="action-btn delete-btn" title="Delete User">
+                  <button
+                    @click="handleDeleteUser(user.id)"
+                    class="action-btn delete-btn"
+                    title="Delete User"
+                  >
                     <Trash2 class="icon-sm" />
                   </button>
                 </td>
@@ -193,7 +246,7 @@
               </tr>
             </tbody>
           </table>
-          <PaginationControls 
+          <PaginationControls
             v-if="userPagination.total > 0"
             :current-page="userPagination.page"
             :total-pages="userPagination.totalPages"
@@ -213,13 +266,13 @@
         <form @submit.prevent="handleSaveSettings" class="settings-form">
           <div class="settings-section">
             <h3><Palette class="icon-sm" /> Branding</h3>
-            
+
             <div class="form-group">
               <label>Business Name *</label>
-              <input 
-                v-model="settingsForm.business_name" 
-                type="text" 
-                required 
+              <input
+                v-model="settingsForm.business_name"
+                type="text"
+                required
                 placeholder="My Business"
               />
             </div>
@@ -228,13 +281,13 @@
               <div class="form-group">
                 <label>Primary Color</label>
                 <div class="color-input-wrapper">
-                  <input 
-                    v-model="settingsForm.primary_color" 
+                  <input
+                    v-model="settingsForm.primary_color"
                     type="color"
                     class="color-picker"
                   />
-                  <input 
-                    v-model="settingsForm.primary_color" 
+                  <input
+                    v-model="settingsForm.primary_color"
                     type="text"
                     class="color-text"
                     placeholder="#667eea"
@@ -245,13 +298,13 @@
               <div class="form-group">
                 <label>Secondary Color</label>
                 <div class="color-input-wrapper">
-                  <input 
-                    v-model="settingsForm.secondary_color" 
+                  <input
+                    v-model="settingsForm.secondary_color"
                     type="color"
                     class="color-picker"
                   />
-                  <input 
-                    v-model="settingsForm.secondary_color" 
+                  <input
+                    v-model="settingsForm.secondary_color"
                     type="text"
                     class="color-text"
                     placeholder="#764ba2"
@@ -263,13 +316,13 @@
 
           <div class="settings-section">
             <h3>Currency & Tax</h3>
-            
+
             <div class="form-row">
               <div class="form-group">
                 <label>Currency Symbol</label>
-                <input 
-                  v-model="settingsForm.currency_symbol" 
-                  type="text" 
+                <input
+                  v-model="settingsForm.currency_symbol"
+                  type="text"
                   placeholder="$"
                   maxlength="3"
                 />
@@ -277,9 +330,9 @@
 
               <div class="form-group">
                 <label>Currency Code</label>
-                <input 
-                  v-model="settingsForm.currency_code" 
-                  type="text" 
+                <input
+                  v-model="settingsForm.currency_code"
+                  type="text"
                   placeholder="USD"
                   maxlength="3"
                 />
@@ -287,9 +340,9 @@
 
               <div class="form-group">
                 <label>Tax Rate (%)</label>
-                <input 
-                  v-model.number="settingsForm.tax_rate" 
-                  type="number" 
+                <input
+                  v-model.number="settingsForm.tax_rate"
+                  type="number"
                   step="0.01"
                   min="0"
                   max="100"
@@ -301,12 +354,18 @@
             <div class="form-group">
               <label>Business Timezone</label>
               <select v-model="settingsForm.timezone">
-                <option value="Africa/Nairobi">Africa/Nairobi (EAT - UTC+3)</option>
+                <option value="Africa/Nairobi">
+                  Africa/Nairobi (EAT - UTC+3)
+                </option>
                 <option value="Africa/Lagos">Africa/Lagos (WAT - UTC+1)</option>
                 <option value="Africa/Cairo">Africa/Cairo (EET - UTC+2)</option>
-                <option value="Africa/Johannesburg">Africa/Johannesburg (SAST - UTC+2)</option>
+                <option value="Africa/Johannesburg">
+                  Africa/Johannesburg (SAST - UTC+2)
+                </option>
                 <option value="Africa/Accra">Africa/Accra (GMT - UTC+0)</option>
-                <option value="Africa/Casablanca">Africa/Casablanca (WET - UTC+0/+1)</option>
+                <option value="Africa/Casablanca">
+                  Africa/Casablanca (WET - UTC+0/+1)
+                </option>
                 <option value="UTC">UTC (Coordinated Universal Time)</option>
               </select>
             </div>
@@ -314,11 +373,11 @@
 
           <div class="settings-section">
             <h3>Contact Information</h3>
-            
+
             <div class="form-group">
               <label>Address</label>
-              <textarea 
-                v-model="settingsForm.address" 
+              <textarea
+                v-model="settingsForm.address"
                 rows="2"
                 placeholder="123 Main St, City, Country"
               ></textarea>
@@ -327,18 +386,18 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Phone</label>
-                <input 
-                  v-model="settingsForm.phone" 
-                  type="tel" 
+                <input
+                  v-model="settingsForm.phone"
+                  type="tel"
                   placeholder="+1234567890"
                 />
               </div>
 
               <div class="form-group">
                 <label>Email</label>
-                <input 
-                  v-model="settingsForm.email" 
-                  type="email" 
+                <input
+                  v-model="settingsForm.email"
+                  type="email"
                   placeholder="contact@business.com"
                 />
               </div>
@@ -346,26 +405,34 @@
 
             <div class="form-group">
               <label>Logo URL (Optional)</label>
-              <input 
-                v-model="settingsForm.logo_url" 
-                type="url" 
+              <input
+                v-model="settingsForm.logo_url"
+                type="url"
                 placeholder="https://example.com/logo.png"
               />
             </div>
           </div>
 
-          <button type="submit" class="submit-btn" :disabled="settingsStore.loading">
-            {{ settingsStore.loading ? 'Saving...' : 'Save Settings' }}
+          <button
+            type="submit"
+            class="submit-btn"
+            :disabled="settingsStore.loading"
+          >
+            {{ settingsStore.loading ? "Saving..." : "Save Settings" }}
           </button>
         </form>
       </div>
     </div>
 
     <!-- Category Modal -->
-    <div v-if="showCategoryModal" class="modal-overlay" @click.self="closeCategoryModal">
+    <div
+      v-if="showCategoryModal"
+      class="modal-overlay"
+      @click.self="closeCategoryModal"
+    >
       <div class="modal-content">
         <div class="modal-header">
-          <h2>{{ editingCategory ? 'Edit Category' : 'Add Category' }}</h2>
+          <h2>{{ editingCategory ? "Edit Category" : "Add Category" }}</h2>
           <button @click="closeCategoryModal" class="close-btn">
             <X class="icon-sm" />
           </button>
@@ -380,17 +447,21 @@
             <textarea v-model="categoryForm.description" rows="3"></textarea>
           </div>
           <button type="submit" class="submit-btn">
-            {{ editingCategory ? 'Update' : 'Create' }} Category
+            {{ editingCategory ? "Update" : "Create" }} Category
           </button>
         </form>
       </div>
     </div>
 
     <!-- Supplier Modal -->
-    <div v-if="showSupplierModal" class="modal-overlay" @click.self="closeSupplierModal">
+    <div
+      v-if="showSupplierModal"
+      class="modal-overlay"
+      @click.self="closeSupplierModal"
+    >
       <div class="modal-content">
         <div class="modal-header">
-          <h2>{{ editingSupplier ? 'Edit Supplier' : 'Add Supplier' }}</h2>
+          <h2>{{ editingSupplier ? "Edit Supplier" : "Add Supplier" }}</h2>
           <button @click="closeSupplierModal" class="close-btn">
             <X class="icon-sm" />
           </button>
@@ -402,7 +473,7 @@
           </div>
           <div class="form-group">
             <label>Contact Person</label>
-            <input v-model="supplierForm.contact_person" type="text" />
+            <input v-model="supplierForm.contactPerson" type="text" />
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -419,17 +490,21 @@
             <textarea v-model="supplierForm.address" rows="2"></textarea>
           </div>
           <button type="submit" class="submit-btn">
-            {{ editingSupplier ? 'Update' : 'Create' }} Supplier
+            {{ editingSupplier ? "Update" : "Create" }} Supplier
           </button>
         </form>
       </div>
     </div>
 
     <!-- User Modal -->
-    <div v-if="showUserModal" class="modal-overlay" @click.self="closeUserModal">
+    <div
+      v-if="showUserModal"
+      class="modal-overlay"
+      @click.self="closeUserModal"
+    >
       <div class="modal-content">
         <div class="modal-header">
-          <h2>{{ editingUser ? 'Edit User' : 'Add User' }}</h2>
+          <h2>{{ editingUser ? "Edit User" : "Add User" }}</h2>
           <button @click="closeUserModal" class="close-btn">
             <X class="icon-sm" />
           </button>
@@ -437,9 +512,14 @@
         <form @submit.prevent="handleSaveUser">
           <div class="form-group">
             <label>Username *</label>
-            <input v-model="userForm.username" type="text" required :disabled="!!editingUser" />
+            <input
+              v-model="userForm.username"
+              type="text"
+              required
+              :disabled="!!editingUser"
+            />
           </div>
-          
+
           <div class="form-group">
             <label>Role *</label>
             <select v-model="userForm.role" required>
@@ -449,16 +529,20 @@
           </div>
 
           <div class="form-group">
-            <label>{{ editingUser ? 'New Password (leave blank to keep current)' : 'Password *' }}</label>
+            <label>{{
+              editingUser
+                ? "New Password (leave blank to keep current)"
+                : "Password *"
+            }}</label>
             <div class="password-toggle-wrapper">
-              <input 
-                v-model="userForm.password" 
-                :type="showUserPassword ? 'text' : 'password'" 
-                :required="!editingUser" 
+              <input
+                v-model="userForm.password"
+                :type="showUserPassword ? 'text' : 'password'"
+                :required="!editingUser"
               />
-              <button 
-                type="button" 
-                class="toggle-password" 
+              <button
+                type="button"
+                class="toggle-password"
                 @click="showUserPassword = !showUserPassword"
                 tabindex="-1"
               >
@@ -469,88 +553,124 @@
           </div>
 
           <button type="submit" class="submit-btn">
-            {{ editingUser ? 'Update' : 'Create' }} User
+            {{ editingUser ? "Update" : "Create" }} User
           </button>
         </form>
       </div>
     </div>
+    <!-- Bulk Category Modal -->
+    <BulkCategoryModal
+      v-if="showBulkCategoryModal"
+      @close="showBulkCategoryModal = false"
+      @success="handleCategoryPageChange(1)"
+    />
+    <!-- Bulk Supplier Modal -->
+    <BulkSupplierModal
+      v-if="showBulkSupplierModal"
+      @close="showBulkSupplierModal = false"
+      @success="handleSupplierPageChange(1)"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useCategoryStore } from '../stores/categoryStore'
-import { useSupplierStore } from '../stores/supplierStore'
-import { useUserStore } from '../stores/userStore'
-import { Settings, Folder, Truck, Users, Plus, Edit2, Trash2, X, Palette, Eye, EyeOff } from 'lucide-vue-next'
-import PaginationControls from '../components/PaginationControls.vue'
+import { ref, computed, onMounted } from "vue";
+import { useCategoryStore } from "../stores/categoryStore";
+import { useSupplierStore } from "../stores/supplierStore";
+import { useUserStore } from "../stores/userStore";
+import {
+  Settings,
+  Folder,
+  Truck,
+  Users,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  Palette,
+  Eye,
+  EyeOff,
+  UploadCloud,
+} from "lucide-vue-next";
+import PaginationControls from "../components/PaginationControls.vue";
+import BulkCategoryModal from "../components/BulkCategoryModal.vue";
+import BulkSupplierModal from "../components/BulkSupplierModal.vue";
 
-import { useDialogStore } from '../stores/dialogStore'
-import { useSettingsStore } from '../stores/settingsStore'
+import { useDialogStore } from "../stores/dialogStore";
+import { useSettingsStore } from "../stores/settingsStore";
 
-const categoryStore = useCategoryStore()
-const supplierStore = useSupplierStore()
-const userStore = useUserStore()
-const dialogStore = useDialogStore()
-const settingsStore = useSettingsStore()
+const categoryStore = useCategoryStore();
+const supplierStore = useSupplierStore();
+const userStore = useUserStore();
+const dialogStore = useDialogStore();
+const settingsStore = useSettingsStore();
 
-const categories = computed(() => categoryStore.categories)
-const suppliers = computed(() => supplierStore.suppliers)
-const users = computed(() => userStore.users)
-const currentSettings = computed(() => settingsStore.settings)
+const categories = computed(() => categoryStore.categories);
+const suppliers = computed(() => supplierStore.suppliers);
+const users = computed(() => userStore.users);
+const currentSettings = computed(() => settingsStore.settings);
 
-const categoryPagination = computed(() => categoryStore.pagination)
-const supplierPagination = computed(() => supplierStore.pagination)
-const userPagination = computed(() => userStore.pagination)
+const categoryPagination = computed(() => categoryStore.pagination);
+const supplierPagination = computed(() => supplierStore.pagination);
+const userPagination = computed(() => userStore.pagination);
 
-const activeTab = ref('categories')
-const showCategoryModal = ref(false)
-const showSupplierModal = ref(false)
-const showUserModal = ref(false)
-const editingCategory = ref(null)
-const editingSupplier = ref(null)
-const editingUser = ref(null)
-const showUserPassword = ref(false)
+const activeTab = ref("categories");
+const showCategoryModal = ref(false);
+const showBulkCategoryModal = ref(false);
+const showSupplierModal = ref(false);
+const showBulkSupplierModal = ref(false);
+const showUserModal = ref(false);
+const editingCategory = ref(null);
+const editingSupplier = ref(null);
+const editingUser = ref(null);
+const showUserPassword = ref(false);
 
 const categoryForm = ref({
-  name: '',
-  description: ''
-})
+  name: "",
+  description: "",
+});
 
 const supplierForm = ref({
-  name: '',
-  contact_person: '',
-  phone: '',
-  email: '',
-  address: ''
-})
+  name: "",
+  contactPerson: "",
+  phone: "",
+  email: "",
+  address: "",
+});
 
 const userForm = ref({
-  username: '',
-  password: '',
-  role: 'cashier'
-})
+  username: "",
+  password: "",
+  role: "cashier",
+});
 
 const settingsForm = ref({
-  business_name: '',
-  primary_color: '#667eea',
-  secondary_color: '#764ba2',
-  currency_symbol: '$',
-  currency_code: 'USD',
+  business_name: "",
+  primary_color: "#667eea",
+  secondary_color: "#764ba2",
+  currency_symbol: "$",
+  currency_code: "USD",
   tax_rate: 0,
-  timezone: 'Africa/Nairobi',
-  logo_url: '',
-  address: '',
-  phone: '',
-  email: ''
-})
+  timezone: "Africa/Nairobi",
+  logo_url: "",
+  address: "",
+  phone: "",
+  email: "",
+});
 
 function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-  if (typeof dateString === 'string') {
-    dateString = dateString.replace(' ', 'T')
+  if (!dateString) return "N/A";
+  if (typeof dateString === "string") {
+    dateString = dateString.replace(" ", "T");
   }
-  return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return (
+    new Date(dateString).toLocaleDateString() +
+    " " +
+    new Date(dateString).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  );
 }
 
 /**
@@ -558,13 +678,13 @@ function formatDate(dateString) {
  * Consider user online if they've been active in the last 5 minutes
  */
 function isUserOnline(user) {
-  if (!user.lastSeenAt) return false
-  
-  const lastSeen = new Date(user.lastSeenAt.replace(' ', 'T'))
-  const now = new Date()
-  const fiveMinutes = 5 * 60 * 1000 // 5 minutes in milliseconds
-  
-  return (now - lastSeen) < fiveMinutes
+  if (!user.lastSeenAt) return false;
+
+  const lastSeen = new Date(user.lastSeenAt.replace(" ", "T"));
+  const now = new Date();
+  const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+  return now - lastSeen < fiveMinutes;
 }
 
 // Settings functions
@@ -572,235 +692,250 @@ async function loadSettings() {
   if (currentSettings.value) {
     // Map camelCase API response to snake_case form fields
     settingsForm.value = {
-      business_name: currentSettings.value.businessName || '',
-      primary_color: currentSettings.value.primaryColor || '#667eea',
-      secondary_color: currentSettings.value.secondaryColor || '#764ba2',
-      currency_symbol: currentSettings.value.currencySymbol || '$',
-      currency_code: currentSettings.value.currencyCode || 'USD',
+      business_name: currentSettings.value.businessName || "",
+      primary_color: currentSettings.value.primaryColor || "#667eea",
+      secondary_color: currentSettings.value.secondaryColor || "#764ba2",
+      currency_symbol: currentSettings.value.currencySymbol || "$",
+      currency_code: currentSettings.value.currencyCode || "USD",
       tax_rate: currentSettings.value.taxRate || 0,
-      timezone: currentSettings.value.timezone || 'Africa/Nairobi',
-      logo_url: currentSettings.value.logoUrl || '',
-      address: currentSettings.value.address || '',
-      phone: currentSettings.value.phone || '',
-      email: currentSettings.value.email || ''
-    }
+      timezone: currentSettings.value.timezone || "Africa/Nairobi",
+      logo_url: currentSettings.value.logoUrl || "",
+      address: currentSettings.value.address || "",
+      phone: currentSettings.value.phone || "",
+      email: currentSettings.value.email || "",
+    };
   }
 }
 
 async function handleSaveSettings() {
   try {
-    await settingsStore.updateSettings(settingsForm.value)
-    dialogStore.success('Settings saved successfully!')
+    await settingsStore.updateSettings(settingsForm.value);
+    dialogStore.success("Settings saved successfully!");
   } catch (err) {
-    dialogStore.error('Failed to save settings: ' + err.message)
+    dialogStore.error("Failed to save settings: " + err.message);
   }
 }
 
 // Category functions
 async function handleCategoryPageChange(page) {
-  await categoryStore.fetchCategories({ page, limit: 20 })
+  await categoryStore.fetchCategories({ page, limit: 20 });
 }
 
 function openCategoryModal(category = null) {
   if (category) {
-    editingCategory.value = category
-    categoryForm.value = { ...category }
+    editingCategory.value = category;
+    categoryForm.value = { ...category };
   } else {
-    editingCategory.value = null
-    categoryForm.value = { name: '', description: '' }
+    editingCategory.value = null;
+    categoryForm.value = { name: "", description: "" };
   }
-  showCategoryModal.value = true
+  showCategoryModal.value = true;
 }
 
 function closeCategoryModal() {
-  showCategoryModal.value = false
-  editingCategory.value = null
-  categoryForm.value = { name: '', description: '' }
+  showCategoryModal.value = false;
+  editingCategory.value = null;
+  categoryForm.value = { name: "", description: "" };
 }
 
 async function handleSaveCategory() {
   try {
     if (editingCategory.value) {
-      await categoryStore.updateCategory(editingCategory.value.id, categoryForm.value)
-      dialogStore.success('Category updated successfully')
+      await categoryStore.updateCategory(
+        editingCategory.value.id,
+        categoryForm.value,
+      );
+      dialogStore.success("Category updated successfully");
     } else {
-      await categoryStore.addCategory(categoryForm.value)
-      dialogStore.success('Category added successfully')
+      await categoryStore.addCategory(categoryForm.value);
+      dialogStore.success("Category added successfully");
     }
-    closeCategoryModal()
+    closeCategoryModal();
   } catch (error) {
-    dialogStore.error('Failed to save category: ' + error.message)
+    dialogStore.error("Failed to save category: " + error.message);
   }
 }
 
 async function handleDeleteCategory(id) {
-  const confirmed = await dialogStore.confirm('Are you sure you want to delete this category?')
+  const confirmed = await dialogStore.confirm(
+    "Are you sure you want to delete this category?",
+  );
   if (confirmed) {
     try {
-      await categoryStore.deleteCategory(id)
-      dialogStore.success('Category deleted successfully')
+      await categoryStore.deleteCategory(id);
+      dialogStore.success("Category deleted successfully");
     } catch (error) {
-      dialogStore.error('Failed to delete category: ' + error.message)
+      dialogStore.error("Failed to delete category: " + error.message);
     }
   }
 }
 
 // Supplier functions
 async function handleSupplierPageChange(page) {
-  await supplierStore.fetchSuppliers({ page, limit: 20 })
+  await supplierStore.fetchSuppliers({ page, limit: 20 });
 }
 
 function openSupplierModal(supplier = null) {
   if (supplier) {
-    editingSupplier.value = supplier
-    supplierForm.value = { ...supplier }
+    editingSupplier.value = supplier;
+    supplierForm.value = { ...supplier };
   } else {
-    editingSupplier.value = null
+    editingSupplier.value = null;
     supplierForm.value = {
-      name: '',
-      contact_person: '',
-      phone: '',
-      email: '',
-      address: ''
-    }
+      name: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      address: "",
+    };
   }
-  showSupplierModal.value = true
+  showSupplierModal.value = true;
 }
 
 function closeSupplierModal() {
-  showSupplierModal.value = false
-  editingSupplier.value = null
+  showSupplierModal.value = false;
+  editingSupplier.value = null;
   supplierForm.value = {
-    name: '',
-    contact_person: '',
-    phone: '',
-    email: '',
-    address: ''
-  }
+    name: "",
+    contactPerson: "",
+    phone: "",
+    email: "",
+    address: "",
+  };
 }
 
 async function handleSaveSupplier() {
   try {
     if (editingSupplier.value) {
-      await supplierStore.updateSupplier(editingSupplier.value.id, supplierForm.value)
-      dialogStore.success('Supplier updated successfully')
+      await supplierStore.updateSupplier(
+        editingSupplier.value.id,
+        supplierForm.value,
+      );
+      dialogStore.success("Supplier updated successfully");
     } else {
-      await supplierStore.addSupplier(supplierForm.value)
-      dialogStore.success('Supplier added successfully')
+      await supplierStore.addSupplier(supplierForm.value);
+      dialogStore.success("Supplier added successfully");
     }
-    closeSupplierModal()
+    closeSupplierModal();
   } catch (error) {
-    dialogStore.error('Failed to save supplier: ' + error.message)
+    dialogStore.error("Failed to save supplier: " + error.message);
   }
 }
 
 async function handleDeleteSupplier(id) {
-  const confirmed = await dialogStore.confirm('Are you sure you want to delete this supplier?')
+  const confirmed = await dialogStore.confirm(
+    "Are you sure you want to delete this supplier?",
+  );
   if (confirmed) {
     try {
-      await supplierStore.deleteSupplier(id)
-      dialogStore.success('Supplier deleted successfully')
+      await supplierStore.deleteSupplier(id);
+      dialogStore.success("Supplier deleted successfully");
     } catch (error) {
-      dialogStore.error('Failed to delete supplier: ' + error.message)
+      dialogStore.error("Failed to delete supplier: " + error.message);
     }
   }
 }
 
 // User functions
 async function handleUserPageChange(page) {
-  await userStore.fetchUsers({ page, limit: 20 })
+  await userStore.fetchUsers({ page, limit: 20 });
 }
 
 function openUserModal(user = null) {
   if (user) {
-    editingUser.value = user
-    userForm.value = { 
+    editingUser.value = user;
+    userForm.value = {
       username: user.username,
       role: user.role,
-      password: '' // Don't show password
-    }
+      password: "", // Don't show password
+    };
   } else {
-    editingUser.value = null
+    editingUser.value = null;
     userForm.value = {
-      username: '',
-      password: '',
-      role: 'cashier'
-    }
+      username: "",
+      password: "",
+      role: "cashier",
+    };
   }
-  showUserModal.value = true
+  showUserModal.value = true;
 }
 
 function closeUserModal() {
-  showUserModal.value = false
-  editingUser.value = null
+  showUserModal.value = false;
+  editingUser.value = null;
   userForm.value = {
-    username: '',
-    password: '',
-    role: 'cashier'
-  }
+    username: "",
+    password: "",
+    role: "cashier",
+  };
 }
 
 async function handleSaveUser() {
   try {
     if (editingUser.value) {
-      const updates = { role: userForm.value.role }
+      const updates = { role: userForm.value.role };
       if (userForm.value.password) {
-        updates.password = userForm.value.password
+        updates.password = userForm.value.password;
       }
-      await userStore.updateUser(editingUser.value.id, updates)
-      dialogStore.success('User updated successfully')
+      await userStore.updateUser(editingUser.value.id, updates);
+      dialogStore.success("User updated successfully");
     } else {
-      await userStore.addUser(userForm.value)
-      dialogStore.success('User added successfully')
+      await userStore.addUser(userForm.value);
+      dialogStore.success("User added successfully");
     }
-    closeUserModal()
+    closeUserModal();
   } catch (error) {
-    dialogStore.error('Failed to save user: ' + error.message)
+    dialogStore.error("Failed to save user: " + error.message);
   }
 }
 
 async function handleDeleteUser(id) {
-  const confirmed = await dialogStore.confirm('Are you sure you want to delete this user?')
+  const confirmed = await dialogStore.confirm(
+    "Are you sure you want to delete this user?",
+  );
   if (confirmed) {
     try {
-      await userStore.deleteUser(id)
-      dialogStore.success('User deleted successfully')
+      await userStore.deleteUser(id);
+      dialogStore.success("User deleted successfully");
     } catch (error) {
-      dialogStore.error('Failed to delete user: ' + error.message)
+      dialogStore.error("Failed to delete user: " + error.message);
     }
   }
 }
 
 onMounted(async () => {
-  await categoryStore.fetchCategories({ page: 1, limit: 20 })
-  await supplierStore.fetchSuppliers({ page: 1, limit: 20 })
-  await userStore.fetchUsers({ page: 1, limit: 20 })
-  
+  await categoryStore.fetchCategories({ page: 1, limit: 20 });
+  await supplierStore.fetchSuppliers({ page: 1, limit: 20 });
+  await userStore.fetchUsers({ page: 1, limit: 20 });
+
   // Load settings if they exist
   if (currentSettings.value) {
-    loadSettings()
+    loadSettings();
   }
-})
+});
 
 // Watch for settings changes and update form
-import { watch } from 'vue'
-watch(() => currentSettings.value, (newSettings) => {
-  if (newSettings) {
-    settingsForm.value = {
-      business_name: newSettings.businessName || '',
-      primary_color: newSettings.primaryColor || '#667eea',
-      secondary_color: newSettings.secondaryColor || '#764ba2',
-      currency_symbol: newSettings.currencySymbol || '$',
-      currency_code: newSettings.currencyCode || 'USD',
-      tax_rate: newSettings.taxRate || 0,
-      timezone: newSettings.timezone || 'Africa/Nairobi',
-      logo_url: newSettings.logoUrl || '',
-      address: newSettings.address || '',
-      phone: newSettings.phone || '',
-      email: newSettings.email || ''
+import { watch } from "vue";
+watch(
+  () => currentSettings.value,
+  (newSettings) => {
+    if (newSettings) {
+      settingsForm.value = {
+        business_name: newSettings.businessName || "",
+        primary_color: newSettings.primaryColor || "#667eea",
+        secondary_color: newSettings.secondaryColor || "#764ba2",
+        currency_symbol: newSettings.currencySymbol || "$",
+        currency_code: newSettings.currencyCode || "USD",
+        tax_rate: newSettings.taxRate || 0,
+        timezone: newSettings.timezone || "Africa/Nairobi",
+        logo_url: newSettings.logoUrl || "",
+        address: newSettings.address || "",
+        phone: newSettings.phone || "",
+        email: newSettings.email || "",
+      };
     }
-  }
-})
+  },
+);
 </script>
 
 <style scoped>
@@ -869,8 +1004,14 @@ watch(() => currentSettings.value, (newSettings) => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .section-header {
@@ -886,7 +1027,7 @@ watch(() => currentSettings.value, (newSettings) => {
 }
 
 .add-btn {
-      padding: 0.3rem 1.0rem;
+  padding: 0.3rem 1rem;
   background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
@@ -904,14 +1045,26 @@ watch(() => currentSettings.value, (newSettings) => {
   box-shadow: var(--shadow-lg);
 }
 
+.header-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
 
+.secondary-btn {
+  background: white !important;
+  color: var(--primary-color) !important;
+  border: 1px solid var(--primary-color) !important;
+}
+
+.secondary-btn:hover {
+  background: var(--bg-hover) !important;
+}
 
 .empty-state {
   text-align: center;
   color: var(--text-secondary);
   padding: 3rem !important;
 }
-
 
 .delete-btn:hover {
   background: var(--danger-bg);
@@ -946,8 +1099,14 @@ watch(() => currentSettings.value, (newSettings) => {
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
@@ -1059,7 +1218,6 @@ watch(() => currentSettings.value, (newSettings) => {
   }
 }
 
-
 .role-badge {
   padding: 0.375rem 0.75rem;
   border-radius: var(--radius-md);
@@ -1117,8 +1275,13 @@ watch(() => currentSettings.value, (newSettings) => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Mobile Responsive Styles */
@@ -1126,102 +1289,103 @@ watch(() => currentSettings.value, (newSettings) => {
   .setups {
     padding: 1rem;
   }
-  
+
   .setups h1 {
     font-size: var(--font-size-xl);
   }
-  
+
   .header-icon {
     width: 24px;
     height: 24px;
   }
-  
+
   .icon-sm {
     width: 16px;
     height: 16px;
   }
-  
+
   .tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     gap: 0.5rem;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .tab {
     padding: 0.75rem 1rem;
     min-width: auto;
     font-size: var(--font-size-sm);
   }
-  
+
   .section-header {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
   }
-  
+
   .section-header h2 {
     font-size: var(--font-size-lg);
   }
-  
+
   .add-btn {
     width: 100%;
     justify-content: center;
     padding: 0.75rem;
     font-size: var(--font-size-sm);
   }
-  
+
   .table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   table {
     min-width: 600px;
     font-size: var(--font-size-sm);
   }
-  
-  th, td {
+
+  th,
+  td {
     padding: 0.75rem 0.5rem;
     font-size: var(--font-size-xs);
   }
-  
+
   .empty-state {
     padding: 2rem 1rem !important;
     font-size: var(--font-size-sm);
   }
-  
+
   .modal-content {
     max-width: 100%;
     width: calc(100% - 2rem);
     padding: 1.5rem;
     margin: 0 1rem;
   }
-  
+
   .modal-header h2 {
     font-size: var(--font-size-lg);
   }
-  
+
   .form-group label {
     font-size: var(--font-size-sm);
   }
-  
+
   .form-group input,
   .form-group textarea,
   .form-group select {
     font-size: var(--font-size-base);
     padding: 0.65rem;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .submit-btn {
     padding: 0.875rem;
     font-size: var(--font-size-base);
   }
-  
+
   .role-badge {
     font-size: var(--font-size-xs);
     padding: 0.25rem 0.5rem;
@@ -1314,4 +1478,3 @@ watch(() => currentSettings.value, (newSettings) => {
   margin-top: 1rem;
 }
 </style>
-

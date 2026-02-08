@@ -7,11 +7,18 @@ CREATE TABLE IF NOT EXISTS products (
     barcode TEXT UNIQUE,
     price REAL NOT NULL,
     cost REAL DEFAULT 0,
-    stock INTEGER DEFAULT 0,
     category TEXT,
+    category_id INTEGER REFERENCES categories(id),
     image TEXT,
     deleted_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Stock Table
+CREATE TABLE IF NOT EXISTS stock (
+    product_id INTEGER PRIMARY KEY REFERENCES products(id),
+    count INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Suppliers Table
@@ -31,6 +38,7 @@ CREATE TABLE IF NOT EXISTS sales (
     items TEXT, -- Kept for backward compatibility or denormalized data
     total REAL NOT NULL,
     payment_method TEXT,
+    sale_date DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,6 +59,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     category TEXT NOT NULL,
     amount REAL NOT NULL,
     description TEXT,
+    incurred_date DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -143,6 +152,8 @@ CREATE TABLE IF NOT EXISTS borrowed_items (
     borrowed_from TEXT NOT NULL,
     reason TEXT,
     status TEXT DEFAULT 'pending', -- pending, returned, etc.
+    returned_quantity INTEGER DEFAULT 0,
+    paid_quantity INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
@@ -164,6 +175,18 @@ CREATE TABLE IF NOT EXISTS loan_items (
     loan_id INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL,
+    returned_quantity INTEGER DEFAULT 0,
     FOREIGN KEY (loan_id) REFERENCES loans(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Loan Item Returns Table (for tracking partial returns and substitutions)
+CREATE TABLE IF NOT EXISTS loan_item_returns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_item_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    replacement_product_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (loan_item_id) REFERENCES loan_items(id),
+    FOREIGN KEY (replacement_product_id) REFERENCES products(id)
 );

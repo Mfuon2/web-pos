@@ -1,167 +1,323 @@
 export async function onRequestGet(context) {
-    const { env } = context;
-    try {
-        // Join loans with items for a complete view
-        // Since D1 doesn't support complex JSON_GROUP_ARRAY easily in all versions, 
-        // we might fetch loans then fetch items, or just fetch flat structure.
-        // Let's fetch loans and then their items or use a join.
-        // For simplicity in UI, we often want "Loan #123 (Shop X) - 3 items".
+  const { env } = context;
+  try {
+    // Join loans with items for a complete view
+    // Since D1 doesn't support complex JSON_GROUP_ARRAY easily in all versions,
+    // we might fetch loans then fetch items, or just fetch flat structure.
+    // Let's fetch loans and then their items or use a join.
+    // For simplicity in UI, we often want "Loan #123 (Shop X) - 3 items".
 
-        // Fetch all loans first
-        const { results: loans } = await env.DB.prepare(`
+    // Fetch all loans first
+    const { results: loans } = await env.DB.prepare(
+      `
       SELECT * FROM loans ORDER BY created_at DESC
-    `).all();
+    `,
+    ).all();
 
-        if (loans.length === 0) {
-            return Response.json([]);
-        }
+    if (loans.length === 0) {
+      return Response.json([]);
+    }
 
-        // This loop might be slightly N+1 but D1 is fast locally. 
-        // Optimized: get all loan items for these loans
-        const loanIds = loans.map(l => l.id).join(',');
-        const { results: items } = await env.DB.prepare(`
+    // This loop might be slightly N+1 but D1 is fast locally.
+    // Optimized: get all loan items for these loans
+    const loanIds = loans.map((l) => l.id).join(",");
+    const { results: items } = await env.DB.prepare(
+      `
       SELECT 
         li.*, p.name as product_name, p.barcode 
       FROM loan_items li
       JOIN products p ON li.product_id = p.id
       WHERE li.loan_id IN (${loanIds})
-    `).all();
+    `,
+    ).all();
 
-        // Attach items to loans
-        const loansWithItems = loans.map(loan => ({
-            ...loan,
-            items: items.filter(i => i.loan_id === loan.id)
-        }));
-
-        return Response.json(loansWithItems);
-    } catch (e) {
-        return Response.json({ error: e.message }, { status: 500 });
+    // Fetch return history/substitutions
+    // We can do this efficiently by getting all returns for these items
+    const itemIds = items.map((i) => i.id).join(",");
+    let returns = [];
+    if (itemIds) {
+      const { results: returnData } = await env.DB.prepare(
+        `
+        SELECT 
+          lur.*, p.name as replacement_name 
+        FROM loan_item_returns lur
+        LEFT JOIN products p ON lur.replacement_product_id = p.id
+        WHERE lur.loan_item_id IN (${itemIds})
+      `,
+      ).all();
+      returns = returnData;
     }
+
+    // Attach items to loans, and returns to items
+    const loansWithItems = loans.map((loan) => ({
+      ...loan,
+      items: items
+        .filter((i) => i.loan_id === loan.id)
+        .map((item) => ({
+          ...item,
+          returns: returns.filter((r) => r.loan_item_id === item.id),
+        })),
+    }));
+
+    return Response.json(loansWithItems);
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
 }
 
 export async function onRequestPost(context) {
-    const { request, env } = context;
-    try {
-        const body = await request.json();
-        const { borrower_name, borrower_contact, collateral, collateral_description, items } = body;
+  const { request, env } = context;
+  try {
+    const body = await request.json();
+    const {
+      borrower_name,
+      borrower_contact,
+      collateral,
+      collateral_description,
+      items,
+    } = body;
 
-        if (!borrower_name || !items || items.length === 0) {
-            return Response.json({ error: 'Missing required fields' }, { status: 400 });
-        }
+    if (!borrower_name || !items || items.length === 0) {
+      return Response.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
+    }
 
+    // There is a quirk in D1 local vs remote with RETURNING.
+    // results is usually an array of result sets or the object with 'results' property.
+    // Let's assume standardized D1 return or last_insert_rowid if needed.
+    // For standard D1 shim: result.meta.last_row_id or similar.
+    // However, RETURNING id gives us the ID in results array.
 
+    // Depending on D1 version logic:
+    // With .run(), results usually contains { success: true, meta: { ... }, results: [] }
+    // but .first() or .all() is better for RETURNING.
+    // Let's use two distinct queries or handle it carefully.
 
-        // There is a quirk in D1 local vs remote with RETURNING. 
-        // results is usually an array of result sets or the object with 'results' property.
-        // Let's assume standardized D1 return or last_insert_rowid if needed.
-        // For standard D1 shim: result.meta.last_row_id or similar.
-        // However, RETURNING id gives us the ID in results array.
+    // Re-run safely:
+    // Implementation note: D1 client API might differ.
+    // Safest cross-env way: INSERT then SELECT last_insert_rowid()
 
-        // Depending on D1 version logic:
-        // With .run(), results usually contains { success: true, meta: { ... }, results: [] }
-        // but .first() or .all() is better for RETURNING.
-        // Let's use two distinct queries or handle it carefully.
+    const db = env.DB;
 
-        // Re-run safely:
-        // Implementation note: D1 client API might differ. 
-        // Safest cross-env way: INSERT then SELECT last_insert_rowid()
+    // Use batch? No, we need ID for next steps.
 
-        const db = env.DB;
-
-        // Use batch? No, we need ID for next steps.
-
-        // 1. Insert Loan
-        const insertLoan = await db.prepare(`
+    // 1. Insert Loan
+    const insertLoan = await db
+      .prepare(
+        `
         INSERT INTO loans (borrower_name, borrower_contact, collateral, collateral_description)
         VALUES (?, ?, ?, ?)
-    `).bind(borrower_name, borrower_contact, collateral, collateral_description).run();
+    `,
+      )
+      .bind(borrower_name, borrower_contact, collateral, collateral_description)
+      .run();
 
-        if (!insertLoan.success) throw new Error('Failed to insert loan');
+    if (!insertLoan.success) throw new Error("Failed to insert loan");
 
-        // 2. Get ID
-        // Note: meta.last_row_id is available in recent D1 versions
-        const loanId = insertLoan.meta.last_row_id;
+    // 2. Get ID
+    // Note: meta.last_row_id is available in recent D1 versions
+    const loanId = insertLoan.meta.last_row_id;
 
-        // 3. Insert Items and Update Stock!
-        // IMPORTANT: Providing a loan reduces physical stock available in store? 
-        // Usually yes. If I loan it out, I can't sell it.
-        // But stock tracking can be tricky. "Loaned" might be a separate state.
-        // For now, let's decrement stock to prevent selling it, but logic might vary.
-        // User request: "load a dialog with all the selected Items and qty".
-        // Assumption: Loans DECREASE available stock.
+    // 3. Insert Items and Update Stock!
+    // IMPORTANT: Providing a loan reduces physical stock available in store?
+    // Usually yes. If I loan it out, I can't sell it.
+    // But stock tracking can be tricky. "Loaned" might be a separate state.
+    // For now, let's decrement stock to prevent selling it, but logic might vary.
+    // User request: "load a dialog with all the selected Items and qty".
+    // Assumption: Loans DECREASE available stock.
 
-        const statements = [];
-        for (const item of items) {
-            statements.push(
-                db.prepare(`
+    const statements = [];
+    for (const item of items) {
+      statements.push(
+        db
+          .prepare(
+            `
            INSERT INTO loan_items (loan_id, product_id, quantity)
            VALUES (?, ?, ?)
-         `).bind(loanId, item.product_id, item.quantity)
-            );
+         `,
+          )
+          .bind(loanId, item.product_id, item.quantity),
+      );
 
-            // Decrement stock
-            statements.push(
-                db.prepare(`
-           UPDATE products SET stock = stock - ? WHERE id = ?
-         `).bind(item.quantity, item.product_id)
-            );
-        }
-
-        await db.batch(statements);
-
-        return Response.json({ success: true, message: 'Loan recorded successfully', id: loanId }, { status: 201 });
-    } catch (e) {
-        return Response.json({ error: e.message }, { status: 500 });
+      // Decrement stock
+      statements.push(
+        db
+          .prepare(
+            `
+           UPDATE stock SET count = count - ?, updated_at = datetime('now') WHERE product_id = ?
+         `,
+          )
+          .bind(item.quantity, item.product_id),
+      );
     }
+
+    await db.batch(statements);
+
+    return Response.json(
+      { success: true, message: "Loan recorded successfully", id: loanId },
+      { status: 201 },
+    );
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
 }
 
 export async function onRequestPut(context) {
-    const { request, env } = context;
-    try {
-        const body = await request.json();
-        const { id, status, borrower_name, items_to_return } = body;
-        // Simplified update: Just status or edit details.
-        // If returning items: we need to increment stock back.
+  const { request, env } = context;
+  try {
+    const body = await request.json();
+    const { id, status, borrower_name, items_to_return } = body;
+    // Simplified update: Just status or edit details.
+    // If returning items: we need to increment stock back.
 
-        if (!id) return Response.json({ error: 'Missing ID' }, { status: 400 });
+    if (!id) return Response.json({ error: "Missing ID" }, { status: 400 });
 
-        if (status) {
-            // If status is becoming 'returned', we should restock items?
-            // This logic can gets complex if partial return.
-            // User requirement: "option of updating the loaned listing".
-            // Let's assume for now just updating textual details or entire status.
+    const { action } = body;
 
-            // If changing status to 'returned', verify if we need to restock.
-            // We'll require a specific 'action' flag if we want to restock.
+    if (action === "return_all") {
+      // Get items first
+      const { results: loanItems } = await env.DB.prepare(
+        `SELECT * FROM loan_items WHERE loan_id = ?`,
+      )
+        .bind(id)
+        .all();
 
-            const { action } = body; // 'return_items'
+      const statements = [];
+      // Update status
+      statements.push(
+        env.DB.prepare(
+          `UPDATE loans SET status = 'returned' WHERE id = ?`,
+        ).bind(id),
+      );
 
-            if (action === 'return_all') {
-                // Get items first
-                const { results: loanItems } = await env.DB.prepare(`SELECT * FROM loan_items WHERE loan_id = ?`).bind(id).all();
-
-                const statements = [];
-                // Update status
-                statements.push(env.DB.prepare(`UPDATE loans SET status = 'returned' WHERE id = ?`).bind(id));
-
-                // Restock
-                for (const item of loanItems) {
-                    statements.push(env.DB.prepare(`UPDATE products SET stock = stock + ? WHERE id = ?`).bind(item.quantity, item.product_id));
-                }
-
-                await env.DB.batch(statements);
-                return Response.json({ success: true, message: 'Loan returned and items restocked' });
-            }
-
-            await env.DB.prepare(`UPDATE loans SET status = ? WHERE id = ?`).bind(status, id).run();
-        } else {
-            // Just update details
-            await env.DB.prepare(`UPDATE loans SET borrower_name = ?, borrower_contact = ?, collateral = ?, collateral_description = ? WHERE id = ?`)
-                .bind(body.borrower_name, body.borrower_contact, body.collateral, body.collateral_description, id).run();
+      // Restock
+      for (const item of loanItems) {
+        const remaining = item.quantity - (item.returned_quantity || 0);
+        if (remaining > 0) {
+          statements.push(
+            env.DB.prepare(
+              `UPDATE stock SET count = count + ?, updated_at = datetime('now') WHERE product_id = ?`,
+            ).bind(remaining, item.product_id),
+          );
+          statements.push(
+            env.DB.prepare(
+              `UPDATE loan_items SET returned_quantity = quantity WHERE id = ?`,
+            ).bind(item.id),
+          );
         }
+      }
 
-        return Response.json({ success: true, message: 'Loan updated' });
-    } catch (e) {
-        return Response.json({ error: e.message }, { status: 500 });
+      await env.DB.batch(statements);
+      return Response.json({
+        success: true,
+        message: "Loan returned and items restocked",
+      });
     }
+
+    if (action === "return_items") {
+      const { items_to_return } = body;
+      if (!items_to_return || !Array.isArray(items_to_return)) {
+        return Response.json(
+          { error: "Missing items_to_return" },
+          { status: 400 },
+        );
+      }
+
+      const statements = [];
+      for (const item of items_to_return) {
+        // 1. Update loan_items returned quantity
+        statements.push(
+          env.DB.prepare(
+            `UPDATE loan_items SET returned_quantity = returned_quantity + ? WHERE loan_id = ? AND product_id = ?`,
+          ).bind(item.quantity, id, item.product_id),
+        );
+
+        // 2. Update stock: either original product or replacement
+        const stockProductId = item.replacement_product_id || item.product_id;
+        statements.push(
+          env.DB.prepare(
+            `UPDATE stock SET count = count + ?, updated_at = datetime('now') WHERE product_id = ?`,
+          ).bind(item.quantity, stockProductId),
+        );
+
+        // 3. Record in loan_item_returns
+        // Need to get loan_item_id first? Or just rely on loan_id + product_id?
+        // Let's look up loan_item_id.
+        // Doing this inside a loop with awaits is fine for small batches, but batch is better.
+        // But we can't easily get loan_item_id inside a batch without a subquery.
+        // Let's use a subquery for the INSERT.
+
+        statements.push(
+          env.DB.prepare(
+            `INSERT INTO loan_item_returns (loan_item_id, quantity, replacement_product_id)
+             SELECT id, ?, ? FROM loan_items WHERE loan_id = ? AND product_id = ?`,
+          ).bind(
+            item.quantity,
+            item.replacement_product_id || null,
+            id,
+            item.product_id,
+          ),
+        );
+      }
+
+      await env.DB.batch(statements);
+
+      // Update overall loan status
+      const { results: allItems } = await env.DB.prepare(
+        `SELECT quantity, returned_quantity FROM loan_items WHERE loan_id = ?`,
+      )
+        .bind(id)
+        .all();
+
+      const totalQty = allItems.reduce((sum, i) => sum + i.quantity, 0);
+      const totalReturned = allItems.reduce(
+        (sum, i) => sum + (i.returned_quantity || 0),
+        0,
+      );
+
+      let newStatus = "active";
+      if (totalReturned >= totalQty) {
+        newStatus = "returned";
+      } else if (totalReturned > 0) {
+        newStatus = "partially_returned";
+      }
+
+      await env.DB.prepare(`UPDATE loans SET status = ? WHERE id = ?`)
+        .bind(newStatus, id)
+        .run();
+
+      return Response.json({
+        success: true,
+        message: "Return recorded",
+        status: newStatus,
+      });
+    }
+
+    // If no specific return action, handle general updates
+    if (status) {
+      await env.DB.prepare(`UPDATE loans SET status = ? WHERE id = ?`)
+        .bind(status, id)
+        .run();
+    }
+
+    if (body.borrower_name !== undefined) {
+      await env.DB.prepare(
+        `UPDATE loans SET borrower_name = ?, borrower_contact = ?, collateral = ?, collateral_description = ? WHERE id = ?`,
+      )
+        .bind(
+          body.borrower_name || "",
+          body.borrower_contact || "",
+          body.collateral || "",
+          body.collateral_description || "",
+          id,
+        )
+        .run();
+    }
+
+    return Response.json({ success: true, message: "Loan updated" });
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
 }
