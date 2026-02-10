@@ -65,7 +65,7 @@ export async function onRequest(context) {
       }
 
       // 2. AUTHENTICATION
-      if (!isPublicRoute(path)) {
+      if (!isPublicRoute(path, request.method)) {
         const token = getTokenFromRequest(request);
 
         if (!token) {
@@ -79,7 +79,7 @@ export async function onRequest(context) {
         }
 
         // 3. RBAC
-        if (!hasPermission(session, path)) {
+        if (!hasPermission(session, path, request.method)) {
           return applyHeaders(createForbiddenResponse());
         }
 

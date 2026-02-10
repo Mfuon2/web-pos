@@ -15,13 +15,23 @@ const ROUTE_PERMISSIONS = {
   // Sales - accessible by cashiers and admins
   "/api/sales": ["admin", "cashier"],
 
+  // Admin-only routes with read access for cashiers
+  "/api/products": {
+    GET: ["admin", "cashier"],
+    POST: ["admin"],
+    PUT: ["admin"],
+    DELETE: ["admin"],
+  },
+  "/api/settings": {
+    GET: ["admin", "cashier"],
+    PUT: ["admin"],
+  },
+
   // Admin-only routes
-  "/api/products": ["admin"],
   "/api/categories": ["admin"],
   "/api/suppliers": ["admin"],
   "/api/expenses": ["admin"],
   "/api/users": ["admin"],
-  "/api/settings": ["admin"],
   "/api/reports": ["admin"],
   "/api/purchase-orders": ["admin"],
 };
@@ -29,49 +39,64 @@ const ROUTE_PERMISSIONS = {
 /**
  * Check if a route is public (no auth required)
  * @param {string} path - Request path
+ * @param {string} method - Request method
  * @returns {boolean}
  */
-export function isPublicRoute(path) {
-  const permissions = getRoutePermissions(path);
+export function isPublicRoute(path, method = "GET") {
+  const permissions = getRoutePermissions(path, method);
   return permissions.includes("*");
 }
 
 /**
  * Get permissions for a route
  * @param {string} path - Request path
+ * @param {string} method - Request method
  * @returns {string[]} Array of allowed roles
  */
-export function getRoutePermissions(path) {
+export function getRoutePermissions(path, method) {
+  let permissions = null;
+
   // Check for exact match first
   if (ROUTE_PERMISSIONS[path]) {
-    return ROUTE_PERMISSIONS[path];
-  }
-
-  // Check for pattern match (remove dynamic segments like IDs)
-  for (const [routePattern, roles] of Object.entries(ROUTE_PERMISSIONS)) {
-    // Match route prefix (e.g., /api/sales matches /api/sales/123)
-    if (path.startsWith(routePattern)) {
-      return roles;
+    permissions = ROUTE_PERMISSIONS[path];
+  } else {
+    // Check for pattern match (remove dynamic segments like IDs)
+    for (const [routePattern, roles] of Object.entries(ROUTE_PERMISSIONS)) {
+      // Match route prefix (e.g., /api/sales matches /api/sales/123)
+      if (path.startsWith(routePattern)) {
+        permissions = roles;
+        break;
+      }
     }
   }
 
   // Default: require admin for any undefined routes
-  return ["admin"];
+  if (!permissions) {
+    return ["admin"];
+  }
+
+  // Handle method-specific permissions
+  if (!Array.isArray(permissions) && typeof permissions === "object") {
+    return permissions[method] || ["admin"];
+  }
+
+  return permissions;
 }
 
 /**
  * Check if a user has permission to access a route
  * @param {Object} session - User session with role
  * @param {string} path - Request path
+ * @param {string} method - HTTP method
  * @returns {boolean}
  */
-export function hasPermission(session, path) {
+export function hasPermission(session, path, method) {
   if (!session || !session.role) {
     return false;
   }
 
-  const allowedRoles = getRoutePermissions(path);
-  return allowedRoles.includes(session.role);
+  const allowedRoles = getRoutePermissions(path, method);
+  return allowedRoles.includes(session.role) || allowedRoles.includes("*");
 }
 
 /**
