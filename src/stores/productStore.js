@@ -30,6 +30,10 @@ export const useProductStore = defineStore('product', () => {
                 queryParams.append('low_stock', 'true')
             }
 
+            if (params.search) {
+                queryParams.append('search', params.search)
+            }
+
             const queryString = queryParams.toString()
             if (queryString) {
                 url += `?${queryString}`

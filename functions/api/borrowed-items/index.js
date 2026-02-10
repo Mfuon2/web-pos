@@ -3,10 +3,12 @@ import { expenses } from "../../../drizzle/schema";
 import { getNairobiTimestamp } from "../../utils/timezone.js";
 
 export async function onRequestGet(context) {
-  const { env } = context;
+  const { env, request } = context;
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search");
+
   try {
-    const { results } = await env.DB.prepare(
-      `
+    let query = `
       SELECT 
         bi.*,
         p.name as product_name,
@@ -14,9 +16,23 @@ export async function onRequestGet(context) {
         p.price as product_price
       FROM borrowed_items bi
       LEFT JOIN products p ON bi.product_id = p.id
-      ORDER BY bi.created_at DESC
-    `,
-    ).all();
+    `;
+
+    const params = [];
+    if (search) {
+      query += `
+        WHERE p.name LIKE ? 
+        OR p.barcode LIKE ? 
+        OR bi.borrowed_from LIKE ? 
+        OR bi.reason LIKE ?
+      `;
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+
+    query += ` ORDER BY bi.created_at DESC`;
+
+    const { results } = await env.DB.prepare(query).bind(...params).all();
 
     return Response.json(results);
   } catch (e) {

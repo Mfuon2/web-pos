@@ -59,19 +59,55 @@
             }}
           </h2>
           <div class="header-actions">
+            <div class="search-input-wrapper desktop-search">
+              <Search class="search-icon" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search products..."
+                class="search-input"
+              />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="clear-search"
+              >
+                ✕
+              </button>
+            </div>
             <button
               @click="exportToExcel"
               class="export-btn"
               :disabled="exporting"
             >
               <Download class="icon-sm" />
-              {{ exporting ? "Exporting..." : "Export" }}
+              <span class="btn-text">Export</span>
             </button>
             <button @click="showBulkUploadModal = true" class="upload-btn">
               <Upload class="icon-sm" />
-              Upload Products
+              <span class="btn-text">Upload</span>
             </button>
-            <button @click="openAddModal" class="add-btn">+ Add Product</button>
+            <button @click="openAddModal" class="add-btn">+ Product</button>
+          </div>
+        </div>
+
+        <!-- Mobile Search Bar (Only shown on small screens) -->
+        <div class="search-bar-container mobile-search">
+          <div class="search-input-wrapper">
+            <Search class="search-icon" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search by name or barcode..."
+              class="search-input"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="clear-search"
+            >
+              ✕
+            </button>
           </div>
         </div>
 
@@ -153,6 +189,44 @@
       <div v-if="activeTab === 'borrowed'" class="content-section">
         <div class="section-header">
           <h2>Borrowed Inventory</h2>
+          <div class="header-actions">
+            <div class="search-input-wrapper desktop-search">
+              <Search class="icon-sm search-icon" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search borrowed items..."
+                class="search-input"
+              />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="clear-search"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Search Bar -->
+        <div class="search-bar-container mobile-search">
+          <div class="search-input-wrapper">
+            <Search class="search-icon" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search by name, barcode or source..."
+              class="search-input"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="clear-search"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -248,6 +322,44 @@
       <div v-if="activeTab === 'loaned'" class="content-section">
         <div class="section-header">
           <h2>Loaned Inventory</h2>
+          <div class="header-actions">
+            <div class="search-input-wrapper desktop-search">
+              <Search class="icon-sm search-icon" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search loaned items..."
+                class="search-input"
+              />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="clear-search"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Search Bar -->
+        <div class="search-bar-container mobile-search">
+          <div class="search-input-wrapper">
+            <Search class="search-icon" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search by name, barcode or borrower..."
+              class="search-input"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="clear-search"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -833,6 +945,7 @@ import {
   Package,
   Download,
   Upload,
+  Search,
   Image as ImageIcon,
   Camera,
   ArrowDownLeft,
@@ -859,29 +972,62 @@ const products = computed(() => productStore.products);
 const categories = computed(() => categoryStore.categories);
 const pagination = computed(() => productStore.pagination);
 const borrowedItems = computed(() => borrowedStore.borrowedItems);
-
+const loans = computed(() => loanStore.loans);
 const activeTab = ref("inventory"); // inventory, low_stock, borrowed, loaned
 const exporting = ref(false);
+const searchQuery = ref("");
+let searchTimeout = null;
+
+// Watch for search query changes with debounce
+watch(searchQuery, (newQuery) => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+    if (activeTab.value === "inventory" || activeTab.value === "low_stock") {
+      await productStore.fetchProducts({
+        page: 1,
+        limit: 20,
+        low_stock: activeTab.value === "low_stock",
+        search: newQuery,
+      });
+    } else if (activeTab.value === "borrowed") {
+      await borrowedStore.fetchBorrowedItems(newQuery);
+    } else if (activeTab.value === "loaned") {
+      await loanStore.fetchLoans(newQuery);
+    }
+  }, 300);
+});
 
 // Watch for tab changes to fetch appropriate data
 watch(activeTab, async (newTab) => {
   if (newTab === "inventory") {
-    await productStore.fetchProducts({ page: 1, limit: 20 });
+    await productStore.fetchProducts({
+      page: 1,
+      limit: 20,
+      search: searchQuery.value,
+    });
   } else if (newTab === "low_stock") {
-    await productStore.fetchProducts({ page: 1, limit: 20, low_stock: true });
+    await productStore.fetchProducts({
+      page: 1,
+      limit: 20,
+      low_stock: true,
+      search: searchQuery.value,
+    });
   } else if (newTab === "borrowed") {
-    await borrowedStore.fetchBorrowedItems();
+    await borrowedStore.fetchBorrowedItems(searchQuery.value);
   } else if (newTab === "loaned") {
-    await loanStore.fetchLoans();
+    await loanStore.fetchLoans(searchQuery.value);
   }
 });
 
 async function handlePageChange(page) {
+  const params = { page, limit: 20 };
   if (activeTab.value === "low_stock") {
-    await productStore.fetchProducts({ page, limit: 20, low_stock: true });
-  } else {
-    await productStore.fetchProducts({ page, limit: 20 });
+    params.low_stock = true;
   }
+  if (searchQuery.value) {
+    params.search = searchQuery.value;
+  }
+  await productStore.fetchProducts(params);
 }
 
 async function exportToExcel() {
@@ -1056,7 +1202,6 @@ async function handleMarkAsPaid() {
 }
 
 // Loan Edit Logic
-const loans = computed(() => loanStore.loans);
 const showEditLoanModal = ref(false);
 const showManageLoanModal = ref(false);
 const editingLoanDetail = ref(null);
@@ -1477,7 +1622,107 @@ function formatDate(dateString) {
 
 .header-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Search Bar Styling */
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.desktop-search {
+  flex: 1;
+  min-width: 250px;
+  max-width: 350px;
+}
+
+.mobile-search {
+  display: none;
+  margin-bottom: var(--spacing-md);
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.45rem 2.2rem 0.45rem 2.2rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--bg-white);
+  transition: all 0.2s ease;
+  height: 36px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.clear-search {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.clear-search:hover {
+  color: var(--danger-bg);
+}
+
+.add-btn,
+.export-btn,
+.upload-btn {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .btn-text {
+    display: none;
+  }
+  .desktop-search {
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .desktop-search {
+    display: none;
+  }
+  .mobile-search {
+    display: flex;
+  }
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-actions {
+    justify-content: flex-end;
+  }
 }
 
 .add-btn {

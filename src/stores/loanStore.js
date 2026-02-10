@@ -7,10 +7,11 @@ export const useLoanStore = defineStore('loan', () => {
     const loading = ref(false)
     const error = ref(null)
 
-    async function fetchLoans() {
+    async function fetchLoans(search = "") {
         loading.value = true
         try {
-            const response = await apiFetch('/api/loans')
+            const url = search ? `/api/loans?search=${encodeURIComponent(search)}` : '/api/loans'
+            const response = await apiFetch(url)
             if (response.ok) {
                 loans.value = await response.json()
             } else {

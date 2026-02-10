@@ -1,25 +1,37 @@
 export async function onRequestGet(context) {
-  const { env } = context;
-  try {
-    // Join loans with items for a complete view
-    // Since D1 doesn't support complex JSON_GROUP_ARRAY easily in all versions,
-    // we might fetch loans then fetch items, or just fetch flat structure.
-    // Let's fetch loans and then their items or use a join.
-    // For simplicity in UI, we often want "Loan #123 (Shop X) - 3 items".
+  const { env, request } = context;
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search");
 
-    // Fetch all loans first
-    const { results: loans } = await env.DB.prepare(
-      `
-      SELECT * FROM loans ORDER BY created_at DESC
-    `,
-    ).all();
+  try {
+    let loanQuery = `SELECT * FROM loans`;
+    const loanParams = [];
+
+    if (search) {
+      loanQuery += ` 
+        WHERE id IN (
+          SELECT l.id FROM loans l
+          WHERE l.borrower_name LIKE ? OR l.collateral LIKE ?
+          UNION
+          SELECT li.loan_id FROM loan_items li
+          JOIN products p ON li.product_id = p.id
+          WHERE p.name LIKE ? OR p.barcode LIKE ?
+        )
+      `;
+      const pattern = `%${search}%`;
+      loanParams.push(pattern, pattern, pattern, pattern);
+    }
+
+    loanQuery += ` ORDER BY created_at DESC`;
+
+    const { results: loans } = await env.DB.prepare(loanQuery)
+      .bind(...loanParams)
+      .all();
 
     if (loans.length === 0) {
       return Response.json([]);
     }
 
-    // This loop might be slightly N+1 but D1 is fast locally.
-    // Optimized: get all loan items for these loans
     const loanIds = loans.map((l) => l.id).join(",");
     const { results: items } = await env.DB.prepare(
       `
@@ -31,8 +43,6 @@ export async function onRequestGet(context) {
     `,
     ).all();
 
-    // Fetch return history/substitutions
-    // We can do this efficiently by getting all returns for these items
     const itemIds = items.map((i) => i.id).join(",");
     let returns = [];
     if (itemIds) {
@@ -48,7 +58,6 @@ export async function onRequestGet(context) {
       returns = returnData;
     }
 
-    // Attach items to loans, and returns to items
     const loansWithItems = loans.map((loan) => ({
       ...loan,
       items: items
