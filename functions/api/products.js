@@ -41,10 +41,7 @@ export async function onRequestGet(context) {
         })
         .from(products)
         .leftJoin(categories, eq(products.categoryId, categories.id))
-        .leftJoin(stock, eq(products.id, stock.productId))
-        .orderBy(desc(products.createdAt))
-        .limit(limit)
-        .offset(offset);
+        .leftJoin(stock, eq(products.id, stock.productId));
 
       // Build Filters
       const filters = [];
@@ -70,8 +67,12 @@ export async function onRequestGet(context) {
         dataQuery = dataQuery.where(whereClause);
       }
 
+      const results = await dataQuery
+        .orderBy(desc(products.createdAt))
+        .limit(limit)
+        .offset(offset);
+
       const [{ total }] = await countQuery;
-      const results = await dataQuery;
 
       return new Response(
         JSON.stringify({
@@ -88,6 +89,7 @@ export async function onRequestGet(context) {
         },
       );
     } else {
+      // Non-paginated (e.g., for export or bulk views)
       let query = db
         .select({
           id: products.id,
