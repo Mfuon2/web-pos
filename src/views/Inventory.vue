@@ -372,6 +372,10 @@
             </select>
           </div>
           <div class="form-group">
+            <label>Borrowed Date</label>
+            <input v-model="borrowedForm.borrowed_at" type="date" />
+          </div>
+          <div class="form-group">
             <label>Borrowed From *</label>
             <input v-model="borrowedForm.borrowed_from" type="text" required />
           </div>
@@ -962,6 +966,7 @@ const borrowedForm = ref({
   borrowed_from: "",
   reason: "",
   status: "pending",
+  borrowed_at: "",
 });
 
 function openEditBorrowedModal(item) {
@@ -971,6 +976,7 @@ function openEditBorrowedModal(item) {
     borrowed_from: item.borrowed_from,
     reason: item.reason,
     status: item.status || "pending",
+    borrowed_at: item.borrowed_at || "",
   };
   showEditBorrowedModal.value = true;
 }
@@ -987,6 +993,7 @@ async function handleUpdateBorrowedItem() {
     const updates = {
       borrowed_from: borrowedForm.value.borrowed_from,
       reason: borrowedForm.value.reason,
+      borrowed_at: borrowedForm.value.borrowed_at || null,
     };
 
     await borrowedStore.updateBorrowedItem(

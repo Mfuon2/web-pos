@@ -85,6 +85,7 @@ export async function onRequestPut(context) {
       paid_quantity,
       borrowed_from,
       reason,
+      borrowed_at,
     } = body;
 
     if (!id) {
@@ -106,8 +107,11 @@ export async function onRequestPut(context) {
     let newStatus = item.status;
     let newReturnedQuantity = item.returned_quantity || 0;
     let newPaidQuantity = item.paid_quantity || 0;
-    let finalBorrowedFrom = borrowed_from || item.borrowed_from;
-    let finalReason = reason || item.reason;
+    let finalBorrowedFrom =
+      borrowed_from !== undefined ? borrowed_from : item.borrowed_from;
+    let finalReason = reason !== undefined ? reason : item.reason;
+    let finalBorrowedAt =
+      borrowed_at !== undefined ? borrowed_at : item.borrowed_at;
 
     if (action === "return") {
       newReturnedQuantity =
@@ -156,7 +160,7 @@ export async function onRequestPut(context) {
     const { success } = await env.DB.prepare(
       `
         UPDATE borrowed_items 
-        SET borrowed_from = ?, reason = ?, status = ?, returned_quantity = ?, paid_quantity = ?
+        SET borrowed_from = ?, reason = ?, status = ?, returned_quantity = ?, paid_quantity = ?, borrowed_at = ?
         WHERE id = ?
       `,
     )
@@ -166,6 +170,7 @@ export async function onRequestPut(context) {
         newStatus,
         newReturnedQuantity,
         newPaidQuantity,
+        finalBorrowedAt,
         id,
       )
       .run();
