@@ -6,7 +6,7 @@
         <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
 
-      <div class="info-alert">
+      <div class="info-alert" v-if="!isManualBorrow">
         <AlertCircle class="icon-sm" />
         <p>
           {{
@@ -19,6 +19,16 @@
             >.</span
           >
           Otherwise, record borrowings to proceed.
+        </p>
+      </div>
+      <div class="info-alert" v-else>
+        <AlertCircle class="icon-sm" />
+        <p>
+          Record all items in the current cart as borrowed.
+          <span v-if="borrowedAt"
+            >Date: <strong>{{ borrowedAt }}</strong
+            >.</span
+          >
         </p>
       </div>
 
@@ -61,12 +71,22 @@
           </div>
         </div>
 
+        <div class="checkbox-group" v-if="isManualBorrow">
+          <label class="custom-checkbox">
+            <input type="checkbox" v-model="reduceStock" />
+            <span class="checkmark"></span>
+            Reduce inventory stock for these items
+          </label>
+        </div>
+
         <div class="actions">
           <button type="button" class="cancel-btn" @click="$emit('close')">
             Cancel Sale
           </button>
           <button type="submit" class="submit-btn" :disabled="!isFormValid">
-            Confirm & Borrow All
+            {{
+              isManualBorrow ? "Confirm Borrowed Items" : "Confirm & Borrow All"
+            }}
           </button>
         </div>
       </form>
@@ -87,6 +107,10 @@ const props = defineProps({
     type: String, // Value indicating the selected saleDate value
     required: false,
   },
+  isManualBorrow: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["close", "confirm"]);
@@ -100,6 +124,8 @@ const borrowingData = ref(
     reason: "",
   })),
 );
+
+const reduceStock = ref(true);
 
 const firstInput = ref(null);
 
@@ -119,6 +145,7 @@ function handleSubmit() {
       reason: item.reason,
       borrowed_at: props.borrowedAt,
     })),
+    reduceStock.value,
   );
 }
 
@@ -218,6 +245,70 @@ onMounted(() => {
   border-radius: var(--radius-md);
   font-size: 1rem;
   background-color: var(--bg-white);
+}
+
+.checkbox-group {
+  margin-bottom: 1.5rem;
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+}
+
+.custom-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-primary);
+  user-select: none;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  height: 20px;
+  width: 20px;
+  background-color: var(--bg-white);
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.custom-checkbox:hover input ~ .checkmark {
+  border-color: var(--primary-color);
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkmark:after {
+  content: "";
+  display: none;
+  width: 4px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+.custom-checkbox input:checked ~ .checkmark:after {
+  display: block;
 }
 
 .disabled-input {

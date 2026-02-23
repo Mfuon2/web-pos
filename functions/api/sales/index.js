@@ -63,7 +63,17 @@ export async function onRequestPost(context) {
   try {
     const db = getDb(env);
     const body = await request.json();
-    const { items, total, payment_method, sale_date } = body;
+    const {
+      items,
+      total,
+      payment_method,
+      sale_date,
+      deduct_stock = true,
+    } = body;
+
+    if (!items || !items.length) {
+      return Response.json({ error: "No items provided" }, { status: 400 });
+    }
 
     // Get Nairobi timestamp
     const timestamp = getNairobiTimestamp();
@@ -81,7 +91,7 @@ export async function onRequestPost(context) {
 
     const saleId = saleResult.id;
 
-    // Insert sale items and update stock
+    // Insert sale items
     for (const item of items) {
       await db.insert(saleItems).values({
         saleId,
@@ -89,14 +99,19 @@ export async function onRequestPost(context) {
         quantity: item.quantity,
         price: item.price,
       });
+    }
 
-      await db
-        .update(stock)
-        .set({
-          count: sql`${stock.count} - ${item.quantity}`,
-          updatedAt: timestamp,
-        })
-        .where(eq(stock.productId, item.product_id));
+    // Update stock levels
+    if (deduct_stock) {
+      for (const item of items) {
+        await db
+          .update(stock)
+          .set({
+            count: sql`${stock.count} - ${item.quantity}`,
+            updatedAt: timestamp,
+          })
+          .where(eq(stock.productId, item.product_id));
+      }
     }
 
     return new Response(
