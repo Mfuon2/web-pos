@@ -126,15 +126,26 @@
                 : "Complete Sale"
           }}
         </button>
-        <button
-          class="loan-btn"
-          @click="initiateLoan"
-          :disabled="processing || cart.length === 0"
-          title="Loan out items"
-        >
-          <ArrowUpRight class="icon-sm" />
-          Loan Items
-        </button>
+        <div class="action-buttons-row">
+          <button
+            class="loan-btn"
+            @click="initiateLoan"
+            :disabled="processing || cart.length === 0"
+            title="Loan out items"
+          >
+            <ArrowUpRight class="icon-sm" />
+            Loan Items
+          </button>
+          <button
+            class="borrow-btn"
+            @click="initiateBorrow"
+            :disabled="processing || cart.length === 0"
+            title="Manually record items as borrowed"
+          >
+            <ArrowDownLeft class="icon-sm" />
+            Borrow Items
+          </button>
+        </div>
       </div>
     </div>
 
@@ -157,6 +168,8 @@
     <BorrowedItemModal
       v-if="showBorrowedModal"
       :items="pendingDeficits"
+      :borrowedAt="saleDate"
+      :isManualBorrow="isManualBorrowing"
       @confirm="handleBorrowingConfirm"
       @close="handleBorrowingClose"
     />
@@ -183,6 +196,7 @@ import {
   Smartphone,
   X,
   ArrowUpRight,
+  ArrowDownLeft,
   Calendar,
 } from "lucide-vue-next";
 import { formatCurrency } from "../utils/currency";
@@ -300,11 +314,11 @@ async function handleCheckout() {
   await processCheckout();
 }
 
-async function processCheckout() {
+async function processCheckout(deduct_stock = true) {
   processing.value = true;
   try {
     // 1. Process Sale
-    await cartStore.checkout(paymentMethod.value, saleDate.value);
+    await cartStore.checkout(paymentMethod.value, saleDate.value, deduct_stock);
 
     dialogStore.success("Sale completed successfully!");
     productStore.fetchProducts();
@@ -321,22 +335,48 @@ async function processCheckout() {
 // Borrowing Workflow State
 const showBorrowedModal = ref(false);
 const pendingDeficits = ref([]);
+const isManualBorrowing = ref(false);
 
-async function handleBorrowingConfirm(borrowings) {
+function initiateBorrow() {
+  if (cart.value.length === 0) return;
+
+  pendingDeficits.value = cart.value.map((item) => {
+    const product = products.value.find((p) => p.id === item.product_id) || {
+      id: item.product_id,
+      name: item.name,
+    };
+    return {
+      product: product,
+      deficit: item.quantity,
+    };
+  });
+  isManualBorrowing.value = true;
+  showBorrowedModal.value = true;
+}
+
+async function handleBorrowingConfirm(borrowings, reduceStock = true) {
   try {
     for (const borrowing of borrowings) {
       await borrowedStore.addBorrowedItem(borrowing);
     }
     showBorrowedModal.value = false;
-    await processCheckout();
+
+    // Process final checkout, passing down reduceStock preference
+    // Non-manual borrows (stock deficit) always deduct stock true by default because we bypass the checkbox logic
+    await processCheckout(isManualBorrowing.value ? reduceStock : true);
   } catch (err) {
     dialogStore.error("Failed to record borrowings: " + err.message);
+  } finally {
+    isManualBorrowing.value = false;
   }
 }
 
 function handleBorrowingClose() {
   showBorrowedModal.value = false;
-  dialogStore.alert("Sale cancelled. Please adjust quantities or stock.");
+  if (!isManualBorrowing.value) {
+    dialogStore.alert("Sale cancelled. Please adjust quantities or stock.");
+  }
+  isManualBorrowing.value = false;
 }
 
 // Loan Workflow State
@@ -695,30 +735,39 @@ onMounted(() => {
   z-index: 100;
 }
 
-.loan-btn {
-  width: 100%;
+.action-buttons-row {
+  display: flex;
+  gap: 0.75rem;
   margin-top: 0.75rem;
+  width: 100%;
+}
+
+.loan-btn,
+.borrow-btn {
+  flex: 1;
   padding: 0.75rem;
   background: var(--bg-white);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
-.loan-btn:not(:disabled):hover {
+.loan-btn:not(:disabled):hover,
+.borrow-btn:not(:disabled):hover {
   background: var(--bg-hover);
   border-color: var(--text-secondary);
 }
 
-.loan-btn:disabled {
+.loan-btn:disabled,
+.borrow-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }

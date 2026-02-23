@@ -164,7 +164,7 @@
                 <th>Borrowed From</th>
                 <th>Reason</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Borrowed Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -215,7 +215,18 @@
                     </div>
                   </div>
                 </td>
-                <td>{{ formatDate(item.created_at) }}</td>
+                <td>
+                  <div>
+                    {{
+                      item.borrowed_at
+                        ? formatDateWithoutTime(item.borrowed_at)
+                        : formatDateWithoutTime(item.created_at)
+                    }}
+                  </div>
+                  <small class="text-secondary" style="font-size: 0.8em"
+                    >Created: {{ formatDate(item.created_at) }}</small
+                  >
+                </td>
                 <td class="actions">
                   <button
                     @click="openManageBorrowedModal(item)"
@@ -359,6 +370,10 @@
               <option value="returned">Returned</option>
               <option value="paid">Paid</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Borrowed Date</label>
+            <input v-model="borrowedForm.borrowed_at" type="date" />
           </div>
           <div class="form-group">
             <label>Borrowed From *</label>
@@ -951,6 +966,7 @@ const borrowedForm = ref({
   borrowed_from: "",
   reason: "",
   status: "pending",
+  borrowed_at: "",
 });
 
 function openEditBorrowedModal(item) {
@@ -960,6 +976,7 @@ function openEditBorrowedModal(item) {
     borrowed_from: item.borrowed_from,
     reason: item.reason,
     status: item.status || "pending",
+    borrowed_at: item.borrowed_at || "",
   };
   showEditBorrowedModal.value = true;
 }
@@ -976,6 +993,7 @@ async function handleUpdateBorrowedItem() {
     const updates = {
       borrowed_from: borrowedForm.value.borrowed_from,
       reason: borrowedForm.value.reason,
+      borrowed_at: borrowedForm.value.borrowed_at || null,
     };
 
     await borrowedStore.updateBorrowedItem(
@@ -1383,6 +1401,14 @@ function formatDate(dateString) {
       minute: "2-digit",
     })
   );
+}
+
+function formatDateWithoutTime(dateString) {
+  if (!dateString) return "N/A";
+  if (typeof dateString === "string") {
+    dateString = dateString.replace(" ", "T");
+  }
+  return new Date(dateString).toLocaleDateString();
 }
 </script>
 
