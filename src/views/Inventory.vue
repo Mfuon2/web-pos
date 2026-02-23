@@ -164,7 +164,7 @@
                 <th>Borrowed From</th>
                 <th>Reason</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Borrowed Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -215,7 +215,18 @@
                     </div>
                   </div>
                 </td>
-                <td>{{ formatDate(item.created_at) }}</td>
+                <td>
+                  <div>
+                    {{
+                      item.borrowed_at
+                        ? formatDateWithoutTime(item.borrowed_at)
+                        : formatDateWithoutTime(item.created_at)
+                    }}
+                  </div>
+                  <small class="text-secondary" style="font-size: 0.8em"
+                    >Created: {{ formatDate(item.created_at) }}</small
+                  >
+                </td>
                 <td class="actions">
                   <button
                     @click="openManageBorrowedModal(item)"
@@ -1383,6 +1394,14 @@ function formatDate(dateString) {
       minute: "2-digit",
     })
   );
+}
+
+function formatDateWithoutTime(dateString) {
+  if (!dateString) return "N/A";
+  if (typeof dateString === "string") {
+    dateString = dateString.replace(" ", "T");
+  }
+  return new Date(dateString).toLocaleDateString();
 }
 </script>
 

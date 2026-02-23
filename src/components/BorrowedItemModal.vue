@@ -14,7 +14,11 @@
               ? "Multiple items have insufficient stock."
               : "Item has insufficient stock."
           }}
-          Record borrowings to proceed.
+          <span v-if="borrowedAt"
+            >Borrow date will be recorded as <strong>{{ borrowedAt }}</strong
+            >.</span
+          >
+          Otherwise, record borrowings to proceed.
         </p>
       </div>
 
@@ -79,6 +83,10 @@ const props = defineProps({
     type: Array, // Array of { product: {id, name}, deficit: number }
     required: true,
   },
+  borrowedAt: {
+    type: String, // Value indicating the selected saleDate value
+    required: false,
+  },
 });
 
 const emit = defineEmits(["close", "confirm"]);
@@ -109,6 +117,7 @@ function handleSubmit() {
       quantity: item.quantity,
       borrowed_from: item.borrowed_from,
       reason: item.reason,
+      borrowed_at: props.borrowedAt,
     })),
   );
 }

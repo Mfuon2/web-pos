@@ -157,6 +157,7 @@
     <BorrowedItemModal
       v-if="showBorrowedModal"
       :items="pendingDeficits"
+      :borrowedAt="saleDate"
       @confirm="handleBorrowingConfirm"
       @close="handleBorrowingClose"
     />

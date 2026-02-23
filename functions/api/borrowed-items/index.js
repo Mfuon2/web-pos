@@ -14,7 +14,7 @@ export async function onRequestGet(context) {
         p.price as product_price
       FROM borrowed_items bi
       LEFT JOIN products p ON bi.product_id = p.id
-      ORDER BY bi.created_at DESC
+      ORDER BY bi.borrowed_at DESC, bi.created_at DESC
     `,
     ).all();
 
@@ -28,7 +28,7 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   try {
     const body = await request.json();
-    const { product_id, quantity, borrowed_from, reason } = body;
+    const { product_id, quantity, borrowed_from, reason, borrowed_at } = body;
 
     if (!product_id || !quantity || !borrowed_from) {
       return Response.json(
@@ -37,13 +37,25 @@ export async function onRequestPost(context) {
       );
     }
 
-    const { success } = await env.DB.prepare(
-      `
-      INSERT INTO borrowed_items (product_id, quantity, borrowed_from, reason)
-      VALUES (?, ?, ?, ?)
-    `,
-    )
-      .bind(product_id, quantity, borrowed_from, reason)
+    let query;
+    let params;
+
+    if (borrowed_at) {
+      query = `
+        INSERT INTO borrowed_items (product_id, quantity, borrowed_from, reason, borrowed_at)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      params = [product_id, quantity, borrowed_from, reason, borrowed_at];
+    } else {
+      query = `
+        INSERT INTO borrowed_items (product_id, quantity, borrowed_from, reason)
+        VALUES (?, ?, ?, ?)
+      `;
+      params = [product_id, quantity, borrowed_from, reason];
+    }
+
+    const { success } = await env.DB.prepare(query)
+      .bind(...params)
       .run();
 
     if (!success) {
