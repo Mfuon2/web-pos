@@ -1,18 +1,25 @@
 export async function onRequestGet(context) {
-  const { env } = context;
-  try {
-    // Join loans with items for a complete view
-    // Since D1 doesn't support complex JSON_GROUP_ARRAY easily in all versions,
-    // we might fetch loans then fetch items, or just fetch flat structure.
-    // Let's fetch loans and then their items or use a join.
-    // For simplicity in UI, we often want "Loan #123 (Shop X) - 3 items".
+  const { env, request } = context;
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search");
 
-    // Fetch all loans first
-    const { results: loans } = await env.DB.prepare(
-      `
-      SELECT * FROM loans ORDER BY created_at DESC
-    `,
-    ).all();
+  try {
+    let query = `SELECT * FROM loans`;
+    const params = [];
+
+    if (search) {
+      query += ` WHERE borrower_name LIKE ? OR borrower_contact LIKE ?`;
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    query += ` ORDER BY created_at DESC`;
+
+    let stmt = env.DB.prepare(query);
+    if (params.length > 0) {
+      stmt = stmt.bind(...params);
+    }
+
+    const { results: loans } = await stmt.all();
 
     if (loans.length === 0) {
       return Response.json([]);
