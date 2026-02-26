@@ -1014,6 +1014,8 @@ watch(searchQuery, (newQuery) => {
 
 // Watch for tab changes to fetch appropriate data
 watch(activeTab, async (newTab) => {
+  searchQuery.value = "";
+
   if (newTab === "inventory") {
     await productStore.fetchProducts({
       page: 1,
