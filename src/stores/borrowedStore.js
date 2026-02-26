@@ -7,10 +7,13 @@ export const useBorrowedStore = defineStore("borrowed", () => {
   const loading = ref(false);
   const error = ref(null);
 
-  async function fetchBorrowedItems() {
+  async function fetchBorrowedItems(search = "") {
     loading.value = true;
     try {
-      const response = await apiFetch("/api/borrowed-items");
+      const url = search
+        ? `/api/borrowed-items?search=${encodeURIComponent(search)}`
+        : "/api/borrowed-items";
+      const response = await apiFetch(url);
       if (response.ok) {
         borrowedItems.value = await response.json();
       } else {
