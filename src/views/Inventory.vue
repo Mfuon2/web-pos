@@ -64,7 +64,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search by name or barcode..."
                 class="search-input"
               />
               <button
@@ -195,7 +195,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search borrowed items..."
+                placeholder="Search by name, barcode or source..."
                 class="search-input"
               />
               <button
@@ -339,7 +339,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search loaned items..."
+                placeholder="Search by name, barcode or borrower..."
                 class="search-input"
               />
               <button
@@ -1932,6 +1932,15 @@ code {
 
   .header-actions {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .desktop-search {
+    display: none;
+  }
+
+  .mobile-search {
+    display: block;
   }
 
   .form-row {
