@@ -1,7 +1,7 @@
 import { getNairobiTimestamp } from "../utils/timezone.js";
 import { getDb } from "../../drizzle/db";
 import { products, categories, stock } from "../../drizzle/schema";
-import { count, desc, lt, eq } from "drizzle-orm";
+import { count, desc, lt, eq, or, like, and } from "drizzle-orm";
 
 export async function onRequestGet(context) {
   const { env, request } = context;
@@ -9,6 +9,7 @@ export async function onRequestGet(context) {
   const pageParam = url.searchParams.get("page");
   const limitParam = url.searchParams.get("limit");
   const lowStockParam = url.searchParams.get("low_stock");
+  const searchParam = url.searchParams.get("search");
 
   try {
     const db = getDb(env);
@@ -21,6 +22,7 @@ export async function onRequestGet(context) {
       let countQuery = db
         .select({ total: count() })
         .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
         .leftJoin(stock, eq(products.id, stock.productId));
 
       let dataQuery = db
@@ -44,9 +46,28 @@ export async function onRequestGet(context) {
         .limit(limit)
         .offset(offset);
 
+      // Build Filters
+      const filters = [];
+
       if (lowStockParam === "true") {
-        countQuery = countQuery.where(lt(stock.count, 1));
-        dataQuery = dataQuery.where(lt(stock.count, 1));
+        filters.push(lt(stock.count, 1));
+      }
+
+      if (searchParam) {
+        filters.push(
+          or(
+            like(products.name, `%${searchParam}%`),
+            like(products.barcode, `%${searchParam}%`),
+            like(categories.name, `%${searchParam}%`),
+          ),
+        );
+      }
+
+      // Apply Filters
+      if (filters.length > 0) {
+        const whereClause = and(...filters);
+        countQuery = countQuery.where(whereClause);
+        dataQuery = dataQuery.where(whereClause);
       }
 
       const [{ total }] = await countQuery;
@@ -86,8 +107,24 @@ export async function onRequestGet(context) {
         .leftJoin(stock, eq(products.id, stock.productId))
         .orderBy(desc(products.createdAt));
 
+      const filters = [];
+
       if (lowStockParam === "true") {
-        query = query.where(lt(stock.count, 1));
+        filters.push(lt(stock.count, 1));
+      }
+
+      if (searchParam) {
+        filters.push(
+          or(
+            like(products.name, `%${searchParam}%`),
+            like(products.barcode, `%${searchParam}%`),
+            like(categories.name, `%${searchParam}%`),
+          ),
+        );
+      }
+
+      if (filters.length > 0) {
+        query = query.where(and(...filters));
       }
 
       const results = await query;
