@@ -447,8 +447,17 @@
                     @click="openEditLoanModal(loan)"
                     class="action-btn edit-btn"
                     title="Update Details"
+                    v-if="loan.status !== 'returned'"
                   >
                     <Edit2 class="icon-sm" />
+                  </button>
+                  <button
+                    @click="openViewLoanModal(loan)"
+                    class="action-btn view-btn"
+                    title="View Details"
+                    v-if="loan.status === 'returned'"
+                  >
+                    <Eye class="icon-sm" />
                   </button>
                 </td>
               </tr>
@@ -956,6 +965,84 @@
         </div>
       </div>
     </div>
+
+    <!-- View Loan Modal -->
+    <div
+      v-if="showViewLoanModal"
+      class="modal-overlay"
+      @click.self="closeViewLoanModal"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Loan Details - {{ viewingLoanDetail?.borrower_name }}</h2>
+          <button class="close-btn" @click="closeViewLoanModal">✕</button>
+        </div>
+
+        <div class="management-info" v-if="viewingLoanDetail">
+          <p>
+            <strong>Borrower:</strong> {{ viewingLoanDetail.borrower_name }}
+          </p>
+          <p v-if="viewingLoanDetail.borrower_contact">
+            <strong>Contact:</strong> {{ viewingLoanDetail.borrower_contact }}
+          </p>
+          <p v-if="viewingLoanDetail.collateral">
+            <strong>Collateral:</strong> {{ viewingLoanDetail.collateral }}
+          </p>
+          <p v-if="viewingLoanDetail.collateral_description">
+            <strong>Description:</strong>
+            {{ viewingLoanDetail.collateral_description }}
+          </p>
+          <p>
+            <strong>Status:</strong>
+            <span class="status-badge" :class="viewingLoanDetail.status">{{
+              viewingLoanDetail.status
+            }}</span>
+          </p>
+          <p>
+            <strong>Date:</strong>
+            {{
+              viewingLoanDetail.loaned_at
+                ? formatDateWithoutTime(viewingLoanDetail.loaned_at)
+                : formatDateWithoutTime(viewingLoanDetail.created_at)
+            }}
+          </p>
+        </div>
+
+        <div class="management-actions" v-if="viewingLoanDetail">
+          <div
+            v-for="item in viewingLoanDetail.items"
+            :key="item.product_id"
+            class="action-section"
+          >
+            <h3>{{ item.quantity }}x {{ item.product_name }}</h3>
+            <p class="hint">
+              {{ item.returned_quantity || 0 }} / {{ item.quantity }} returned
+            </p>
+
+            <div
+              v-if="item.returns && item.returns.length > 0"
+              class="returns-history"
+            >
+              <h4>Return History:</h4>
+              <ul>
+                <li v-for="ret in item.returns" :key="ret.id">
+                  <span v-if="ret.replacement_product_id">
+                    Verified: {{ ret.quantity }} substituted with
+                    <strong>{{ ret.replacement_name }}</strong>
+                  </span>
+                  <span v-else>
+                    Verified: {{ ret.quantity }} returned as original
+                  </span>
+                  <small class="text-secondary">
+                    ({{ formatDate(ret.created_at) }})
+                  </small>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -978,6 +1065,7 @@ import {
   ArrowUpRight,
   TrendingDown,
   Check,
+  Eye,
 } from "lucide-vue-next";
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkUploadModal from "../components/BulkUploadModal.vue";
@@ -1236,7 +1324,19 @@ async function handleMarkAsPaid() {
 const loans = computed(() => loanStore.loans);
 const showEditLoanModal = ref(false);
 const showManageLoanModal = ref(false);
+const showViewLoanModal = ref(false);
 const editingLoanDetail = ref(null);
+const viewingLoanDetail = ref(null);
+
+function openViewLoanModal(loan) {
+  viewingLoanDetail.value = loan;
+  showViewLoanModal.value = true;
+}
+
+function closeViewLoanModal() {
+  showViewLoanModal.value = false;
+  viewingLoanDetail.value = null;
+}
 const loanForm = ref({
   borrower_name: "",
   borrower_contact: "",
