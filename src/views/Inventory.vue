@@ -954,7 +954,12 @@
           <button
             @click="handleReturnAllLoan"
             class="submit-btn"
-            :disabled="loanStore.loading"
+            :disabled="
+              loanStore.loading ||
+              editingLoanDetail?.items.every(
+                (item) => (item.returned_quantity || 0) >= item.quantity,
+              )
+            "
           >
             {{
               loanStore.loading
