@@ -314,8 +314,17 @@
                     @click="openEditBorrowedModal(item)"
                     class="action-btn edit-btn"
                     title="Edit Details"
+                    v-if="item.status !== 'returned' && item.status !== 'paid'"
                   >
                     <Edit2 class="icon-sm" />
+                  </button>
+                  <button
+                    @click="openViewBorrowedModal(item)"
+                    class="action-btn view-btn"
+                    title="View Details"
+                    v-if="item.status === 'returned' || item.status === 'paid'"
+                  >
+                    <Eye class="icon-sm" />
                   </button>
                 </td>
               </tr>
@@ -658,6 +667,63 @@
               }}.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Borrowed Item Modal -->
+    <div
+      v-if="showViewBorrowedModal"
+      class="modal-overlay"
+      @click="closeViewBorrowedModal"
+    >
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>Borrowed Item Details</h2>
+          <button class="close-btn" @click="closeViewBorrowedModal">✕</button>
+        </div>
+        <div class="management-info" v-if="viewingBorrowedDetail">
+          <p>
+            <strong>Product:</strong> {{ viewingBorrowedDetail.product_name }}
+          </p>
+          <p>
+            <strong>Borrowed From:</strong>
+            {{ viewingBorrowedDetail.borrowed_from }}
+          </p>
+          <p>
+            <strong>Total Quantity:</strong>
+            {{ viewingBorrowedDetail.quantity }}
+          </p>
+          <p>
+            <strong>Settled:</strong>
+            {{
+              (viewingBorrowedDetail.returned_quantity || 0) +
+              (viewingBorrowedDetail.paid_quantity || 0)
+            }}
+            ({{ viewingBorrowedDetail.returned_quantity || 0 }} ret,
+            {{ viewingBorrowedDetail.paid_quantity || 0 }} paid)
+          </p>
+          <p>
+            <strong>Status:</strong>
+            <span class="status-badge" :class="viewingBorrowedDetail.status">{{
+              viewingBorrowedDetail.status
+            }}</span>
+          </p>
+          <p>
+            <strong>Date:</strong>
+            {{
+              viewingBorrowedDetail.borrowed_at
+                ? formatDateWithoutTime(viewingBorrowedDetail.borrowed_at)
+                : formatDateWithoutTime(viewingBorrowedDetail.created_at)
+            }}
+          </p>
+          <p v-if="viewingBorrowedDetail.paid_amount > 0">
+            <strong>Amount Paid:</strong>
+            {{ formatCurrency(viewingBorrowedDetail.paid_amount) }}
+          </p>
+          <p v-if="viewingBorrowedDetail.reason">
+            <strong>Reason / Notes:</strong> {{ viewingBorrowedDetail.reason }}
+          </p>
         </div>
       </div>
     </div>
@@ -1212,7 +1278,20 @@ async function exportToExcel() {
 
 // Borrowed Item Edit Logic
 const showEditBorrowedModal = ref(false);
+const showViewBorrowedModal = ref(false);
 const editingBorrowedDetail = ref(null);
+const viewingBorrowedDetail = ref(null);
+
+function openViewBorrowedModal(item) {
+  viewingBorrowedDetail.value = item;
+  showViewBorrowedModal.value = true;
+}
+
+function closeViewBorrowedModal() {
+  showViewBorrowedModal.value = false;
+  viewingBorrowedDetail.value = null;
+}
+
 const borrowedForm = ref({
   productName: "",
   borrowed_from: "",
