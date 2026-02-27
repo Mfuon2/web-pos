@@ -983,22 +983,20 @@
                   class="form-group"
                 >
                   <label>Replace with:</label>
-                  <select
+                  <SearchableSelect
                     v-model="
                       managementLoanForm[item.product_id].replacementProductId
                     "
-                    required
-                    class="product-select"
-                  >
-                    <option value="" disabled>Select Product</option>
-                    <option
-                      v-for="prod in products"
-                      :key="prod.id"
-                      :value="prod.id"
-                    >
-                      {{ prod.name }} (Stock: {{ prod.stock }})
-                    </option>
-                  </select>
+                    :options="
+                      products.map((p) => ({
+                        ...p,
+                        subLabel: `Stock: ${p.stock}`,
+                      }))
+                    "
+                    labelKey="name"
+                    valueKey="id"
+                    placeholder="Select Product"
+                  />
                 </div>
               </div>
 
@@ -1140,6 +1138,7 @@ import {
 } from "lucide-vue-next";
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkUploadModal from "../components/BulkUploadModal.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import * as XLSX from "xlsx";
 import { apiFetch } from "../utils/api";
 import { useDialogStore } from "../stores/dialogStore";
@@ -2462,6 +2461,7 @@ code {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 200px;
 }
 
 .checkbox-label {
@@ -2518,5 +2518,23 @@ code {
 
 .returns-history li:last-child {
   border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .inline-form {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .inline-form .form-group,
+  .substitution-section {
+    width: 100%;
+  }
+
+  .inline-form .submit-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
 }
 </style>
