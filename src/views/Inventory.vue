@@ -381,7 +381,7 @@
                 <th>Items</th>
                 <th>Collateral</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Loaned Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -422,7 +422,18 @@
                     </div>
                   </div>
                 </td>
-                <td>{{ formatDate(loan.created_at) }}</td>
+                <td>
+                  <div>
+                    {{
+                      loan.loaned_at
+                        ? formatDateWithoutTime(loan.loaned_at)
+                        : formatDateWithoutTime(loan.created_at)
+                    }}
+                  </div>
+                  <small class="text-secondary" style="font-size: 0.8em"
+                    >Created: {{ formatDate(loan.created_at) }}</small
+                  >
+                </td>
                 <td class="actions">
                   <button
                     @click="openManageLoanModal(loan)"

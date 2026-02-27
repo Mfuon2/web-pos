@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS loans (
     collateral TEXT,
     collateral_description TEXT,
     status TEXT DEFAULT 'active', -- active, returned, partially_returned
+    loaned_at DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
