@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS borrowed_items (
     status TEXT DEFAULT 'pending', -- pending, returned, etc.
     returned_quantity INTEGER DEFAULT 0,
     paid_quantity INTEGER DEFAULT 0,
+    paid_amount REAL DEFAULT 0,
     borrowed_at DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id)
@@ -167,6 +168,7 @@ CREATE TABLE IF NOT EXISTS loans (
     collateral TEXT,
     collateral_description TEXT,
     status TEXT DEFAULT 'active', -- active, returned, partially_returned
+    loaned_at DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

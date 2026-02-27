@@ -7,6 +7,13 @@
       </div>
 
       <div class="items-preview">
+        <div
+          class="loan-date-display"
+          v-if="loanDate"
+          style="margin-bottom: 10px"
+        >
+          <strong>Loaned Date:</strong> {{ loanDate }}
+        </div>
         <h3>Items to Loan</h3>
         <ul>
           <li v-for="item in items" :key="item.product_id">
@@ -18,10 +25,10 @@
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
           <label>Borrower Name / Shop *</label>
-          <input 
-            v-model="formData.borrower_name" 
-            type="text" 
-            required 
+          <input
+            v-model="formData.borrower_name"
+            type="text"
+            required
             placeholder="e.g. Shop B, John Doe"
             ref="nameInput"
           />
@@ -30,14 +37,14 @@
         <div class="form-group">
           <label>Contact Number</label>
           <div class="input-with-action">
-            <input 
-              v-model="formData.borrower_contact" 
-              type="tel" 
+            <input
+              v-model="formData.borrower_contact"
+              type="tel"
               placeholder="Phone number"
             />
-            <button 
-              type="button" 
-              class="icon-btn" 
+            <button
+              type="button"
+              class="icon-btn"
               title="Pick from Contacts"
               v-if="isContactSupported"
               @click="pickContact"
@@ -49,17 +56,17 @@
 
         <div class="form-group">
           <label>Collateral Collected</label>
-          <input 
-            v-model="formData.collateral" 
-            type="text" 
+          <input
+            v-model="formData.collateral"
+            type="text"
             placeholder="e.g. ID Card, Cash"
           />
         </div>
 
         <div class="form-group">
           <label>Collateral Description / Notes</label>
-          <textarea 
-            v-model="formData.collateral_description" 
+          <textarea
+            v-model="formData.collateral_description"
             rows="2"
             placeholder="Details about condition or amount..."
           ></textarea>
@@ -70,7 +77,7 @@
             Cancel
           </button>
           <button type="submit" class="submit-btn" :disabled="loading">
-            {{ loading ? 'Recording...' : 'Confirm Loan' }}
+            {{ loading ? "Recording..." : "Confirm Loan" }}
           </button>
         </div>
       </form>
@@ -79,63 +86,66 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Contact } from 'lucide-vue-next'
+import { ref, onMounted } from "vue";
+import { Contact } from "lucide-vue-next";
 
 const props = defineProps({
   items: Array,
-  loading: Boolean
-})
+  loading: Boolean,
+  loanDate: String,
+});
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits(["close", "confirm"]);
 
 const formData = ref({
-  borrower_name: '',
-  borrower_contact: '',
-  collateral: '',
-  collateral_description: ''
-})
+  borrower_name: "",
+  borrower_contact: "",
+  collateral: "",
+  collateral_description: "",
+});
 
-const nameInput = ref(null)
-const isContactSupported = ref('contacts' in navigator && 'ContactsManager' in window)
+const nameInput = ref(null);
+const isContactSupported = ref(
+  "contacts" in navigator && "ContactsManager" in window,
+);
 
 // Fallback check or just try/catch
 async function pickContact() {
   try {
-    const props = ['name', 'tel'];
+    const props = ["name", "tel"];
     const opts = { multiple: false };
-    
+
     // Check again just to be sure, although v-if handles it
-    if (!('contacts' in navigator)) {
-      alert('Contacts API not supported on this device.');
+    if (!("contacts" in navigator)) {
+      alert("Contacts API not supported on this device.");
       return;
     }
 
     const contacts = await navigator.contacts.select(props, opts);
-    
+
     if (contacts.length) {
       const contact = contacts[0];
       if (contact.name && contact.name.length) {
         // Simple name join
-        formData.value.borrower_name = contact.name.join(' ');
+        formData.value.borrower_name = contact.name.join(" ");
       }
       if (contact.tel && contact.tel.length) {
         formData.value.borrower_contact = contact.tel[0];
       }
     }
   } catch (err) {
-    console.error('Contact picker failed:', err);
+    console.error("Contact picker failed:", err);
     // Silent fail or alert if user initiated
   }
 }
 
 function handleSubmit() {
-  emit('confirm', formData.value)
+  emit("confirm", formData.value);
 }
 
 onMounted(() => {
-  if (nameInput.value) nameInput.value.focus()
-})
+  if (nameInput.value) nameInput.value.focus();
+});
 </script>
 
 <style scoped>
@@ -164,8 +174,14 @@ onMounted(() => {
 }
 
 @keyframes slideIn {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -175,7 +191,10 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
-.modal-header h2 { margin: 0; color: var(--text-primary); }
+.modal-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
 
 .close-btn {
   background: none;
@@ -192,14 +211,31 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
-.items-preview h3 { margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-secondary); }
-.items-preview ul { margin: 0; padding-left: 1.2rem; }
-.items-preview li { color: var(--text-primary); margin-bottom: 0.25rem; }
+.items-preview h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+.items-preview ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.items-preview li {
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
 
-.form-group { margin-bottom: 1rem; }
-.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary); }
+.form-group {
+  margin-bottom: 1rem;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
 
-.form-group input, 
+.form-group input,
 .form-group textarea {
   width: 100%;
   padding: 0.6rem;
@@ -253,7 +289,13 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
-.icon-sm { width: 20px; height: 20px; }
+.icon-sm {
+  width: 20px;
+  height: 20px;
+}
 </style>

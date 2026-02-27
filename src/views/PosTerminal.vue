@@ -178,6 +178,7 @@
       v-if="showLoanModal"
       :items="cart"
       :loading="processing"
+      :loanDate="saleDate"
       @confirm="handleLoanConfirm"
       @close="showLoanModal = false"
     />
@@ -392,6 +393,7 @@ async function handleLoanConfirm(details) {
   try {
     const loanData = {
       ...details,
+      loaned_at: saleDate.value,
       items: cart.value.map((item) => ({
         product_id: item.product_id,
         quantity: item.quantity,

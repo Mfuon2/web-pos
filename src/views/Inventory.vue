@@ -314,8 +314,17 @@
                     @click="openEditBorrowedModal(item)"
                     class="action-btn edit-btn"
                     title="Edit Details"
+                    v-if="item.status !== 'returned' && item.status !== 'paid'"
                   >
                     <Edit2 class="icon-sm" />
+                  </button>
+                  <button
+                    @click="openViewBorrowedModal(item)"
+                    class="action-btn view-btn"
+                    title="View Details"
+                    v-if="item.status === 'returned' || item.status === 'paid'"
+                  >
+                    <Eye class="icon-sm" />
                   </button>
                 </td>
               </tr>
@@ -381,7 +390,7 @@
                 <th>Items</th>
                 <th>Collateral</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Loaned Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -422,7 +431,18 @@
                     </div>
                   </div>
                 </td>
-                <td>{{ formatDate(loan.created_at) }}</td>
+                <td>
+                  <div>
+                    {{
+                      loan.loaned_at
+                        ? formatDateWithoutTime(loan.loaned_at)
+                        : formatDateWithoutTime(loan.created_at)
+                    }}
+                  </div>
+                  <small class="text-secondary" style="font-size: 0.8em"
+                    >Created: {{ formatDate(loan.created_at) }}</small
+                  >
+                </td>
                 <td class="actions">
                   <button
                     @click="openManageLoanModal(loan)"
@@ -436,8 +456,17 @@
                     @click="openEditLoanModal(loan)"
                     class="action-btn edit-btn"
                     title="Update Details"
+                    v-if="loan.status !== 'returned'"
                   >
                     <Edit2 class="icon-sm" />
+                  </button>
+                  <button
+                    @click="openViewLoanModal(loan)"
+                    class="action-btn view-btn"
+                    title="View Details"
+                    v-if="loan.status === 'returned'"
+                  >
+                    <Eye class="icon-sm" />
                   </button>
                 </td>
               </tr>
@@ -638,6 +667,63 @@
               }}.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Borrowed Item Modal -->
+    <div
+      v-if="showViewBorrowedModal"
+      class="modal-overlay"
+      @click="closeViewBorrowedModal"
+    >
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>Borrowed Item Details</h2>
+          <button class="close-btn" @click="closeViewBorrowedModal">✕</button>
+        </div>
+        <div class="management-info" v-if="viewingBorrowedDetail">
+          <p>
+            <strong>Product:</strong> {{ viewingBorrowedDetail.product_name }}
+          </p>
+          <p>
+            <strong>Borrowed From:</strong>
+            {{ viewingBorrowedDetail.borrowed_from }}
+          </p>
+          <p>
+            <strong>Total Quantity:</strong>
+            {{ viewingBorrowedDetail.quantity }}
+          </p>
+          <p>
+            <strong>Settled:</strong>
+            {{
+              (viewingBorrowedDetail.returned_quantity || 0) +
+              (viewingBorrowedDetail.paid_quantity || 0)
+            }}
+            ({{ viewingBorrowedDetail.returned_quantity || 0 }} ret,
+            {{ viewingBorrowedDetail.paid_quantity || 0 }} paid)
+          </p>
+          <p>
+            <strong>Status:</strong>
+            <span class="status-badge" :class="viewingBorrowedDetail.status">{{
+              viewingBorrowedDetail.status
+            }}</span>
+          </p>
+          <p>
+            <strong>Date:</strong>
+            {{
+              viewingBorrowedDetail.borrowed_at
+                ? formatDateWithoutTime(viewingBorrowedDetail.borrowed_at)
+                : formatDateWithoutTime(viewingBorrowedDetail.created_at)
+            }}
+          </p>
+          <p v-if="viewingBorrowedDetail.paid_amount > 0">
+            <strong>Amount Paid:</strong>
+            {{ formatCurrency(viewingBorrowedDetail.paid_amount) }}
+          </p>
+          <p v-if="viewingBorrowedDetail.reason">
+            <strong>Reason / Notes:</strong> {{ viewingBorrowedDetail.reason }}
+          </p>
         </div>
       </div>
     </div>
@@ -897,22 +983,20 @@
                   class="form-group"
                 >
                   <label>Replace with:</label>
-                  <select
+                  <SearchableSelect
                     v-model="
                       managementLoanForm[item.product_id].replacementProductId
                     "
-                    required
-                    class="product-select"
-                  >
-                    <option value="" disabled>Select Product</option>
-                    <option
-                      v-for="prod in products"
-                      :key="prod.id"
-                      :value="prod.id"
-                    >
-                      {{ prod.name }} (Stock: {{ prod.stock }})
-                    </option>
-                  </select>
+                    :options="
+                      products.map((p) => ({
+                        ...p,
+                        subLabel: `Stock: ${p.stock}`,
+                      }))
+                    "
+                    labelKey="name"
+                    valueKey="id"
+                    placeholder="Select Product"
+                  />
                 </div>
               </div>
 
@@ -934,7 +1018,12 @@
           <button
             @click="handleReturnAllLoan"
             class="submit-btn"
-            :disabled="loanStore.loading"
+            :disabled="
+              loanStore.loading ||
+              editingLoanDetail?.items.every(
+                (item) => (item.returned_quantity || 0) >= item.quantity,
+              )
+            "
           >
             {{
               loanStore.loading
@@ -942,6 +1031,84 @@
                 : "Return All Outstanding Items"
             }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Loan Modal -->
+    <div
+      v-if="showViewLoanModal"
+      class="modal-overlay"
+      @click.self="closeViewLoanModal"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Loan Details - {{ viewingLoanDetail?.borrower_name }}</h2>
+          <button class="close-btn" @click="closeViewLoanModal">✕</button>
+        </div>
+
+        <div class="management-info" v-if="viewingLoanDetail">
+          <p>
+            <strong>Borrower:</strong> {{ viewingLoanDetail.borrower_name }}
+          </p>
+          <p v-if="viewingLoanDetail.borrower_contact">
+            <strong>Contact:</strong> {{ viewingLoanDetail.borrower_contact }}
+          </p>
+          <p v-if="viewingLoanDetail.collateral">
+            <strong>Collateral:</strong> {{ viewingLoanDetail.collateral }}
+          </p>
+          <p v-if="viewingLoanDetail.collateral_description">
+            <strong>Description:</strong>
+            {{ viewingLoanDetail.collateral_description }}
+          </p>
+          <p>
+            <strong>Status:</strong>
+            <span class="status-badge" :class="viewingLoanDetail.status">{{
+              viewingLoanDetail.status
+            }}</span>
+          </p>
+          <p>
+            <strong>Date:</strong>
+            {{
+              viewingLoanDetail.loaned_at
+                ? formatDateWithoutTime(viewingLoanDetail.loaned_at)
+                : formatDateWithoutTime(viewingLoanDetail.created_at)
+            }}
+          </p>
+        </div>
+
+        <div class="management-actions" v-if="viewingLoanDetail">
+          <div
+            v-for="item in viewingLoanDetail.items"
+            :key="item.product_id"
+            class="action-section"
+          >
+            <h3>{{ item.quantity }}x {{ item.product_name }}</h3>
+            <p class="hint">
+              {{ item.returned_quantity || 0 }} / {{ item.quantity }} returned
+            </p>
+
+            <div
+              v-if="item.returns && item.returns.length > 0"
+              class="returns-history"
+            >
+              <h4>Return History:</h4>
+              <ul>
+                <li v-for="ret in item.returns" :key="ret.id">
+                  <span v-if="ret.replacement_product_id">
+                    Verified: {{ ret.quantity }} substituted with
+                    <strong>{{ ret.replacement_name }}</strong>
+                  </span>
+                  <span v-else>
+                    Verified: {{ ret.quantity }} returned as original
+                  </span>
+                  <small class="text-secondary">
+                    ({{ formatDate(ret.created_at) }})
+                  </small>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -967,9 +1134,11 @@ import {
   ArrowUpRight,
   TrendingDown,
   Check,
+  Eye,
 } from "lucide-vue-next";
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkUploadModal from "../components/BulkUploadModal.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import * as XLSX from "xlsx";
 import { apiFetch } from "../utils/api";
 import { useDialogStore } from "../stores/dialogStore";
@@ -1108,7 +1277,20 @@ async function exportToExcel() {
 
 // Borrowed Item Edit Logic
 const showEditBorrowedModal = ref(false);
+const showViewBorrowedModal = ref(false);
 const editingBorrowedDetail = ref(null);
+const viewingBorrowedDetail = ref(null);
+
+function openViewBorrowedModal(item) {
+  viewingBorrowedDetail.value = item;
+  showViewBorrowedModal.value = true;
+}
+
+function closeViewBorrowedModal() {
+  showViewBorrowedModal.value = false;
+  viewingBorrowedDetail.value = null;
+}
+
 const borrowedForm = ref({
   productName: "",
   borrowed_from: "",
@@ -1225,7 +1407,19 @@ async function handleMarkAsPaid() {
 const loans = computed(() => loanStore.loans);
 const showEditLoanModal = ref(false);
 const showManageLoanModal = ref(false);
+const showViewLoanModal = ref(false);
 const editingLoanDetail = ref(null);
+const viewingLoanDetail = ref(null);
+
+function openViewLoanModal(loan) {
+  viewingLoanDetail.value = loan;
+  showViewLoanModal.value = true;
+}
+
+function closeViewLoanModal() {
+  showViewLoanModal.value = false;
+  viewingLoanDetail.value = null;
+}
 const loanForm = ref({
   borrower_name: "",
   borrower_contact: "",
@@ -2267,6 +2461,7 @@ code {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 200px;
 }
 
 .checkbox-label {
@@ -2323,5 +2518,23 @@ code {
 
 .returns-history li:last-child {
   border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .inline-form {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .inline-form .form-group,
+  .substitution-section {
+    width: 100%;
+  }
+
+  .inline-form .submit-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
 }
 </style>
