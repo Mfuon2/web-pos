@@ -1,6 +1,6 @@
 <template>
   <Transition name="fade">
-    <div v-if="isOpen" class="glass-dialog-overlay" @click="handleBackdropClick">
+    <div v-if="isOpen" class="glass-dialog-overlay">
       <div class="glass-dialog" @click.stop>
         <div class="dialog-header">
           <component :is="iconComponent" class="dialog-icon" :class="type" />
@@ -58,11 +58,7 @@ function handleCancel() {
   store.cancel()
 }
 
-function handleBackdropClick() {
-  if (type.value !== 'confirm') {
-    store.cancel()
-  }
-}
+
 </script>
 
 <style scoped>

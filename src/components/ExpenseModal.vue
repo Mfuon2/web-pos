@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click="$emit('close')">
+  <div class="modal-overlay">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
         <h2>{{ expense ? "Edit Expense" : "Record Expense" }}</h2>

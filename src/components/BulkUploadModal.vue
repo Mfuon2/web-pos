@@ -1,6 +1,6 @@
 <template>
-  <div class="modal-overlay" @click="$emit('close')">
-    <div class="modal-content bulk-upload-modal" @click.stop>
+  <div class="modal-overlay">
+    <div class="modal-content bulk-upload-modal">
       <div class="modal-header">
         <h2><Upload class="icon-sm" /> Bulk Upload Products</h2>
         <button class="close-btn" @click="$emit('close')">
