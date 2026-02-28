@@ -36,7 +36,9 @@ const ROUTE_PERMISSIONS = {
   "/api/users": ["admin"],
   "/api/reports": ["admin"],
   "/api/purchase-orders": ["admin"],
+  "/api/stock-counts": ["admin"],
 };
+
 
 /**
  * Check if a route is public (no auth required)
@@ -44,7 +46,7 @@ const ROUTE_PERMISSIONS = {
  * @param {string} method - Request method
  * @returns {boolean}
  */
-export function isPublicRoute(path, method) {
+export function isPublicRoute(path, method = "GET") {
   const permissions = getRoutePermissions(path, method);
   return permissions.includes("*");
 }
@@ -67,6 +69,7 @@ export function getRoutePermissions(path, method = "GET") {
       // Match route prefix (e.g., /api/sales matches /api/sales/123)
       if (path.startsWith(routePattern)) {
         permissions = roles;
+        break;
       }
     }
   }
@@ -97,7 +100,7 @@ export function hasPermission(session, path, method) {
   }
 
   const allowedRoles = getRoutePermissions(path, method);
-  return allowedRoles.includes(session.role);
+  return allowedRoles.includes(session.role) || allowedRoles.includes("*");
 }
 
 /**

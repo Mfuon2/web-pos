@@ -13,6 +13,7 @@ export const useBorrowedStore = defineStore("borrowed", () => {
       const url = search
         ? `/api/borrowed-items?search=${encodeURIComponent(search)}`
         : "/api/borrowed-items";
+
       const response = await apiFetch(url);
       if (response.ok) {
         borrowedItems.value = await response.json();

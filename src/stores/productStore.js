@@ -34,6 +34,7 @@ export const useProductStore = defineStore("product", () => {
         queryParams.append("search", params.search);
       }
 
+
       const queryString = queryParams.toString();
       if (queryString) {
         url += `?${queryString}`;

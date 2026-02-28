@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:backend": "CI=true wrangler pages dev --proxy 5173 --port 8788",
-    "dev:remote": "CI=true wrangler pages dev --proxy 5173 --port 8788 --remote",
+    "dev:backend": "CI=true wrangler pages dev --proxy 5173 --port 8789",
+    "dev:remote": "CI=true wrangler pages dev --proxy 5173 --port 8789 --remote",
     "dev:all": "concurrently \"bun run dev\" \"wait-on http://localhost:5173 && bun run dev:backend\" --names \"vite,wrangler\" --prefix-colors \"cyan,magenta\"",
     "build": "vite build",
     "preview": "vite preview",

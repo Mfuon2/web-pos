@@ -85,13 +85,33 @@
               :disabled="exporting"
             >
               <Download class="icon-sm" />
-              {{ exporting ? "Exporting..." : "Export" }}
+              <span class="btn-text">Export</span>
             </button>
             <button @click="showBulkUploadModal = true" class="upload-btn">
               <Upload class="icon-sm" />
-              Upload Products
+              <span class="btn-text">Upload</span>
             </button>
-            <button @click="openAddModal" class="add-btn">+ Add Product</button>
+            <button @click="openAddModal" class="add-btn">+ Product</button>
+          </div>
+        </div>
+
+        <!-- Mobile Search Bar (Only shown on small screens) -->
+        <div class="search-bar-container mobile-search">
+          <div class="search-input-wrapper">
+            <Search class="search-icon" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search by name or barcode..."
+              class="search-input"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="clear-search"
+            >
+              ✕
+            </button>
           </div>
         </div>
 
@@ -1167,7 +1187,9 @@ const categories = computed(() => categoryStore.categories);
 const pagination = computed(() => productStore.pagination);
 const borrowedItems = computed(() => borrowedStore.borrowedItems);
 
+const loans = computed(() => loanStore.loans);
 const activeTab = ref(isCashier.value ? "borrowed" : "inventory"); // inventory, low_stock, borrowed, loaned
+
 const exporting = ref(false);
 const searchQuery = ref("");
 let searchTimeout = null;
@@ -1414,7 +1436,6 @@ async function handleMarkAsPaid() {
 }
 
 // Loan Edit Logic
-const loans = computed(() => loanStore.loans);
 const showEditLoanModal = ref(false);
 const showManageLoanModal = ref(false);
 const showViewLoanModal = ref(false);
@@ -1920,6 +1941,42 @@ function formatDateWithoutTime(dateString) {
 
 .clear-search:hover {
   color: var(--danger-bg);
+}
+
+.add-btn,
+.export-btn,
+.upload-btn {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .btn-text {
+    display: none;
+  }
+  .desktop-search {
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .desktop-search {
+    display: none;
+  }
+  .mobile-search {
+    display: flex;
+  }
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-actions {
+    justify-content: flex-end;
+  }
 }
 
 .add-btn {

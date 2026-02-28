@@ -4,29 +4,35 @@ export async function onRequestGet(context) {
   const search = url.searchParams.get("search");
 
   try {
-    let query = `SELECT * FROM loans`;
-    const params = [];
+    let loanQuery = `SELECT * FROM loans`;
+    const loanParams = [];
 
     if (search) {
-      query += ` WHERE borrower_name LIKE ? OR borrower_contact LIKE ?`;
-      params.push(`%${search}%`, `%${search}%`);
+      loanQuery += ` 
+        WHERE id IN (
+          SELECT l.id FROM loans l
+          WHERE l.borrower_name LIKE ? OR l.collateral LIKE ?
+          UNION
+          SELECT li.loan_id FROM loan_items li
+          JOIN products p ON li.product_id = p.id
+          WHERE p.name LIKE ? OR p.barcode LIKE ?
+        )
+      `;
+      const pattern = `%${search}%`;
+      loanParams.push(pattern, pattern, pattern, pattern);
     }
 
-    query += ` ORDER BY COALESCE(loaned_at, created_at) DESC`;
+    loanQuery += ` ORDER BY COALESCE(loaned_at, created_at) DESC`;
 
-    let stmt = env.DB.prepare(query);
-    if (params.length > 0) {
-      stmt = stmt.bind(...params);
-    }
+    const { results: loans } = await env.DB.prepare(loanQuery)
+      .bind(...loanParams)
+      .all();
 
-    const { results: loans } = await stmt.all();
 
     if (loans.length === 0) {
       return Response.json([]);
     }
 
-    // This loop might be slightly N+1 but D1 is fast locally.
-    // Optimized: get all loan items for these loans
     const loanIds = loans.map((l) => l.id).join(",");
     const { results: items } = await env.DB.prepare(
       `
@@ -38,8 +44,6 @@ export async function onRequestGet(context) {
     `,
     ).all();
 
-    // Fetch return history/substitutions
-    // We can do this efficiently by getting all returns for these items
     const itemIds = items.map((i) => i.id).join(",");
     let returns = [];
     if (itemIds) {
@@ -55,7 +59,6 @@ export async function onRequestGet(context) {
       returns = returnData;
     }
 
-    // Attach items to loans, and returns to items
     const loansWithItems = loans.map((loan) => ({
       ...loan,
       items: items
