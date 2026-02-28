@@ -1,0 +1,697 @@
+<template>
+  <div class="stock-counts">
+    <div class="header">
+      <h1>
+        <ClipboardList class="header-icon" />
+        Stock Counts
+      </h1>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'history' }"
+        @click="activeTab = 'history'"
+      >
+        <History class="icon-sm" />
+        Count History
+      </button>
+      <button
+        v-if="activeCount"
+        class="tab"
+        :class="{ active: activeTab === 'active' }"
+        @click="activeTab = 'active'"
+      >
+        <Edit3 class="icon-sm" />
+        Active Count
+      </button>
+    </div>
+
+    <div class="tab-content">
+      <!-- History Tab -->
+      <div v-if="activeTab === 'history'" class="content-section">
+        <div class="section-header">
+          <h2>Count History</h2>
+          <div class="header-actions">
+            <button
+              @click="startNewCount"
+              class="add-btn"
+              :disabled="stockCountStore.loading"
+            >
+              {{ stockCountStore.loading ? "..." : "+ Start New Count" }}
+            </button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Discrepancy</th>
+                <th>Counted By</th>
+                <th>Reconciled By</th>
+                <th>Options</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="count in stockCountStore.stockCounts" :key="count.id">
+                <td data-label="Date">
+                  {{ formatDateWithoutTime(count.countDate) }}
+                </td>
+                <td data-label="Status">
+                  <span class="status-badge" :class="count.status">{{
+                    count.status
+                  }}</span>
+                </td>
+                <td data-label="Discrepancy">
+                  <span
+                    v-if="count.hasDiscrepancy"
+                    class="discrepancy-badge yes"
+                    >Yes</span
+                  >
+                  <span v-else class="discrepancy-badge no">No</span>
+                </td>
+                <td data-label="Counted By">
+                  {{
+                    getUserName(count.countedBy) || count.countedBy || "Unknown"
+                  }}
+                </td>
+                <td data-label="Reconciled By">
+                  {{
+                    count.reconciledBy
+                      ? getUserName(count.reconciledBy) || count.reconciledBy
+                      : "Pending"
+                  }}
+                </td>
+                <td class="actions" data-label="Options">
+                  <button
+                    @click="viewCount(count)"
+                    class="action-btn edit-btn"
+                    title="View/Edit"
+                  >
+                    <Eye class="icon-sm" v-if="count.status === 'completed'" />
+                    <Edit2 class="icon-sm" v-else />
+                  </button>
+                  <button
+                    v-if="count.status === 'completed' && !count.reconciledBy"
+                    @click="confirmReconcile(count)"
+                    class="action-btn manage-btn"
+                    title="Reconcile"
+                  >
+                    <CheckCircle class="icon-sm" />
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="stockCountStore.stockCounts.length === 0">
+                <td colspan="6" class="empty-state">No stock counts found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Active Count Tab -->
+      <div v-if="activeTab === 'active' && activeCount" class="content-section">
+        <div class="section-header">
+          <h2>
+            Stock Count: {{ formatDateWithoutTime(activeCount.countDate) }}
+          </h2>
+          <span class="status-badge" :class="activeCount.status">{{
+            activeCount.status
+          }}</span>
+        </div>
+
+        <div class="count-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Count Date</label>
+              <input
+                type="date"
+                v-model="activeCount.countDate"
+                :disabled="isCompleted"
+              />
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <input
+                type="text"
+                v-model="activeCount.notes"
+                :disabled="isCompleted"
+                placeholder="e.g., Monthly audit"
+              />
+            </div>
+          </div>
+
+          <div class="table-container mt-4">
+            <table>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th class="text-center">System Count</th>
+                  <th class="text-center">Actual Count</th>
+                  <th class="text-center">Variance</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in activeCount.items" :key="item.id">
+                  <td data-label="Product">{{ item.productName }}</td>
+                  <td data-label="System Count" class="text-center">
+                    {{ item.systemCount }}
+                  </td>
+                  <td data-label="Actual Count" class="text-center">
+                    <input
+                      type="number"
+                      v-model.number="item.actualCount"
+                      @input="recalculateVariance(item)"
+                      class="count-input center-align"
+                      :disabled="isCompleted"
+                    />
+                  </td>
+                  <td
+                    data-label="Variance"
+                    class="text-center"
+                    :class="getVarianceClass(item.variance)"
+                  >
+                    <strong>{{
+                      item.variance > 0 ? "+" + item.variance : item.variance
+                    }}</strong>
+                  </td>
+                  <td data-label="Reason">
+                    <input
+                      v-if="item.variance !== 0"
+                      type="text"
+                      v-model="item.reason"
+                      placeholder="Reason for discrepancy"
+                      class="reason-input w-full"
+                      :disabled="isCompleted"
+                      required
+                    />
+                    <span v-else class="text-secondary">-</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            class="actions-footer flex justify-end gap-2 mt-4"
+            v-if="!isCompleted"
+          >
+            <button
+              @click="saveDraft"
+              class="secondary-btn"
+              :disabled="stockCountStore.loading"
+            >
+              Save Draft
+            </button>
+            <button
+              @click="completeCount"
+              class="primary-btn"
+              :disabled="stockCountStore.loading"
+            >
+              Review & Complete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import { useStockCountStore } from "../stores/stockCountStore";
+import { useAuthStore } from "../stores/authStore";
+import { useUserStore } from "../stores/userStore";
+import { useDialogStore } from "../stores/dialogStore";
+import {
+  ClipboardList,
+  History,
+  Edit3,
+  Eye,
+  Edit2,
+  CheckCircle,
+} from "lucide-vue-next";
+
+const stockCountStore = useStockCountStore();
+const authStore = useAuthStore();
+const userStore = useUserStore();
+const dialogStore = useDialogStore();
+
+const activeTab = ref("history");
+const activeCount = ref(null);
+
+const isCompleted = computed(() => {
+  return activeCount.value?.status === "completed";
+});
+
+onMounted(async () => {
+  await stockCountStore.fetchStockCounts();
+  if (userStore.users.length === 0) {
+    try {
+      await userStore.fetchUsers(); // Loads users if not loaded to map user IDs
+    } catch (e) {}
+  }
+});
+
+function formatDateWithoutTime(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toISOString().split("T")[0];
+}
+
+function getUserName(userId) {
+  if (!userId) return null;
+  const user = userStore.users.find((u) => u.id === userId);
+  return user ? user.username : null;
+}
+
+function recalculateVariance(item) {
+  item.variance = (item.actualCount || 0) - item.systemCount;
+}
+
+function getVarianceClass(variance) {
+  if (variance > 0) return "text-success";
+  if (variance < 0) return "text-danger";
+  return "";
+}
+
+async function startNewCount() {
+  const payload = {
+    counted_by: authStore.currentUser?.id,
+    count_date: new Date().toISOString().split("T")[0],
+  };
+  const result = await stockCountStore.startStockCount(payload);
+  if (result && result.id) {
+    await viewCount({ id: result.id });
+  }
+}
+
+async function viewCount(countSummary) {
+  const fullDetails = await stockCountStore.fetchStockCount(countSummary.id);
+  activeCount.value = JSON.parse(JSON.stringify(fullDetails)); // deep copy so we can edit
+  activeCount.value.countDate = formatDateWithoutTime(
+    activeCount.value.countDate,
+  ); // prep date picker
+
+  // Initialize actual count if empty
+  activeCount.value.items.forEach((item) => {
+    if (item.actualCount === null || item.actualCount === undefined) {
+      item.actualCount = item.systemCount;
+    }
+    recalculateVariance(item);
+  });
+
+  activeTab.value = "active";
+}
+
+function validateCount() {
+  for (const item of activeCount.value.items) {
+    if (item.variance !== 0 && (!item.reason || item.reason.trim() === "")) {
+      dialogStore.alert(`Reason is required for product: ${item.productName}`);
+      return false;
+    }
+  }
+  return true;
+}
+
+async function saveDraft() {
+  if (!activeCount.value) return;
+  const payload = {
+    status: "draft",
+    notes: activeCount.value.notes,
+    items: activeCount.value.items,
+  };
+  await stockCountStore.updateStockCount(activeCount.value.id, payload);
+  dialogStore.success("Draft saved successfully.");
+  await stockCountStore.fetchStockCounts();
+}
+
+async function completeCount() {
+  if (!activeCount.value) return;
+  if (!validateCount()) return;
+
+  const confirmMsg =
+    "Are you sure you want to complete this stock count? You won't be able to edit it afterward.";
+  if (!(await dialogStore.confirm(confirmMsg))) return;
+
+  const payload = {
+    status: "completed",
+    notes: activeCount.value.notes,
+    items: activeCount.value.items,
+  };
+  await stockCountStore.updateStockCount(activeCount.value.id, payload);
+  dialogStore.success(
+    "Stock count completed! You can now reconcile the differences.",
+  );
+
+  await stockCountStore.fetchStockCounts();
+  activeTab.value = "history";
+  activeCount.value = null;
+}
+
+async function confirmReconcile(count) {
+  const msg =
+    "Are you sure you want to reconcile this stock count? This will update the LIVE SYSTEM STOCK quantites to match the counted amounts and your user ID will be recorded as the authorizer. This action cannot be undone.";
+  if (!(await dialogStore.confirm(msg))) return;
+
+  const payload = {
+    user_id: authStore.currentUser?.id,
+  };
+
+  try {
+    await stockCountStore.reconcileStockCount(count.id, payload);
+    dialogStore.success("Stock successfully reconciled!");
+    await stockCountStore.fetchStockCounts();
+  } catch (e) {
+    dialogStore.error("Failed to reconcile: " + e.message);
+  }
+}
+</script>
+
+<style scoped>
+.stock-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .stock-counts {
+    padding: 1rem;
+  }
+
+  .tabs {
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
+  }
+
+  .tab {
+    min-width: 120px;
+    padding: 0.75rem 1rem;
+    font-size: var(--font-size-sm);
+  }
+
+  .table-container {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  table,
+  thead,
+  tbody,
+  th,
+  td,
+  tr {
+    display: block;
+  }
+
+  thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  tbody tr {
+    background: var(--bg-white, #fff);
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  td {
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    position: relative;
+    padding: 0.75rem 1rem 0.75rem 40% !important;
+    text-align: right !important;
+    min-height: 40px;
+  }
+
+  td:last-child {
+    border-bottom: 0;
+  }
+
+  td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: 600;
+    color: #4b5563;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .text-center,
+  .center-align {
+    text-align: right !important;
+  }
+
+  .actions {
+    justify-content: flex-end;
+    width: 100%;
+    display: flex;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  margin: 0;
+  color: var(--text-color, #333);
+}
+
+.header-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--primary-color, #2563eb);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: 0;
+  overflow-x: auto;
+}
+
+.tab {
+  flex: none;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+}
+
+.tab.active {
+  background: var(--primary-gradient);
+  color: var(--text-white);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.section-header h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.add-btn {
+  padding: 0.3rem 1rem;
+  background: var(--primary-gradient);
+  color: var(--text-white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.add-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.add-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.text-center {
+  text-align: center;
+}
+.center-align {
+  text-align: center;
+}
+
+.manage-btn:hover {
+  color: #10b981;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-badge.draft {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+.status-badge.completed {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.discrepancy-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-block;
+}
+.discrepancy-badge.yes {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+.discrepancy-badge.no {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.text-success {
+  color: #059669;
+}
+.text-danger {
+  color: #dc2626;
+}
+
+.count-input {
+  width: 80px;
+  padding: 0.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+}
+
+.reason-input {
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+.form-group input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+}
+
+.flex {
+  display: flex;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.gap-2 {
+  gap: 0.5rem;
+}
+.mt-4 {
+  margin-top: 1rem;
+}
+.w-full {
+  width: 100%;
+}
+
+.primary-btn {
+  background-color: var(--primary-color, #2563eb);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+.secondary-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>

@@ -129,3 +129,31 @@ export const settings = sqliteTable("settings", {
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Stock Counts Table
+export const stockCounts = sqliteTable("stock_counts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  status: text("status").default("draft"),
+  countedBy: integer("counted_by").references(() => users.id),
+  reconciledBy: integer("reconciled_by").references(() => users.id),
+  reconciledAt: text("reconciled_at"),
+  countDate: text("count_date"),
+  notes: text("notes"),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Stock Count Items Table
+export const stockCountItems = sqliteTable("stock_count_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  stockCountId: integer("stock_count_id")
+    .notNull()
+    .references(() => stockCounts.id),
+  productId: integer("product_id")
+    .notNull()
+    .references(() => products.id),
+  systemCount: integer("system_count").notNull(),
+  actualCount: integer("actual_count"),
+  variance: integer("variance"),
+  reason: text("reason"),
+});
