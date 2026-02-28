@@ -26,9 +26,11 @@ const ROUTE_PERMISSIONS = {
     GET: ["admin", "cashier"],
     PUT: ["admin"],
   },
+  "/api/borrowed-items": ["admin", "cashier"],
+  "/api/loans": ["admin", "cashier"],
+  "/api/categories": ["admin", "cashier"],
 
   // Admin-only routes
-  "/api/categories": ["admin"],
   "/api/suppliers": ["admin"],
   "/api/expenses": ["admin"],
   "/api/users": ["admin"],

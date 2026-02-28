@@ -53,7 +53,7 @@
         Sales
       </router-link>
       <router-link
-        v-if="isAdmin"
+        v-if="isAdmin || isCashier"
         to="/inventory"
         :class="{ active: $route.path === '/inventory' }"
         @click="isMenuOpen = false"
