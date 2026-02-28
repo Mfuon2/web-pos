@@ -114,8 +114,21 @@ export async function onRequestPost(context) {
     }));
 
     if (itemsToInsert.length > 0) {
-      // Drizzle supports bulk insert
-      await db.insert(stockCountItems).values(itemsToInsert);
+      // Use raw D1 batch to avoid Drizzle v0.44 bug that includes `id: null`
+      // in AUTOINCREMENT bulk inserts, which D1/SQLite rejects.
+      const statements = itemsToInsert.map((item) =>
+        env.DB.prepare(
+          `INSERT INTO stock_count_items (stock_count_id, product_id, system_count, actual_count, variance)
+           VALUES (?, ?, ?, ?, ?)`,
+        ).bind(
+          item.stockCountId,
+          item.productId,
+          item.systemCount,
+          item.actualCount,
+          item.variance,
+        ),
+      );
+      await env.DB.batch(statements);
     }
 
     return new Response(

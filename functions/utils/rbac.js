@@ -36,7 +36,9 @@ const ROUTE_PERMISSIONS = {
   "/api/users": ["admin"],
   "/api/reports": ["admin"],
   "/api/purchase-orders": ["admin"],
+  "/api/stock-counts": ["admin"],
 };
+
 
 /**
  * Check if a route is public (no auth required)
