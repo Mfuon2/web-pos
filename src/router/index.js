@@ -33,7 +33,7 @@ const router = createRouter({
       path: "/sales",
       name: "sales",
       component: Sales,
-      meta: { roles: ["admin"] },
+      meta: { roles: ["admin", "cashier"] },
     },
     {
       path: "/sales-summary",

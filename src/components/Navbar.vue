@@ -44,7 +44,7 @@
         Summary
       </router-link>
       <router-link
-        v-if="isAdmin"
+        v-if="isAdmin || isCashier"
         to="/sales"
         :class="{ active: $route.path === '/sales' }"
         @click="isMenuOpen = false"
@@ -132,6 +132,7 @@ const isMenuOpen = ref(false);
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 const currentUser = computed(() => authStore.currentUser);
 const isAdmin = computed(() => currentUser.value?.role === "admin");
+const isCashier = computed(() => currentUser.value?.role === "cashier");
 const businessName = computed(() => settingsStore.businessName);
 
 function handleLogout() {
