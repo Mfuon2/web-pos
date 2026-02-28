@@ -10,6 +10,7 @@
     <!-- Tab Navigation -->
     <div class="tabs">
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'inventory' }"
         @click="activeTab = 'inventory'"
@@ -18,6 +19,7 @@
         All Products
       </button>
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'low_stock' }"
         @click="activeTab = 'low_stock'"
@@ -47,7 +49,9 @@
     <div class="tab-content">
       <!-- Inventory Tab / Low Stock Tab -->
       <div
-        v-if="activeTab === 'inventory' || activeTab === 'low_stock'"
+        v-if="
+          isAdmin && (activeTab === 'inventory' || activeTab === 'low_stock')
+        "
         class="content-section"
       >
         <div class="section-header">
@@ -1117,6 +1121,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
+import { useAuthStore } from "../stores/authStore";
 import { useProductStore } from "../stores/productStore";
 import { useCategoryStore } from "../stores/categoryStore";
 import { useSettingsStore } from "../stores/settingsStore";
@@ -1152,12 +1157,17 @@ const dialogStore = useDialogStore();
 const borrowedStore = useBorrowedStore();
 const loanStore = useLoanStore();
 
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.currentUser);
+const isAdmin = computed(() => currentUser.value?.role === "admin");
+const isCashier = computed(() => currentUser.value?.role === "cashier");
+
 const products = computed(() => productStore.products);
 const categories = computed(() => categoryStore.categories);
 const pagination = computed(() => productStore.pagination);
 const borrowedItems = computed(() => borrowedStore.borrowedItems);
 
-const activeTab = ref("inventory"); // inventory, low_stock, borrowed, loaned
+const activeTab = ref(isCashier.value ? "borrowed" : "inventory"); // inventory, low_stock, borrowed, loaned
 const exporting = ref(false);
 const searchQuery = ref("");
 let searchTimeout = null;
