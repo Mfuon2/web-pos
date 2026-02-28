@@ -53,6 +53,13 @@ export const useCartStore = defineStore("cart", () => {
     }
   }
 
+  function updateItemPrice(productId, newPrice) {
+    const item = items.value.find((item) => item.product_id === productId);
+    if (item) {
+      item.price = Number(newPrice);
+    }
+  }
+
   function clearCart() {
     items.value = [];
     paymentMethod.value = "cash";
@@ -93,6 +100,7 @@ export const useCartStore = defineStore("cart", () => {
     addItem,
     removeItem,
     updateQuantity,
+    updateItemPrice,
     clearCart,
     checkout,
   };

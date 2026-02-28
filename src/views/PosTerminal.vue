@@ -62,7 +62,47 @@
         >
           <div class="item-info">
             <h4>{{ item.name }}</h4>
-            <p>{{ formatCurrency(item.price) }} x {{ item.quantity }}</p>
+            <div class="price-edit-container">
+              <div
+                v-if="editingPriceId === item.product_id"
+                class="price-input-wrapper"
+              >
+                <input
+                  type="number"
+                  v-model.number="editingPriceValue"
+                  class="price-input"
+                  min="0"
+                  step="0.01"
+                  @keyup.enter="savePrice(item.product_id)"
+                  @keyup.esc="cancelEditPrice"
+                  v-focus
+                />
+                <button
+                  @click="savePrice(item.product_id)"
+                  class="save-price-btn"
+                  title="Save Price"
+                >
+                  <Check class="icon-sm text-success" />
+                </button>
+                <button
+                  @click="cancelEditPrice"
+                  class="cancel-price-btn"
+                  title="Cancel"
+                >
+                  <X class="icon-sm text-danger" />
+                </button>
+              </div>
+              <p v-else class="price-display">
+                {{ formatCurrency(item.price) }} x {{ item.quantity }}
+                <button
+                  @click="startEditPrice(item)"
+                  class="edit-price-btn"
+                  title="Edit Price"
+                >
+                  <Edit2 class="icon-xs" />
+                </button>
+              </p>
+            </div>
           </div>
           <div class="item-actions">
             <button @click="updateQuantity(item.product_id, -1)">-</button>
@@ -196,6 +236,8 @@ import {
   Banknote,
   Smartphone,
   X,
+  Check,
+  Edit2,
   ArrowUpRight,
   ArrowDownLeft,
   Calendar,
@@ -220,6 +262,10 @@ const paymentMethod = ref(null);
 const processing = ref(false);
 const showCartMobile = ref(false);
 const searchInputRef = ref(null);
+
+// Price Editing State
+const editingPriceId = ref(null);
+const editingPriceValue = ref(0);
 
 const getLocalDate = () => {
   const d = new Date();
@@ -273,6 +319,23 @@ function updateQuantity(productId, change) {
 
 function removeFromCart(productId) {
   cartStore.removeItem(productId);
+}
+
+// Price Editing Methods
+function startEditPrice(item) {
+  editingPriceId.value = item.product_id;
+  editingPriceValue.value = item.price;
+}
+
+function savePrice(productId) {
+  if (editingPriceValue.value >= 0) {
+    cartStore.updateItemPrice(productId, editingPriceValue.value);
+  }
+  editingPriceId.value = null;
+}
+
+function cancelEditPrice() {
+  editingPriceId.value = null;
 }
 
 function handleBarcodeSearch() {
@@ -421,6 +484,11 @@ onMounted(() => {
     searchInputRef.value.focus();
   }
 });
+
+// Custom directive for auto-focusing the price input
+const vFocus = {
+  mounted: (el) => el.focus(),
+};
 </script>
 
 <style scoped>
@@ -597,10 +665,88 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.item-info p {
+.price-edit-container {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+.price-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+.edit-price-btn {
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.edit-price-btn:hover {
+  background: var(--bg-hover);
+  color: var(--primary-color);
+  opacity: 1;
+}
+
+.price-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.price-input {
+  width: 80px;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--primary-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.save-price-btn,
+.cancel-price-btn {
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-price-btn:hover {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.cancel-price-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.icon-xs {
+  width: 14px;
+  height: 14px;
+}
+
+.text-success {
+  color: #22c55e;
+}
+
+.text-danger {
+  color: #ef4444;
 }
 
 .item-actions {
