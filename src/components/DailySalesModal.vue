@@ -37,18 +37,35 @@
 
         <div class="details-grid">
           <div class="detail-section">
-            <h3>Payment Methods</h3>
             <div class="payment-methods">
               <div
                 v-for="(amount, method) in paymentBreakdown"
                 :key="method"
-                class="payment-row"
+                class="detail-row"
               >
-                <div class="payment-method-info">
+                <div class="detail-row-info">
                   <component :is="getPaymentIcon(method)" class="icon-sm" />
-                  <span class="method-name">{{ method }}</span>
+                  <span class="detail-row-label">{{ method }}</span>
                 </div>
                 <span class="payment-amount">{{ formatCurrency(amount) }}</span>
+              </div>
+              <div class="detail-row" v-if="unverifiedItemsTotal > 0">
+                <div class="detail-row-info">
+                  <BadgeX class="icon-sm" />
+                  <span class="detail-row-label">Unverified</span>
+                </div>
+                <span class="payment-amount">{{
+                  formatCurrency(unverifiedItemsTotal)
+                }}</span>
+              </div>
+              <div class="detail-row" v-if="verifiedItemsTotal > 0">
+                <div class="detail-row-info">
+                  <BadgeCheck class="icon-sm" />
+                  <span class="detail-row-label">Verified</span>
+                </div>
+                <span class="payment-amount">{{
+                  formatCurrency(verifiedItemsTotal)
+                }}</span>
               </div>
             </div>
           </div>
@@ -69,9 +86,14 @@
                 >
                   <span class="col-name">{{ item.name }}</span>
                   <span class="col-qty text-right">{{ item.quantity }}</span>
-                  <span class="col-total text-right">{{
-                    formatCurrency(item.total)
-                  }}</span>
+                  <span
+                    :class="{
+                      'text-amber-600': item.paymentStatus === 'unverified',
+                      'text-emerald-600': item.paymentStatus === 'verified',
+                    }"
+                    class="col-total text-right"
+                    >{{ formatCurrency(item.total) }}</span
+                  >
                 </div>
                 <div v-if="aggregatedItems.length === 0" class="no-items">
                   No item details left.
@@ -87,7 +109,15 @@
 
 <script setup>
 import { computed } from "vue";
-import { X, Calendar, Banknote, Receipt, Smartphone } from "lucide-vue-next";
+import {
+  X,
+  Calendar,
+  Banknote,
+  Receipt,
+  Smartphone,
+  BadgeCheck,
+  BadgeX,
+} from "lucide-vue-next";
 import { formatCurrency } from "../utils/currency";
 
 const props = defineProps({
@@ -127,7 +157,7 @@ function getPaymentIcon(method) {
 const paymentBreakdown = computed(() => {
   const breakdown = {};
   props.dayData.sales.forEach((sale) => {
-    const method = sale.paymentMethod || sale.payment_method || "Unknown";
+    const method = sale.paymentMethod || "Cash";
     const normalizedMethod = method.charAt(0).toUpperCase() + method.slice(1);
     if (!breakdown[normalizedMethod]) {
       breakdown[normalizedMethod] = 0;
@@ -135,6 +165,30 @@ const paymentBreakdown = computed(() => {
     breakdown[normalizedMethod] += sale.total;
   });
   return breakdown;
+});
+
+const unverifiedItemsTotal = computed(() => {
+  let total = 0;
+  props.dayData.sales.forEach((sale) => {
+    sale.items.forEach((item) => {
+      if (item.paymentStatus === "unverified") {
+        total += item.quantity * item.price;
+      }
+    });
+  });
+  return total;
+});
+
+const verifiedItemsTotal = computed(() => {
+  let total = 0;
+  props.dayData.sales.forEach((sale) => {
+    sale.items.forEach((item) => {
+      if (item.paymentStatus === "verified") {
+        total += item.quantity * item.price;
+      }
+    });
+  });
+  return total;
 });
 
 const aggregatedItems = computed(() => {
@@ -149,6 +203,7 @@ const aggregatedItems = computed(() => {
         const price = item.price || 0;
         const qty = item.quantity || 1;
         const total = price * qty;
+        const paymentStatus = item.paymentStatus || "unverified";
 
         // Use name as fallback key if id is missing
         const key = id || name;
@@ -158,7 +213,13 @@ const aggregatedItems = computed(() => {
           existing.quantity += qty;
           existing.total += total;
         } else {
-          itemsMap.set(key, { id: key, name, quantity: qty, total });
+          itemsMap.set(key, {
+            id: key,
+            name,
+            quantity: qty,
+            total,
+            paymentStatus,
+          });
         }
       });
     }
@@ -367,7 +428,7 @@ const aggregatedItems = computed(() => {
   gap: 0.75rem;
 }
 
-.payment-row {
+.detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -376,7 +437,7 @@ const aggregatedItems = computed(() => {
   border-radius: var(--radius-md, 8px);
 }
 
-.payment-method-info {
+.detail-row-info {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -389,7 +450,7 @@ const aggregatedItems = computed(() => {
   height: 16px;
 }
 
-.method-name {
+.detail-row-label {
   text-transform: capitalize;
 }
 
@@ -442,6 +503,14 @@ const aggregatedItems = computed(() => {
   text-align: right;
 }
 
+.text-amber-600 {
+  color: #d97706;
+}
+
+.text-emerald-600 {
+  color: #059669;
+}
+
 .items-scroll {
   max-height: 250px;
   overflow-y: auto;
@@ -482,7 +551,6 @@ const aggregatedItems = computed(() => {
 
 .item-row .col-total {
   font-weight: 500;
-  color: var(--text-primary, #1e293b);
 }
 
 .no-items {

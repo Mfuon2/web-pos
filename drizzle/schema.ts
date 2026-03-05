@@ -55,6 +55,9 @@ export const saleItems = sqliteTable("sale_items", {
     .references(() => products.id),
   quantity: integer("quantity").notNull(),
   price: real("price").notNull(),
+  paymentStatus: text("payment_status").default("unverified"),
+  verifiedBy: integer("verified_by").references(() => users.id),
+  verifiedAt: text("verified_at"),
 });
 
 // Expenses Table
