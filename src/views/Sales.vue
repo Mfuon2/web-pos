@@ -34,8 +34,17 @@
             <h2>{{ formatDate(dailySales.date) }}</h2>
             <span class="sales-count-badge">{{ dailySales.sales.length }}</span>
           </div>
-          <div class="day-total">
-            {{ formatCurrency(dailySales.total) }}
+          <div class="day-actions">
+            <div class="day-total">
+              {{ formatCurrency(dailySales.total) }}
+            </div>
+            <button
+              class="action-btn"
+              @click.stop="openDailySalesModal(dailySales)"
+              title="View Day Summary"
+            >
+              <Eye class="icon-sm" />
+            </button>
           </div>
         </div>
 
@@ -131,6 +140,13 @@
         </transition>
       </div>
     </div>
+
+    <!-- Modals -->
+    <DailySalesModal
+      v-if="isDailySalesModalOpen"
+      :day-data="selectedDayData"
+      @close="closeDailySalesModal"
+    />
   </div>
 </template>
 
@@ -142,7 +158,9 @@ import {
   ChevronRight,
   Banknote,
   Smartphone,
+  Eye,
 } from "lucide-vue-next";
+import DailySalesModal from "../components/DailySalesModal.vue";
 import { formatCurrency } from "../utils/currency";
 import { apiGet } from "../utils/api";
 
@@ -151,6 +169,18 @@ const loading = ref(false);
 const error = ref(null);
 const expandedSale = ref(null);
 const expandedDays = ref([]);
+const isDailySalesModalOpen = ref(false);
+const selectedDayData = ref(null);
+
+function openDailySalesModal(dayGroup) {
+  selectedDayData.value = dayGroup;
+  isDailySalesModalOpen.value = true;
+}
+
+function closeDailySalesModal() {
+  isDailySalesModalOpen.value = false;
+  selectedDayData.value = null;
+}
 
 // Group sales by date
 const salesByDate = computed(() => {
@@ -420,6 +450,36 @@ onMounted(() => {
   font-weight: 600;
   color: var(--primary-color);
   font-size: var(--font-size-base);
+}
+
+.day-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.action-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
 }
 
 /* Sales List */
