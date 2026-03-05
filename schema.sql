@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS sale_items (
     product_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL,
     price REAL NOT NULL,
+    payment_status TEXT DEFAULT 'unverified',
+    verified_by INTEGER REFERENCES users(id),
+    verified_at DATETIME,
     FOREIGN KEY (sale_id) REFERENCES sales(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
