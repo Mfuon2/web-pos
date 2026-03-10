@@ -1,7 +1,7 @@
 import { getNairobiTimestamp } from "../utils/timezone.js";
 import { getDb } from "../../drizzle/db";
 import { products, categories, stock } from "../../drizzle/schema";
-import { count, desc, lt, eq, or, like } from "drizzle-orm";
+import { count, desc, lt, eq, or, like, and } from "drizzle-orm";
 
 export async function onRequestGet(context) {
   const { env, request } = context;
@@ -14,53 +14,58 @@ export async function onRequestGet(context) {
   try {
     const db = getDb(env);
 
-    // Initial query blocks
-    let countQuery = db
-      .select({ total: count() })
-      .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .leftJoin(stock, eq(products.id, stock.productId));
-
-    let dataQuery = db
-      .select({
-        id: products.id,
-        name: products.name,
-        barcode: products.barcode,
-        price: products.price,
-        cost: products.cost,
-        stock: stock.count,
-        category: categories.name,
-        categoryId: products.categoryId,
-        image: products.image,
-        deleted_at: products.deletedAt,
-        created_at: products.createdAt,
-      })
-      .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .leftJoin(stock, eq(products.id, stock.productId));
-
-    // Apply Filter: Low Stock
-    if (lowStockParam === "true") {
-      const lowStockFilter = lt(stock.count, 1);
-      countQuery = countQuery.where(lowStockFilter);
-      dataQuery = dataQuery.where(lowStockFilter);
-    }
-
-    // Apply Filter: Search
-    if (searchParam) {
-      const searchFilter = or(
-        like(products.name, `%${searchParam}%`),
-        like(products.barcode, `%${searchParam}%`),
-        like(categories.name, `%${searchParam}%`),
-      );
-      countQuery = countQuery.where(searchFilter);
-      dataQuery = dataQuery.where(searchFilter);
-    }
-
     if (pageParam) {
       const page = parseInt(pageParam) || 1;
       const limit = parseInt(limitParam) || 20;
       const offset = (page - 1) * limit;
+
+      let countQuery = db
+        .select({ total: count() })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(stock, eq(products.id, stock.productId));
+
+      let dataQuery = db
+        .select({
+          id: products.id,
+          name: products.name,
+          barcode: products.barcode,
+          price: products.price,
+          cost: products.cost,
+          stock: stock.count,
+          category: categories.name,
+          categoryId: products.categoryId,
+          image: products.image,
+          deleted_at: products.deletedAt,
+          created_at: products.createdAt,
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(stock, eq(products.id, stock.productId));
+
+      // Build Filters
+      const filters = [];
+
+      if (lowStockParam === "true") {
+        filters.push(lt(stock.count, 1));
+      }
+
+      if (searchParam) {
+        filters.push(
+          or(
+            like(products.name, `%${searchParam}%`),
+            like(products.barcode, `%${searchParam}%`),
+            like(categories.name, `%${searchParam}%`),
+          ),
+        );
+      }
+
+      // Apply Filters
+      if (filters.length > 0) {
+        const whereClause = and(...filters);
+        countQuery = countQuery.where(whereClause);
+        dataQuery = dataQuery.where(whereClause);
+      }
 
       const results = await dataQuery
         .orderBy(desc(products.createdAt))
@@ -85,7 +90,47 @@ export async function onRequestGet(context) {
       );
     } else {
       // Non-paginated (e.g., for export or bulk views)
-      const results = await dataQuery.orderBy(desc(products.createdAt));
+      let query = db
+        .select({
+          id: products.id,
+          name: products.name,
+          barcode: products.barcode,
+          price: products.price,
+          cost: products.cost,
+          stock: stock.count,
+          category: categories.name,
+          categoryId: products.categoryId,
+          image: products.image,
+          deleted_at: products.deletedAt,
+          created_at: products.createdAt,
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(stock, eq(products.id, stock.productId))
+        .orderBy(desc(products.createdAt));
+
+      const filters = [];
+
+      if (lowStockParam === "true") {
+        filters.push(lt(stock.count, 1));
+      }
+
+      if (searchParam) {
+        filters.push(
+          or(
+            like(products.name, `%${searchParam}%`),
+            like(products.barcode, `%${searchParam}%`),
+            like(categories.name, `%${searchParam}%`),
+          ),
+        );
+      }
+
+      if (filters.length > 0) {
+        query = query.where(and(...filters));
+      }
+
+      const results = await query;
+
       return new Response(JSON.stringify(results), {
         headers: { "Content-Type": "application/json" },
       });

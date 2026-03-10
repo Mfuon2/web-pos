@@ -10,6 +10,7 @@
     <!-- Tab Navigation -->
     <div class="tabs">
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'inventory' }"
         @click="activeTab = 'inventory'"
@@ -18,6 +19,7 @@
         All Products
       </button>
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'low_stock' }"
         @click="activeTab = 'low_stock'"
@@ -47,7 +49,9 @@
     <div class="tab-content">
       <!-- Inventory Tab / Low Stock Tab -->
       <div
-        v-if="activeTab === 'inventory' || activeTab === 'low_stock'"
+        v-if="
+          isAdmin && (activeTab === 'inventory' || activeTab === 'low_stock')
+        "
         class="content-section"
       >
         <div class="section-header">
@@ -64,7 +68,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search by name or barcode..."
                 class="search-input"
               />
               <button
@@ -227,6 +231,44 @@
               ✕
             </button>
           </div>
+          <div class="header-actions">
+            <div class="search-input-wrapper desktop-search">
+              <Search class="icon-sm search-icon" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search by name, barcode or source..."
+                class="search-input"
+              />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="clear-search"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Search Bar -->
+        <div class="search-bar-container mobile-search">
+          <div class="search-input-wrapper">
+            <Search class="search-icon" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search by name, barcode or source..."
+              class="search-input"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="clear-search"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -238,7 +280,7 @@
                 <th>Borrowed From</th>
                 <th>Reason</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Borrowed Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -289,7 +331,18 @@
                     </div>
                   </div>
                 </td>
-                <td>{{ formatDate(item.created_at) }}</td>
+                <td>
+                  <div>
+                    {{
+                      item.borrowed_at
+                        ? formatDateWithoutTime(item.borrowed_at)
+                        : formatDateWithoutTime(item.created_at)
+                    }}
+                  </div>
+                  <small class="text-secondary" style="font-size: 0.8em"
+                    >Created: {{ formatDate(item.created_at) }}</small
+                  >
+                </td>
                 <td class="actions">
                   <button
                     @click="openManageBorrowedModal(item)"
@@ -303,8 +356,17 @@
                     @click="openEditBorrowedModal(item)"
                     class="action-btn edit-btn"
                     title="Edit Details"
+                    v-if="item.status !== 'returned' && item.status !== 'paid'"
                   >
                     <Edit2 class="icon-sm" />
+                  </button>
+                  <button
+                    @click="openViewBorrowedModal(item)"
+                    class="action-btn view-btn"
+                    title="View Details"
+                    v-if="item.status === 'returned' || item.status === 'paid'"
+                  >
+                    <Eye class="icon-sm" />
                   </button>
                 </td>
               </tr>
@@ -328,7 +390,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search loaned items..."
+                placeholder="Search by name, barcode or borrower..."
                 class="search-input"
               />
               <button
@@ -370,7 +432,7 @@
                 <th>Items</th>
                 <th>Collateral</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Loaned Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -411,7 +473,18 @@
                     </div>
                   </div>
                 </td>
-                <td>{{ formatDate(loan.created_at) }}</td>
+                <td>
+                  <div>
+                    {{
+                      loan.loaned_at
+                        ? formatDateWithoutTime(loan.loaned_at)
+                        : formatDateWithoutTime(loan.created_at)
+                    }}
+                  </div>
+                  <small class="text-secondary" style="font-size: 0.8em"
+                    >Created: {{ formatDate(loan.created_at) }}</small
+                  >
+                </td>
                 <td class="actions">
                   <button
                     @click="openManageLoanModal(loan)"
@@ -425,8 +498,17 @@
                     @click="openEditLoanModal(loan)"
                     class="action-btn edit-btn"
                     title="Update Details"
+                    v-if="loan.status !== 'returned'"
                   >
                     <Edit2 class="icon-sm" />
+                  </button>
+                  <button
+                    @click="openViewLoanModal(loan)"
+                    class="action-btn view-btn"
+                    title="View Details"
+                    v-if="loan.status === 'returned'"
+                  >
+                    <Eye class="icon-sm" />
                   </button>
                 </td>
               </tr>
@@ -471,6 +553,10 @@
               <option value="returned">Returned</option>
               <option value="paid">Paid</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Borrowed Date</label>
+            <input v-model="borrowedForm.borrowed_at" type="date" />
           </div>
           <div class="form-group">
             <label>Borrowed From *</label>
@@ -623,6 +709,63 @@
               }}.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Borrowed Item Modal -->
+    <div
+      v-if="showViewBorrowedModal"
+      class="modal-overlay"
+      @click="closeViewBorrowedModal"
+    >
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>Borrowed Item Details</h2>
+          <button class="close-btn" @click="closeViewBorrowedModal">✕</button>
+        </div>
+        <div class="management-info" v-if="viewingBorrowedDetail">
+          <p>
+            <strong>Product:</strong> {{ viewingBorrowedDetail.product_name }}
+          </p>
+          <p>
+            <strong>Borrowed From:</strong>
+            {{ viewingBorrowedDetail.borrowed_from }}
+          </p>
+          <p>
+            <strong>Total Quantity:</strong>
+            {{ viewingBorrowedDetail.quantity }}
+          </p>
+          <p>
+            <strong>Settled:</strong>
+            {{
+              (viewingBorrowedDetail.returned_quantity || 0) +
+              (viewingBorrowedDetail.paid_quantity || 0)
+            }}
+            ({{ viewingBorrowedDetail.returned_quantity || 0 }} ret,
+            {{ viewingBorrowedDetail.paid_quantity || 0 }} paid)
+          </p>
+          <p>
+            <strong>Status:</strong>
+            <span class="status-badge" :class="viewingBorrowedDetail.status">{{
+              viewingBorrowedDetail.status
+            }}</span>
+          </p>
+          <p>
+            <strong>Date:</strong>
+            {{
+              viewingBorrowedDetail.borrowed_at
+                ? formatDateWithoutTime(viewingBorrowedDetail.borrowed_at)
+                : formatDateWithoutTime(viewingBorrowedDetail.created_at)
+            }}
+          </p>
+          <p v-if="viewingBorrowedDetail.paid_amount > 0">
+            <strong>Amount Paid:</strong>
+            {{ formatCurrency(viewingBorrowedDetail.paid_amount) }}
+          </p>
+          <p v-if="viewingBorrowedDetail.reason">
+            <strong>Reason / Notes:</strong> {{ viewingBorrowedDetail.reason }}
+          </p>
         </div>
       </div>
     </div>
@@ -882,22 +1025,20 @@
                   class="form-group"
                 >
                   <label>Replace with:</label>
-                  <select
+                  <SearchableSelect
                     v-model="
                       managementLoanForm[item.product_id].replacementProductId
                     "
-                    required
-                    class="product-select"
-                  >
-                    <option value="" disabled>Select Product</option>
-                    <option
-                      v-for="prod in products"
-                      :key="prod.id"
-                      :value="prod.id"
-                    >
-                      {{ prod.name }} (Stock: {{ prod.stock }})
-                    </option>
-                  </select>
+                    :options="
+                      products.map((p) => ({
+                        ...p,
+                        subLabel: `Stock: ${p.stock}`,
+                      }))
+                    "
+                    labelKey="name"
+                    valueKey="id"
+                    placeholder="Select Product"
+                  />
                 </div>
               </div>
 
@@ -919,7 +1060,12 @@
           <button
             @click="handleReturnAllLoan"
             class="submit-btn"
-            :disabled="loanStore.loading"
+            :disabled="
+              loanStore.loading ||
+              editingLoanDetail?.items.every(
+                (item) => (item.returned_quantity || 0) >= item.quantity,
+              )
+            "
           >
             {{
               loanStore.loading
@@ -930,11 +1076,90 @@
         </div>
       </div>
     </div>
+
+    <!-- View Loan Modal -->
+    <div
+      v-if="showViewLoanModal"
+      class="modal-overlay"
+      @click.self="closeViewLoanModal"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Loan Details - {{ viewingLoanDetail?.borrower_name }}</h2>
+          <button class="close-btn" @click="closeViewLoanModal">✕</button>
+        </div>
+
+        <div class="management-info" v-if="viewingLoanDetail">
+          <p>
+            <strong>Borrower:</strong> {{ viewingLoanDetail.borrower_name }}
+          </p>
+          <p v-if="viewingLoanDetail.borrower_contact">
+            <strong>Contact:</strong> {{ viewingLoanDetail.borrower_contact }}
+          </p>
+          <p v-if="viewingLoanDetail.collateral">
+            <strong>Collateral:</strong> {{ viewingLoanDetail.collateral }}
+          </p>
+          <p v-if="viewingLoanDetail.collateral_description">
+            <strong>Description:</strong>
+            {{ viewingLoanDetail.collateral_description }}
+          </p>
+          <p>
+            <strong>Status:</strong>
+            <span class="status-badge" :class="viewingLoanDetail.status">{{
+              viewingLoanDetail.status
+            }}</span>
+          </p>
+          <p>
+            <strong>Date:</strong>
+            {{
+              viewingLoanDetail.loaned_at
+                ? formatDateWithoutTime(viewingLoanDetail.loaned_at)
+                : formatDateWithoutTime(viewingLoanDetail.created_at)
+            }}
+          </p>
+        </div>
+
+        <div class="management-actions" v-if="viewingLoanDetail">
+          <div
+            v-for="item in viewingLoanDetail.items"
+            :key="item.product_id"
+            class="action-section"
+          >
+            <h3>{{ item.quantity }}x {{ item.product_name }}</h3>
+            <p class="hint">
+              {{ item.returned_quantity || 0 }} / {{ item.quantity }} returned
+            </p>
+
+            <div
+              v-if="item.returns && item.returns.length > 0"
+              class="returns-history"
+            >
+              <h4>Return History:</h4>
+              <ul>
+                <li v-for="ret in item.returns" :key="ret.id">
+                  <span v-if="ret.replacement_product_id">
+                    Verified: {{ ret.quantity }} substituted with
+                    <strong>{{ ret.replacement_name }}</strong>
+                  </span>
+                  <span v-else>
+                    Verified: {{ ret.quantity }} returned as original
+                  </span>
+                  <small class="text-secondary">
+                    ({{ formatDate(ret.created_at) }})
+                  </small>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
+import { useAuthStore } from "../stores/authStore";
 import { useProductStore } from "../stores/productStore";
 import { useCategoryStore } from "../stores/categoryStore";
 import { useSettingsStore } from "../stores/settingsStore";
@@ -952,9 +1177,11 @@ import {
   ArrowUpRight,
   TrendingDown,
   Check,
+  Eye,
 } from "lucide-vue-next";
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkUploadModal from "../components/BulkUploadModal.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import * as XLSX from "xlsx";
 import { apiFetch } from "../utils/api";
 import { useDialogStore } from "../stores/dialogStore";
@@ -968,12 +1195,19 @@ const dialogStore = useDialogStore();
 const borrowedStore = useBorrowedStore();
 const loanStore = useLoanStore();
 
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.currentUser);
+const isAdmin = computed(() => currentUser.value?.role === "admin");
+const isCashier = computed(() => currentUser.value?.role === "cashier");
+
 const products = computed(() => productStore.products);
 const categories = computed(() => categoryStore.categories);
 const pagination = computed(() => productStore.pagination);
 const borrowedItems = computed(() => borrowedStore.borrowedItems);
+
 const loans = computed(() => loanStore.loans);
-const activeTab = ref("inventory"); // inventory, low_stock, borrowed, loaned
+const activeTab = ref(isCashier.value ? "borrowed" : "inventory"); // inventory, low_stock, borrowed, loaned
+
 const exporting = ref(false);
 const searchQuery = ref("");
 let searchTimeout = null;
@@ -999,6 +1233,8 @@ watch(searchQuery, (newQuery) => {
 
 // Watch for tab changes to fetch appropriate data
 watch(activeTab, async (newTab) => {
+  searchQuery.value = "";
+
   if (newTab === "inventory") {
     await productStore.fetchProducts({
       page: 1,
@@ -1091,12 +1327,26 @@ async function exportToExcel() {
 
 // Borrowed Item Edit Logic
 const showEditBorrowedModal = ref(false);
+const showViewBorrowedModal = ref(false);
 const editingBorrowedDetail = ref(null);
+const viewingBorrowedDetail = ref(null);
+
+function openViewBorrowedModal(item) {
+  viewingBorrowedDetail.value = item;
+  showViewBorrowedModal.value = true;
+}
+
+function closeViewBorrowedModal() {
+  showViewBorrowedModal.value = false;
+  viewingBorrowedDetail.value = null;
+}
+
 const borrowedForm = ref({
   productName: "",
   borrowed_from: "",
   reason: "",
   status: "pending",
+  borrowed_at: "",
 });
 
 function openEditBorrowedModal(item) {
@@ -1106,6 +1356,7 @@ function openEditBorrowedModal(item) {
     borrowed_from: item.borrowed_from,
     reason: item.reason,
     status: item.status || "pending",
+    borrowed_at: item.borrowed_at || "",
   };
   showEditBorrowedModal.value = true;
 }
@@ -1122,6 +1373,7 @@ async function handleUpdateBorrowedItem() {
     const updates = {
       borrowed_from: borrowedForm.value.borrowed_from,
       reason: borrowedForm.value.reason,
+      borrowed_at: borrowedForm.value.borrowed_at || null,
     };
 
     await borrowedStore.updateBorrowedItem(
@@ -1204,7 +1456,19 @@ async function handleMarkAsPaid() {
 // Loan Edit Logic
 const showEditLoanModal = ref(false);
 const showManageLoanModal = ref(false);
+const showViewLoanModal = ref(false);
 const editingLoanDetail = ref(null);
+const viewingLoanDetail = ref(null);
+
+function openViewLoanModal(loan) {
+  viewingLoanDetail.value = loan;
+  showViewLoanModal.value = true;
+}
+
+function closeViewLoanModal() {
+  showViewLoanModal.value = false;
+  viewingLoanDetail.value = null;
+}
 const loanForm = ref({
   borrower_name: "",
   borrower_contact: "",
@@ -1529,6 +1793,14 @@ function formatDate(dateString) {
     })
   );
 }
+
+function formatDateWithoutTime(dateString) {
+  if (!dateString) return "N/A";
+  if (typeof dateString === "string") {
+    dateString = dateString.replace(" ", "T");
+  }
+  return new Date(dateString).toLocaleDateString();
+}
 </script>
 
 <style scoped>
@@ -1622,7 +1894,7 @@ function formatDate(dateString) {
 
 .header-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   align-items: center;
 }
 
@@ -1941,6 +2213,15 @@ code {
 
   .header-actions {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .desktop-search {
+    display: none;
+  }
+
+  .mobile-search {
+    display: block;
   }
 
   .form-row {
@@ -2265,6 +2546,7 @@ code {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 200px;
 }
 
 .checkbox-label {
@@ -2321,5 +2603,23 @@ code {
 
 .returns-history li:last-child {
   border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .inline-form {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .inline-form .form-group,
+  .substitution-section {
+    width: 100%;
+  }
+
+  .inline-form .submit-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
 }
 </style>

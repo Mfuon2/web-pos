@@ -53,12 +53,19 @@ export const useCartStore = defineStore("cart", () => {
     }
   }
 
+  function updateItemPrice(productId, newPrice) {
+    const item = items.value.find((item) => item.product_id === productId);
+    if (item) {
+      item.price = Number(newPrice);
+    }
+  }
+
   function clearCart() {
     items.value = [];
     paymentMethod.value = "cash";
   }
 
-  async function checkout(method = "cash", date = null) {
+  async function checkout(method = "cash", date = null, deduct_stock = true) {
     if (items.value.length === 0) {
       throw new Error("Cart is empty");
     }
@@ -68,6 +75,7 @@ export const useCartStore = defineStore("cart", () => {
       total: total.value,
       payment_method: method,
       sale_date: date,
+      deduct_stock,
     };
 
     try {
@@ -92,6 +100,7 @@ export const useCartStore = defineStore("cart", () => {
     addItem,
     removeItem,
     updateQuantity,
+    updateItemPrice,
     clearCart,
     checkout,
   };

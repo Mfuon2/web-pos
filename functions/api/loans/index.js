@@ -22,7 +22,7 @@ export async function onRequestGet(context) {
       loanParams.push(pattern, pattern, pattern, pattern);
     }
 
-    loanQuery += ` ORDER BY created_at DESC`;
+    loanQuery += ` ORDER BY COALESCE(loaned_at, created_at) DESC`;
 
     const { results: loans } = await env.DB.prepare(loanQuery)
       .bind(...loanParams)
@@ -84,6 +84,7 @@ export async function onRequestPost(context) {
       collateral,
       collateral_description,
       items,
+      loaned_at,
     } = body;
 
     if (!borrower_name || !items || items.length === 0) {
@@ -116,11 +117,17 @@ export async function onRequestPost(context) {
     const insertLoan = await db
       .prepare(
         `
-        INSERT INTO loans (borrower_name, borrower_contact, collateral, collateral_description)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO loans (borrower_name, borrower_contact, collateral, collateral_description, loaned_at)
+        VALUES (?, ?, ?, ?, ?)
     `,
       )
-      .bind(borrower_name, borrower_contact, collateral, collateral_description)
+      .bind(
+        borrower_name,
+        borrower_contact,
+        collateral,
+        collateral_description,
+        loaned_at || null,
+      )
       .run();
 
     if (!insertLoan.success) throw new Error("Failed to insert loan");

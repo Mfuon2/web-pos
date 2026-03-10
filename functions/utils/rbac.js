@@ -26,14 +26,17 @@ const ROUTE_PERMISSIONS = {
     GET: ["admin", "cashier"],
     PUT: ["admin"],
   },
+  "/api/borrowed-items": ["admin", "cashier"],
+  "/api/loans": ["admin", "cashier"],
+  "/api/categories": ["admin", "cashier"],
 
   // Admin-only routes
-  "/api/categories": ["admin"],
   "/api/suppliers": ["admin"],
   "/api/expenses": ["admin"],
   "/api/users": ["admin"],
   "/api/reports": ["admin"],
   "/api/purchase-orders": ["admin"],
+  "/api/stock-counts": ["admin"],
 };
 
 /**
@@ -53,7 +56,7 @@ export function isPublicRoute(path, method = "GET") {
  * @param {string} method - Request method
  * @returns {string[]} Array of allowed roles
  */
-export function getRoutePermissions(path, method) {
+export function getRoutePermissions(path, method = "GET") {
   let permissions = null;
 
   // Check for exact match first
@@ -87,7 +90,7 @@ export function getRoutePermissions(path, method) {
  * Check if a user has permission to access a route
  * @param {Object} session - User session with role
  * @param {string} path - Request path
- * @param {string} method - HTTP method
+ * @param {string} method - Request method
  * @returns {boolean}
  */
 export function hasPermission(session, path, method) {

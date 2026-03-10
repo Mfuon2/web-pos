@@ -3,41 +3,92 @@
     <div class="nav-brand">
       <Store class="brand-icon" />
       <h1>{{ businessName }}</h1>
-      <button class="mobile-menu-btn" @click="isMenuOpen = !isMenuOpen" aria-label="Toggle menu">
+      <button
+        class="mobile-menu-btn"
+        @click="isMenuOpen = !isMenuOpen"
+        aria-label="Toggle menu"
+      >
         <span class="hamburger" :class="{ open: isMenuOpen }"></span>
       </button>
     </div>
-    
-    <div class="nav-links" :class="{ 'mobile-open': isMenuOpen }" v-if="isAuthenticated">
-      <router-link v-if="isAdmin" to="/" :class="{ active: $route.path === '/' }" @click="isMenuOpen = false">
+
+    <div
+      class="nav-links"
+      :class="{ 'mobile-open': isMenuOpen }"
+      v-if="isAuthenticated"
+    >
+      <router-link
+        v-if="isAdmin"
+        to="/"
+        :class="{ active: $route.path === '/' }"
+        @click="isMenuOpen = false"
+      >
         <LayoutDashboard class="nav-icon" />
         Dashboard
       </router-link>
-      <router-link to="/pos" :class="{ active: $route.path === '/pos' }" @click="isMenuOpen = false">
+      <router-link
+        to="/pos"
+        :class="{ active: $route.path === '/pos' }"
+        @click="isMenuOpen = false"
+      >
         <ShoppingCart class="nav-icon" />
         POS Terminal
       </router-link>
-      <router-link v-if="isAdmin" to="/sales-summary" :class="{ active: $route.path === '/sales-summary' }" @click="isMenuOpen = false">
+      <router-link
+        v-if="isAdmin"
+        to="/sales-summary"
+        :class="{ active: $route.path === '/sales-summary' }"
+        @click="isMenuOpen = false"
+      >
         <TrendingUp class="nav-icon" />
         Summary
       </router-link>
-      <router-link v-if="isAdmin" to="/sales" :class="{ active: $route.path === '/sales' }" @click="isMenuOpen = false">
+      <router-link
+        v-if="isAdmin || isCashier"
+        to="/sales"
+        :class="{ active: $route.path === '/sales' }"
+        @click="isMenuOpen = false"
+      >
         <Receipt class="nav-icon" />
         Sales
       </router-link>
-      <router-link v-if="isAdmin" to="/inventory" :class="{ active: $route.path === '/inventory' }" @click="isMenuOpen = false">
+      <router-link
+        v-if="isAdmin || isCashier"
+        to="/inventory"
+        :class="{ active: $route.path === '/inventory' }"
+        @click="isMenuOpen = false"
+      >
         <Package class="nav-icon" />
         Inventory
       </router-link>
-      <router-link v-if="isAdmin" to="/financials" :class="{ active: $route.path === '/financials' }" @click="isMenuOpen = false">
+      <router-link
+        v-if="isAdmin"
+        to="/stock-counts"
+        :class="{ active: $route.path === '/stock-counts' }"
+        @click="isMenuOpen = false"
+      >
+        <ClipboardList class="nav-icon" />
+        Stock Counts
+      </router-link>
+      <router-link
+        v-if="isAdmin"
+        to="/financials"
+        :class="{ active: $route.path === '/financials' }"
+        @click="isMenuOpen = false"
+      >
         <Wallet class="nav-icon" />
         Financials
       </router-link>
-      <router-link v-if="isAdmin" to="/setups" :class="{ active: $route.path === '/setups' }" @click="isMenuOpen = false">
+      <router-link
+        v-if="isAdmin"
+        to="/setups"
+        :class="{ active: $route.path === '/setups' }"
+        @click="isMenuOpen = false"
+      >
         <Settings class="nav-icon" />
         Setups
       </router-link>
-      
+
       <div class="user-menu">
         <span class="username">{{ currentUser?.username }}</span>
         <button @click="handleLogout" class="logout-btn" title="Logout">
@@ -45,33 +96,49 @@
         </button>
       </div>
     </div>
-    
+
     <!-- Overlay for mobile menu -->
-    <div class="mobile-overlay" v-if="isMenuOpen" @click="isMenuOpen = false"></div>
+    <div
+      class="mobile-overlay"
+      v-if="isMenuOpen"
+      @click="isMenuOpen = false"
+    ></div>
   </nav>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/authStore'
-import { useSettingsStore } from '../stores/settingsStore'
-import { Store, LayoutDashboard, ShoppingCart, Package, Receipt, Wallet, Settings, LogOut, TrendingUp } from 'lucide-vue-next'
+import { ref, computed } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../stores/authStore";
+import { useSettingsStore } from "../stores/settingsStore";
+import {
+  Store,
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Receipt,
+  Wallet,
+  Settings,
+  LogOut,
+  TrendingUp,
+  ClipboardList,
+} from "lucide-vue-next";
 
-const authStore = useAuthStore()
-const settingsStore = useSettingsStore()
-const router = useRouter()
-const isMenuOpen = ref(false)
+const authStore = useAuthStore();
+const settingsStore = useSettingsStore();
+const router = useRouter();
+const isMenuOpen = ref(false);
 
-const isAuthenticated = computed(() => authStore.isAuthenticated)
-const currentUser = computed(() => authStore.currentUser)
-const isAdmin = computed(() => currentUser.value?.role === 'admin')
-const businessName = computed(() => settingsStore.businessName)
+const isAuthenticated = computed(() => authStore.isAuthenticated);
+const currentUser = computed(() => authStore.currentUser);
+const isAdmin = computed(() => currentUser.value?.role === "admin");
+const isCashier = computed(() => currentUser.value?.role === "cashier");
+const businessName = computed(() => settingsStore.businessName);
 
 function handleLogout() {
-  authStore.logout()
-  router.push('/login')
-  isMenuOpen.value = false
+  authStore.logout();
+  router.push("/login");
+  isMenuOpen.value = false;
 }
 </script>
 
@@ -164,7 +231,7 @@ function handleLogout() {
 
 .hamburger::before,
 .hamburger::after {
-  content: '';
+  content: "";
   position: absolute;
   width: 24px;
   height: 2px;
@@ -172,12 +239,24 @@ function handleLogout() {
   transition: all 0.3s;
 }
 
-.hamburger::before { top: -8px; }
-.hamburger::after { bottom: -8px; }
+.hamburger::before {
+  top: -8px;
+}
+.hamburger::after {
+  bottom: -8px;
+}
 
-.hamburger.open { background: transparent; }
-.hamburger.open::before { transform: rotate(45deg); top: 0; }
-.hamburger.open::after { transform: rotate(-45deg); bottom: 0; }
+.hamburger.open {
+  background: transparent;
+}
+.hamburger.open::before {
+  transform: rotate(45deg);
+  top: 0;
+}
+.hamburger.open::after {
+  transform: rotate(-45deg);
+  bottom: 0;
+}
 
 .mobile-overlay {
   display: none;
@@ -189,12 +268,12 @@ function handleLogout() {
     padding: 0.75rem 1rem;
     flex-direction: column;
   }
-  
+
   .nav-brand h1 {
     font-size: var(--font-size-lg);
     font-weight: 500;
   }
-  
+
   .brand-icon {
     width: 24px;
     height: 24px;
@@ -241,7 +320,7 @@ function handleLogout() {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 98;
   }
 }

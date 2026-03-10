@@ -154,6 +154,8 @@ CREATE TABLE IF NOT EXISTS borrowed_items (
     status TEXT DEFAULT 'pending', -- pending, returned, etc.
     returned_quantity INTEGER DEFAULT 0,
     paid_quantity INTEGER DEFAULT 0,
+    paid_amount REAL DEFAULT 0,
+    borrowed_at DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
@@ -166,6 +168,7 @@ CREATE TABLE IF NOT EXISTS loans (
     collateral TEXT,
     collateral_description TEXT,
     status TEXT DEFAULT 'active', -- active, returned, partially_returned
+    loaned_at DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -189,4 +192,32 @@ CREATE TABLE IF NOT EXISTS loan_item_returns (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (loan_item_id) REFERENCES loan_items(id),
     FOREIGN KEY (replacement_product_id) REFERENCES products(id)
+);
+
+-- Stock Counts Table (for verifying physical stock vs system stock)
+CREATE TABLE IF NOT EXISTS stock_counts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    status TEXT DEFAULT 'draft',
+    counted_by INTEGER,
+    reconciled_by INTEGER,
+    reconciled_at DATETIME,
+    count_date DATE,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (counted_by) REFERENCES users(id),
+    FOREIGN KEY (reconciled_by) REFERENCES users(id)
+);
+
+-- Stock Count Items Table
+CREATE TABLE IF NOT EXISTS stock_count_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    stock_count_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    system_count INTEGER NOT NULL,
+    actual_count INTEGER,
+    variance INTEGER,
+    reason TEXT,
+    FOREIGN KEY (stock_count_id) REFERENCES stock_counts(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
 );
