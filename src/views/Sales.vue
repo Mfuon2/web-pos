@@ -5,6 +5,14 @@
         <Receipt class="header-icon" />
         Sales History
       </h1>
+      <button 
+        v-if="isAdmin" 
+        class="export-btn" 
+        @click="openExportModal"
+      >
+        <Download class="icon-sm" />
+        Export
+      </button>
     </div>
 
     <div v-if="loading" class="loading">
@@ -34,8 +42,17 @@
             <h2>{{ formatDate(dailySales.date) }}</h2>
             <span class="sales-count-badge">{{ dailySales.sales.length }}</span>
           </div>
-          <div class="day-total">
-            {{ formatCurrency(dailySales.total) }}
+          <div class="day-actions">
+            <div class="day-total">
+              {{ formatCurrency(dailySales.total) }}
+            </div>
+            <button
+              class="action-btn"
+              @click.stop="openDailySalesModal(dailySales)"
+              title="View Day Summary"
+            >
+              <Eye class="icon-sm" />
+            </button>
           </div>
         </div>
 
@@ -64,14 +81,10 @@
                 <div class="sale-meta">
                   <div class="payment-badge">
                     <component
-                      :is="
-                        getPaymentIcon(
-                          sale.paymentMethod || sale.payment_method,
-                        )
-                      "
+                      :is="getPaymentIcon(sale.paymentMethod || 'cash')"
                       class="icon-xs"
                     />
-                    {{ sale.paymentMethod || sale.payment_method }}
+                    {{ sale.paymentMethod || "Cash" }}
                   </div>
                   <span class="sale-amount">{{
                     formatCurrency(sale.total)
@@ -102,12 +115,61 @@
                       class="item-row"
                     >
                       <div class="item-name">
-                        {{
-                          item.productName ||
-                          item.product_name ||
-                          item.name ||
-                          "Unknown Item"
-                        }}
+                        <div class="item-name-badge">
+                          <div class="item-primary-info">
+                            {{
+                              item.productName ||
+                              item.product_name ||
+                              item.name ||
+                              "Unknown Item"
+                            }}
+                          </div>
+                          <span
+                            v-if="!isAdmin"
+                            class="verification-badge"
+                            :class="item.paymentStatus || 'unverified'"
+                          >
+                            {{
+                              item.paymentStatus === "verified"
+                                ? "Verified"
+                                : "Unverified"
+                            }}
+                          </span>
+                        </div>
+
+                        <div class="item-verification-info" v-if="isAdmin">
+                          <span
+                            class="verification-badge"
+                            :class="item.paymentStatus || 'unverified'"
+                          >
+                            {{
+                              item.paymentStatus === "verified"
+                                ? "Verified"
+                                : "Unverified"
+                            }}
+                          </span>
+                          <span
+                            v-if="
+                              item.paymentStatus === 'verified' &&
+                              item.verifiedAt
+                            "
+                            class="item-verify-date"
+                          >
+                            {{ formatDate(item.verifiedAt) }}
+                          </span>
+                          <button
+                            v-if="
+                              (item.paymentStatus === 'unverified' ||
+                                !item.paymentStatus) &&
+                              isAdmin
+                            "
+                            class="verify-btn-sm"
+                            @click="verifyItem(sale.id, item)"
+                            :disabled="item.isVerifying"
+                          >
+                            {{ item.isVerifying ? "Verifying..." : "Verify" }}
+                          </button>
+                        </div>
                       </div>
                       <div class="item-qty text-right">{{ item.quantity }}</div>
                       <div class="item-price text-right">
@@ -131,6 +193,19 @@
         </transition>
       </div>
     </div>
+
+    <!-- Modals -->
+    <DailySalesModal
+      v-if="isDailySalesModalOpen"
+      :day-data="selectedDayData"
+      @close="closeDailySalesModal"
+    />
+    <ExportSalesModal
+      v-if="isExportModalOpen"
+      :sales="sales"
+      :is-admin="isAdmin"
+      @close="closeExportModal"
+    />
   </div>
 </template>
 
@@ -142,15 +217,44 @@ import {
   ChevronRight,
   Banknote,
   Smartphone,
+  Eye,
+  Download,
 } from "lucide-vue-next";
+import DailySalesModal from "../components/DailySalesModal.vue";
+import ExportSalesModal from "../components/ExportSalesModal.vue";
 import { formatCurrency } from "../utils/currency";
-import { apiGet } from "../utils/api";
+import { apiGet, apiPatch } from "../utils/api";
+import { useAuthStore } from "../stores/authStore";
 
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.currentUser);
+const isAdmin = computed(() => currentUser.value?.role === "admin");
 const sales = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const expandedSale = ref(null);
 const expandedDays = ref([]);
+const isDailySalesModalOpen = ref(false);
+const isExportModalOpen = ref(false);
+const selectedDayData = ref(null);
+
+function openDailySalesModal(dayGroup) {
+  selectedDayData.value = dayGroup;
+  isDailySalesModalOpen.value = true;
+}
+
+function closeDailySalesModal() {
+  isDailySalesModalOpen.value = false;
+  selectedDayData.value = null;
+}
+
+function openExportModal() {
+  isExportModalOpen.value = true;
+}
+
+function closeExportModal() {
+  isExportModalOpen.value = false;
+}
 
 // Group sales by date
 const salesByDate = computed(() => {
@@ -275,6 +379,30 @@ async function fetchSales() {
   }
 }
 
+async function verifyItem(saleId, item) {
+  item.isVerifying = true;
+  try {
+    const response = await apiPatch(
+      `/api/sales/${saleId}/items/${item.id}/verify`,
+      { verifiedBy: currentUser.value.id },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to verify item");
+    }
+
+    const data = await response.json();
+    item.paymentStatus = "verified";
+    item.verifiedAt = data.verifiedAt;
+    item.verifiedBy = data.verifiedBy;
+  } catch (err) {
+    console.error("Error verifying item:", err);
+  } finally {
+    item.isVerifying = false;
+  }
+}
+
 onMounted(() => {
   fetchSales();
 });
@@ -289,6 +417,9 @@ onMounted(() => {
 
 .header {
   margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .header h1 {
@@ -299,6 +430,30 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   font-weight: 500;
+}
+
+.export-btn {
+  padding: 0.3rem 1rem;
+  background: var(--primary-gradient);
+  color: var(--text-white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.export-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .header-icon {
@@ -422,6 +577,36 @@ onMounted(() => {
   font-size: var(--font-size-base);
 }
 
+.day-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.action-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
+}
+
 /* Sales List */
 .sales-list {
   border-top: 1px solid var(--border-color);
@@ -515,6 +700,60 @@ onMounted(() => {
   transform: rotate(180deg);
 }
 
+.verification-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.verification-badge.verified {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.verification-badge.unverified {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.item-verification-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.item-verify-date {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.verify-btn-sm {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.verify-btn-sm:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.verify-btn-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Sale Details Panel */
 .sale-details-panel {
   padding: 0 1.25rem 1.25rem;
@@ -558,6 +797,17 @@ onMounted(() => {
 
 .item-name {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.item-name-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.item-primary-info {
   color: var(--text-primary);
   font-weight: 500;
 }

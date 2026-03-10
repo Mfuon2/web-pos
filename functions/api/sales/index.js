@@ -29,6 +29,9 @@ export async function onRequestGet(context) {
             id: saleItems.id,
             quantity: saleItems.quantity,
             price: saleItems.price,
+            paymentStatus: saleItems.paymentStatus,
+            verifiedBy: saleItems.verifiedBy,
+            verifiedAt: saleItems.verifiedAt,
             productName: products.name,
             productId: products.id,
             cost: products.cost,
@@ -98,6 +101,7 @@ export async function onRequestPost(context) {
         productId: item.product_id,
         quantity: item.quantity,
         price: item.price,
+        paymentStatus: "unverified",
       });
     }
 

@@ -15,6 +15,8 @@ const ROUTE_PERMISSIONS = {
   // Sales - accessible by cashiers and admins
   "/api/sales": ["admin", "cashier"],
 
+  "api/sales/:id/items/:itemId/verify": ["admin"],
+
   // Admin-only routes with read access for cashiers
   "/api/products": {
     GET: ["admin", "cashier"],
