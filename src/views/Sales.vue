@@ -5,6 +5,14 @@
         <Receipt class="header-icon" />
         Sales History
       </h1>
+      <button 
+        v-if="isAdmin" 
+        class="export-btn" 
+        @click="openExportModal"
+      >
+        <Download class="icon-sm" />
+        Export
+      </button>
     </div>
 
     <div v-if="loading" class="loading">
@@ -192,6 +200,12 @@
       :day-data="selectedDayData"
       @close="closeDailySalesModal"
     />
+    <ExportSalesModal
+      v-if="isExportModalOpen"
+      :sales="sales"
+      :is-admin="isAdmin"
+      @close="closeExportModal"
+    />
   </div>
 </template>
 
@@ -204,8 +218,10 @@ import {
   Banknote,
   Smartphone,
   Eye,
+  Download,
 } from "lucide-vue-next";
 import DailySalesModal from "../components/DailySalesModal.vue";
+import ExportSalesModal from "../components/ExportSalesModal.vue";
 import { formatCurrency } from "../utils/currency";
 import { apiGet, apiPatch } from "../utils/api";
 import { useAuthStore } from "../stores/authStore";
@@ -219,6 +235,7 @@ const error = ref(null);
 const expandedSale = ref(null);
 const expandedDays = ref([]);
 const isDailySalesModalOpen = ref(false);
+const isExportModalOpen = ref(false);
 const selectedDayData = ref(null);
 
 function openDailySalesModal(dayGroup) {
@@ -229,6 +246,14 @@ function openDailySalesModal(dayGroup) {
 function closeDailySalesModal() {
   isDailySalesModalOpen.value = false;
   selectedDayData.value = null;
+}
+
+function openExportModal() {
+  isExportModalOpen.value = true;
+}
+
+function closeExportModal() {
+  isExportModalOpen.value = false;
 }
 
 // Group sales by date
@@ -392,6 +417,9 @@ onMounted(() => {
 
 .header {
   margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .header h1 {
@@ -402,6 +430,30 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   font-weight: 500;
+}
+
+.export-btn {
+  padding: 0.3rem 1rem;
+  background: var(--primary-gradient);
+  color: var(--text-white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.export-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .header-icon {
