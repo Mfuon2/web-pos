@@ -177,6 +177,14 @@
                           >
                             <Edit class="icon-xs" />
                           </button>
+                          <button
+                            v-if="isAdmin"
+                            class="delete-btn-sm"
+                            @click="openDeleteModal(sale.id, item)"
+                            title="Delete Item"
+                          >
+                            <Trash2 class="icon-xs" />
+                          </button>
                         </div>
                       </div>
                       <div class="item-qty text-right">{{ item.quantity }}</div>
@@ -221,6 +229,13 @@
       @close="closeEditModal"
       @updated="handleItemUpdated"
     />
+    <DeleteSaleItemModal
+      v-if="isDeleteModalOpen"
+      :sale-id="selectedDeleteSaleId"
+      :item="selectedDeleteItem"
+      @close="closeDeleteModal"
+      @deleted="handleItemDeleted"
+    />
   </div>
 </template>
 
@@ -235,10 +250,12 @@ import {
   Eye,
   Download,
   Edit,
+  Trash2,
 } from "lucide-vue-next";
 import DailySalesModal from "../components/DailySalesModal.vue";
 import ExportSalesModal from "../components/ExportSalesModal.vue";
 import EditSaleItemModal from "../components/EditSaleItemModal.vue";
+import DeleteSaleItemModal from "../components/DeleteSaleItemModal.vue";
 import { formatCurrency } from "../utils/currency";
 import { apiGet, apiPatch } from "../utils/api";
 import { useAuthStore } from "../stores/authStore";
@@ -254,9 +271,12 @@ const expandedDays = ref([]);
 const isDailySalesModalOpen = ref(false);
 const isExportModalOpen = ref(false);
 const isEditModalOpen = ref(false);
+const isDeleteModalOpen = ref(false);
 const selectedDayData = ref(null);
 const selectedEditItem = ref(null);
 const selectedEditSaleId = ref(null);
+const selectedDeleteItem = ref(null);
+const selectedDeleteSaleId = ref(null);
 
 function openDailySalesModal(dayGroup) {
   selectedDayData.value = dayGroup;
@@ -290,6 +310,23 @@ function closeEditModal() {
 
 function handleItemUpdated() {
   closeEditModal();
+  fetchSales(); // Refresh the sales data
+}
+
+function openDeleteModal(saleId, item) {
+  selectedDeleteSaleId.value = saleId;
+  selectedDeleteItem.value = item;
+  isDeleteModalOpen.value = true;
+}
+
+function closeDeleteModal() {
+  isDeleteModalOpen.value = false;
+  selectedDeleteSaleId.value = null;
+  selectedDeleteItem.value = null;
+}
+
+function handleItemDeleted() {
+  closeDeleteModal();
   fetchSales(); // Refresh the sales data
 }
 
@@ -808,6 +845,25 @@ onMounted(() => {
   background-color: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
+}
+
+.delete-btn-sm {
+  background-color: rgba(239, 68, 68, 0.05);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-btn-sm:hover {
+  background-color: #ef4444;
+  color: white;
+  border-color: #ef4444;
 }
 
 /* Sale Details Panel */
