@@ -8,7 +8,7 @@
         </div>
         
         <div class="dialog-content">
-          <p>{{ message }}</p>
+          <p style="white-space: pre-line">{{ message }}</p>
         </div>
 
         <div class="dialog-actions">

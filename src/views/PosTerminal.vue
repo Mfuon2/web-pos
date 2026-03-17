@@ -369,8 +369,12 @@ async function handleCheckout() {
   }
 
   // Confirm before completing the sale
+  const itemsList = cart.value
+    .map(item => `${item.quantity}x ${item.name} @ ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}`)
+    .join('\n');
+
   const confirmed = await dialogStore.confirm(
-    `Complete sale of ${formatCurrency(cartTotal.value)} via ${paymentMethod.value}?`,
+    `Complete sale via ${paymentMethod.value}?\n\nItems:\n${itemsList}\n\nTotal: ${formatCurrency(cartTotal.value)}`
   );
 
   if (!confirmed) return;
