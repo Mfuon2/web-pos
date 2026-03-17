@@ -27,5 +27,3 @@ dist-ssr
 .wrangler
 .dev.vars
 
-*.lock
-*-lock.json
