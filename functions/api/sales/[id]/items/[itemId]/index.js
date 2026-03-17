@@ -130,29 +130,51 @@ export async function onRequestDelete(context) {
       .from(saleItems)
       .where(eq(saleItems.saleId, saleId));
 
-    let newTotal = 0;
-    for (const item of remainingItems) {
-      newTotal += (item.price || 0) * (item.quantity || 0);
+    if (remainingItems.length === 0) {
+      // 5a. If no items remain, delete the parent sale
+      await db
+        .delete(sales)
+        .where(eq(sales.id, saleId));
+        
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Sale item deleted. Parent sale was empty and therefore deleted.",
+          newTotal: 0,
+          saleDeleted: true,
+          stockReverted: revertStock
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    } else {
+      let newTotal = 0;
+      for (const item of remainingItems) {
+        newTotal += (item.price || 0) * (item.quantity || 0);
+      }
+
+      // 5b. Update the sales table with the new total
+      await db
+        .update(sales)
+        .set({ total: newTotal })
+        .where(eq(sales.id, saleId));
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Sale item deleted successfully",
+          newTotal,
+          saleDeleted: false,
+          stockReverted: revertStock
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
-
-    // 5. Update the sales table with the new total
-    await db
-      .update(sales)
-      .set({ total: newTotal })
-      .where(eq(sales.id, saleId));
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Sale item deleted successfully",
-        newTotal,
-        stockReverted: revertStock
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
