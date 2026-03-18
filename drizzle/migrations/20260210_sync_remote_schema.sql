@@ -7,8 +7,9 @@
 -- However, wrangler migrations will stop on error.
 -- Since I know it's missing on remote, I'll add it.
 
-ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id);
-ALTER TABLE sales ADD COLUMN sale_date DATE;
+-- ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id);
+-- ALTER TABLE sales ADD COLUMN sale_date DATE;
+SELECT 1;
 
 -- Backfill sale_date
 UPDATE sales SET sale_date = date(created_at) WHERE sale_date IS NULL;
