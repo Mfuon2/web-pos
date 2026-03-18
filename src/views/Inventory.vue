@@ -115,26 +115,6 @@
           </div>
         </div>
 
-        <!-- Mobile Search Bar (Only shown on small screens) -->
-        <div class="search-bar-container mobile-search">
-          <div class="search-input-wrapper">
-            <Search class="search-icon" />
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search by name or barcode..."
-              class="search-input"
-            />
-            <button
-              v-if="searchQuery"
-              @click="searchQuery = ''"
-              class="clear-search"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
         <div class="table-container">
           <table>
             <thead>
@@ -213,6 +193,44 @@
       <div v-if="activeTab === 'borrowed'" class="content-section">
         <div class="section-header">
           <h2>Borrowed Inventory</h2>
+          <div class="header-actions">
+            <div class="search-input-wrapper desktop-search">
+              <Search class="icon-sm search-icon" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search borrowed items..."
+                class="search-input"
+              />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="clear-search"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Search Bar -->
+        <div class="search-bar-container mobile-search">
+          <div class="search-input-wrapper">
+            <Search class="search-icon" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search by name, barcode or source..."
+              class="search-input"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="clear-search"
+            >
+              ✕
+            </button>
+          </div>
           <div class="header-actions">
             <div class="search-input-wrapper desktop-search">
               <Search class="icon-sm search-icon" />

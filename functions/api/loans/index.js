@@ -28,7 +28,6 @@ export async function onRequestGet(context) {
       .bind(...loanParams)
       .all();
 
-
     if (loans.length === 0) {
       return Response.json([]);
     }

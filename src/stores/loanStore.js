@@ -26,7 +26,6 @@ export const useLoanStore = defineStore("loan", () => {
     }
   }
 
-
   async function createLoan(loanData) {
     loading.value = true;
     try {
