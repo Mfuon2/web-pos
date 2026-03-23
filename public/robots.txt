@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /login
+Disallow: /api/
+Disallow: /admin/
+Disallow: /settings/
+
+Sitemap: https://sales.qesuite.com/sitemap.xml
