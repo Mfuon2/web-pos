@@ -1,12 +1,31 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <div class="login-header">
+      <header class="login-header">
         <div class="logo">
-          <ShoppingBag class="logo-icon" />
+          <img 
+            src="/icons/icon-512x512.png" 
+            alt="RetailMaster POS - Modern Retail Management System" 
+            title="RetailMaster POS"
+            class="logo-img" 
+          />
         </div>
-        <h1>{{ businessName }}</h1>
-        <p>Sign in to your account</p>
+        <h1>RetailMaster POS</h1>
+        <p>Advanced Retail Management & Inventory System</p>
+      </header>
+
+      <!-- PWA Install Prompt -->
+      <div v-if="pwaStore.canInstall && !pwaStore.isInstalled" class="pwa-install-banner">
+        <div class="pwa-info">
+          <Download class="pwa-icon" />
+          <div class="pwa-text">
+            <strong>Install POS App</strong>
+            <span>Access offline and faster</span>
+          </div>
+        </div>
+        <button @click="handleInstall" class="install-btn">
+          Install
+        </button>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
@@ -56,27 +75,54 @@
         </button>
       </form>
     </div>
+
+    <footer class="login-footer">
+      <p>Version {{ appVersion }}</p>
+      <p>Developed by qesuite tech solutions</p>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { ShoppingBag, User, Lock, Eye, EyeOff } from 'lucide-vue-next'
+import { usePwaStore } from '../stores/pwaStore'
+import { ShoppingBag, User, Lock, Eye, EyeOff, Download } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const pwaStore = usePwaStore()
 
 const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
+const appVersion = import.meta.env.VITE_APP_VERSION || '0.0.19'
 
 const businessName = computed(() => settingsStore.businessName)
+
+onMounted(() => {
+  // If we can install, and we are not yet installed, try to show the prompt
+  // Note: Modern browsers will likely block this without a gesture,
+  // but we try it anyway as some might allow it under certain conditions
+  // Or the early capture might have satisfy the gesture if matched with a click
+  if (pwaStore.canInstall && !pwaStore.isInstalled) {
+    console.log('[Login] Attempting to trigger PWA install prompt on mount')
+    // We don't call it immediately to allow the page to settle
+    setTimeout(async () => {
+      try {
+        console.log('[Login] Triggering PWA install prompt')
+        await pwaStore.installApp()
+      } catch (e) {
+        console.warn('[Login] PWA install auto-prompt blocked or failed:', e)
+      }
+    }, 1500)
+  }
+})
 
 async function handleLogin() {
   loading.value = true
@@ -91,16 +137,24 @@ async function handleLogin() {
     loading.value = false
   }
 }
+
+async function handleInstall() {
+  await pwaStore.installApp()
+}
 </script>
 
 <style scoped>
 .login-container {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: var(--bg-color);
   padding: 1rem;
+  gap: 2rem;
+  overflow-y: auto; /* Allow scrolling if keyboard/footer pushes content */
 }
 
 .login-card {
@@ -118,20 +172,22 @@ async function handleLogin() {
 }
 
 .logo {
-  width: 64px;
-  height: 64px;
-  background: var(--primary-gradient);
-  border-radius: 50%;
+  width: 150px;
+  height: 150px;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 1rem;
+  margin: 0 auto 1.25rem;
+  padding: 0.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  color: var(--text-white);
+.logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .login-header h1 {
@@ -143,6 +199,69 @@ async function handleLogin() {
 
 .login-header p {
   color: var(--text-secondary);
+}
+
+/* PWA Install Banner */
+.pwa-install-banner {
+  background: var(--primary-light);
+  border: 1px solid var(--primary-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+.pwa-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pwa-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--primary-color);
+}
+
+.pwa-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.pwa-text strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.pwa-text span {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.install-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.install-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .login-form {
@@ -243,24 +362,112 @@ async function handleLogin() {
   cursor: not-allowed;
 }
 
-/* Mobile Responsive */
 @media (max-width: 768px) {
+  .login-container {
+    padding: 0.25rem;
+    align-items: center;
+  }
+
   .login-card {
-    padding: var(--spacing-lg);
+    padding: 1rem;
+    max-width: 320px;
+    border-radius: var(--radius-lg);
   }
   
+  .login-header {
+    margin-bottom: 0.75rem;
+  }
+
   .login-header h1 {
-    font-size: var(--font-size-xl);
+    font-size: 1.1rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .login-header p {
+    font-size: 0.8rem;
   }
   
   .logo {
-    width: 56px;
-    height: 56px;
+    width: 150px;
+    height: 150px;
+    margin-bottom: 0.75rem;
   }
   
-  .logo-icon {
-    width: 28px;
-    height: 28px;
+  .logo-img {
+    width: 100%;
+    height: 100%;
   }
+
+  .pwa-install-banner {
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .pwa-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .pwa-text strong {
+    font-size: 0.7rem;
+  }
+
+  .pwa-text span {
+    display: none; /* Hide subtitle on mobile to save space */
+  }
+
+  .login-form {
+    gap: 0.75rem;
+  }
+
+  .form-group label {
+    font-size: 0.7rem;
+    margin-bottom: 2px;
+  }
+
+  .input-wrapper input {
+    padding: 0.5rem 0.6rem 0.5rem 2rem;
+    font-size: 16px; /* 16px to prevent zoom on iOS */
+  }
+
+  .input-icon {
+    left: 0.6rem;
+    width: 14px;
+    height: 14px;
+  }
+
+  .login-btn {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+  }
+}
+
+/* Very Small Devices */
+@media (max-height: 700px) and (max-width: 768px) {
+  .logo {
+    width: 150px;
+    height: 150px;
+    margin-bottom: 0.5rem;
+  }
+  .login-header h1 {
+    font-size: 1rem;
+  }
+  .login-card {
+    padding: 0.85rem;
+  }
+}
+
+.login-footer {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  opacity: 0.8;
+  padding-bottom: 1rem;
+}
+
+.login-footer p {
+  margin: 0.25rem 0;
 }
 </style>

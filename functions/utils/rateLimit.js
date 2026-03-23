@@ -79,6 +79,11 @@ export function checkRateLimit(clientId, limitType) {
     tracking.count++
     rateLimitStore.set(key, tracking)
 
+    // Periodically cleanup old entries (1% chance to avoid overhead)
+    if (Math.random() < 0.01) {
+        cleanupRateLimitStore()
+    }
+
     const remaining = Math.max(0, config.maxRequests - tracking.count)
     const resetTime = Math.ceil((tracking.windowStart + config.windowMs - now) / 1000)
 

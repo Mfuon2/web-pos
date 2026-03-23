@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { usePwaStore } from './stores/pwaStore' // Import the PWA store
 import './base.css'
 
 const app = createApp(App)
@@ -9,45 +10,33 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
+
+// Initialize PWA Store
+const pwaStore = usePwaStore()
+pwaStore.init()
+
 app.mount('#app')
 
-// TEMPORARILY DISABLED: Service worker for PWA
-// Unregister any existing service workers and clear caches
+// Re-enable Service worker for PWA with cleanup of legacy workers
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
         try {
-            // Unregister all service workers
+            // Targeted Cleanup: Unregister only legacy/conflicting service workers
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (const registration of registrations) {
-                await registration.unregister();
-                console.log('ServiceWorker unregistered:', registration.scope);
-            }
-
-            // Clear all caches
-            if (window.caches) {
-                const keys = await window.caches.keys();
-                for (const key of keys) {
-                    await window.caches.delete(key);
-                    console.log('Cache deleted:', key);
+                const scriptURL = registration.active?.scriptURL || registration.installing?.scriptURL || registration.waiting?.scriptURL;
+                if (scriptURL && !scriptURL.endsWith('/service-worker.js')) {
+                    console.log('[Cleanup] Unregistering rogue ServiceWorker:', scriptURL);
+                    await registration.unregister();
                 }
             }
 
-            console.log('All service workers unregistered and caches cleared.');
+            // Register our current service worker
+            const registration = await navigator.serviceWorker.register('/service-worker.js');
+            console.log('ServiceWorker registration successful:', registration.scope);
         } catch (error) {
-            console.error('Error unregistering service workers:', error);
+            console.error('ServiceWorker setup failed:', error);
         }
     });
 }
 
-// Original service worker registration (commented out)
-// if ('serviceWorker' in navigator) {
-//     window.addEventListener('load', () => {
-//         navigator.serviceWorker.register('/service-worker.js')
-//             .then((registration) => {
-//                 console.log('ServiceWorker registration successful:', registration.scope);
-//             })
-//             .catch((error) => {
-//                 console.log('ServiceWorker registration failed:', error);
-//             });
-//     });
-// }
