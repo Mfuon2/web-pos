@@ -27,13 +27,18 @@
       <div v-if="loading" class="loading">Loading products...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
 
-      <div v-else class="products-grid">
-        <ProductCard
-          v-for="product in filteredProducts"
-          :key="product.id"
-          :product="product"
-          @add-to-cart="addToCart"
-        />
+      <div v-else class="products-container">
+        <div v-for="group in groupedFilteredProducts" :key="group.category" class="category-group">
+          <h3 class="category-title">{{ group.category }}</h3>
+          <div class="products-grid">
+            <ProductCard
+              v-for="product in group.products"
+              :key="product.id"
+              :product="product"
+              @add-to-cart="addToCart"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -302,6 +307,23 @@ const filteredProducts = computed(() => {
       !selectedCategory.value || product.category === selectedCategory.value;
     const isNotDeleted = !product.deleted_at;
     return matchesSearch && matchesCategory && isNotDeleted;
+  });
+});
+
+const groupedFilteredProducts = computed(() => {
+  const groups = {};
+  filteredProducts.value.forEach(product => {
+    const cat = product.category || 'Uncategorized';
+    if (!groups[cat]) {
+      groups[cat] = { category: cat, products: [] };
+    }
+    groups[cat].products.push(product);
+  });
+  
+  return Object.values(groups).sort((a, b) => {
+    if (a.category === 'Uncategorized') return 1;
+    if (b.category === 'Uncategorized') return -1;
+    return a.category.localeCompare(b.category);
   });
 });
 
@@ -588,12 +610,30 @@ const vFocus = {
   border-color: var(--primary-color);
 }
 
+.products-container {
+  overflow-y: auto;
+  padding: 0.5rem;
+  flex: 1;
+}
+
+.category-group {
+  margin-bottom: 1.5rem;
+}
+
+.category-title {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
 .products-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 0.5rem;
-  overflow-y: auto;
-  padding: 0.5rem;
   align-content: start;
 }
 
