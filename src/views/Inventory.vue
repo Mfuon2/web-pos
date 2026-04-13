@@ -1032,24 +1032,32 @@
             </div>
           </div>
 
-          <div class="divider">OR</div>
-
-          <button
-            @click="handleReturnAllLoan"
-            class="submit-btn"
-            :disabled="
-              loanStore.loading ||
-              editingLoanDetail?.items.every(
-                (item) => (item.returned_quantity || 0) >= item.quantity,
+          <div
+            v-if="
+              editingLoanDetail?.items.some(
+                (item) => (item.returned_quantity || 0) < item.quantity,
               )
             "
           >
-            {{
-              loanStore.loading
-                ? "Processing..."
-                : "Return All Outstanding Items"
-            }}
-          </button>
+            <div class="divider">OR</div>
+
+            <button
+              @click="handleReturnAllLoan"
+              class="submit-btn"
+              :disabled="
+                loanStore.loading ||
+                editingLoanDetail?.items.every(
+                  (item) => (item.returned_quantity || 0) >= item.quantity,
+                )
+              "
+            >
+              {{
+                loanStore.loading
+                  ? "Processing..."
+                  : "Return All Outstanding Items"
+              }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
