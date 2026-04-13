@@ -31,7 +31,6 @@
           >
         </p>
       </div>
-
       <form @submit.prevent="handleSubmit">
         <div class="items-container">
           <div
@@ -83,10 +82,18 @@
           <button type="button" class="cancel-btn" @click="$emit('close')">
             Cancel Sale
           </button>
-          <button type="submit" class="submit-btn" :disabled="!isFormValid || isSubmitting">
+          <button
+            type="submit"
+            class="submit-btn"
+            :disabled="!isFormValid || isSubmitting"
+          >
             <span v-if="isSubmitting">Borrowing...</span>
             <span v-else>
-              {{ isManualBorrow ? "Confirm Borrowed Items" : "Confirm & Borrow All" }}
+              {{
+                isManualBorrow
+                  ? "Confirm Borrowed Items"
+                  : "Confirm & Borrow All"
+              }}
             </span>
           </button>
         </div>
@@ -326,6 +333,12 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .actions {
