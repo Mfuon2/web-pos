@@ -37,6 +37,16 @@ export async function onRequestGet(context) {
         actualCount: stockCountItems.actualCount,
         variance: stockCountItems.variance,
         reason: stockCountItems.reason,
+        previousCount: sql`(
+          SELECT sci.actual_count 
+          FROM stock_count_items sci 
+          INNER JOIN stock_counts sc ON sc.id = sci.stock_count_id 
+          WHERE sci.product_id = stock_count_items.product_id 
+            AND sci.stock_count_id < stock_count_items.stock_count_id 
+            AND sc.status = 'completed' 
+          ORDER BY sci.stock_count_id DESC 
+          LIMIT 1
+        )`.as("previousCount")
       })
       .from(stockCountItems)
       .innerJoin(products, eq(stockCountItems.productId, products.id))

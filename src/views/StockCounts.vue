@@ -81,8 +81,10 @@
                 <td data-label="Reconciled By">
                   {{
                     count.reconciledBy
-                      ? getUserName(count.reconciledBy) || count.reconciledBy
-                      : "Pending"
+                      ? `${getUserName(count.reconciledBy) || count.reconciledBy} ${count.notes?.includes("Auto-Reconciled") ? `${count.notes}` : ""}`
+                      : count.status === "completed"
+                        ? "N/A"
+                        : "Pending"
                   }}
                 </td>
                 <td class="actions" data-label="Options">
@@ -95,7 +97,11 @@
                     <Edit2 class="icon-sm" v-else />
                   </button>
                   <button
-                    v-if="count.status === 'completed' && !count.reconciledBy"
+                    v-if="
+                      count.status === 'completed' &&
+                      !count.reconciledBy &&
+                      isLatestCount(count.id)
+                    "
                     @click="confirmReconcile(count)"
                     class="action-btn manage-btn"
                     title="Reconcile"
@@ -144,20 +150,48 @@
             </div>
           </div>
 
+          <div class="form-group mb-4" v-if="!isCompleted">
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="Search product name..."
+            />
+          </div>
+
           <div class="table-container mt-4">
             <table>
               <thead>
                 <tr>
                   <th>Product</th>
+                  <th class="text-center">Previous Count</th>
                   <th class="text-center">System Count</th>
                   <th class="text-center">Actual Count</th>
                   <th class="text-center">Variance</th>
                   <th>Reason</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="item in activeCount.items" :key="item.id">
+              <tbody
+                v-for="(items, categoryName) in groupedActiveItems"
+                :key="categoryName"
+              >
+                <tr class="category-row">
+                  <td colspan="6" class="category-header font-bold">
+                    {{ categoryName }}
+                  </td>
+                </tr>
+                <tr v-for="item in items" :key="item.id">
                   <td data-label="Product">{{ item.productName }}</td>
+                  <td
+                    data-label="Previous Count"
+                    class="text-center text-secondary"
+                  >
+                    {{
+                      item.previousCount !== null &&
+                      item.previousCount !== undefined
+                        ? item.previousCount
+                        : "-"
+                    }}
+                  </td>
                   <td data-label="System Count" class="text-center">
                     {{ item.systemCount }}
                   </td>
@@ -208,13 +242,60 @@
               Save Draft
             </button>
             <button
-              @click="completeCount"
+              @click="promptCompleteCount"
               class="primary-btn"
               :disabled="stockCountStore.loading"
             >
               Review & Complete
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Modal for Record Only Options -->
+    <div v-if="showCompleteModal" class="modal-overlay">
+      <div class="modal-content small-modal">
+        <div class="modal-header">
+          <h3 style="margin: 0; font-size: 1.25rem">Complete Stock Count</h3>
+          <button class="close-btn" @click="showCompleteModal = false">
+            ×
+          </button>
+        </div>
+        <div style="margin-top: 1rem; margin-bottom: 1.5rem">
+          <p>
+            Are you sure you want to complete this stock count? You won't be
+            able to edit it afterward.
+          </p>
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              margin-top: 1.5rem;
+              cursor: pointer;
+              padding: 0.5rem;
+              background: #f3f4f6;
+              border-radius: 0.375rem;
+            "
+          >
+            <input
+              type="checkbox"
+              v-model="isRecordOnly"
+              style="width: 1.2rem; height: 1.2rem"
+            />
+            <span style="font-weight: 500"
+              >Record only (Do not update system stock quantities)</span
+            >
+          </label>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 1rem">
+          <button @click="showCompleteModal = false" class="secondary-btn">
+            Cancel
+          </button>
+          <button @click="confirmCompleteCount" class="primary-btn">
+            Confirm Completion
+          </button>
         </div>
       </div>
     </div>
@@ -227,6 +308,7 @@ import { useStockCountStore } from "../stores/stockCountStore";
 import { useAuthStore } from "../stores/authStore";
 import { useUserStore } from "../stores/userStore";
 import { useDialogStore } from "../stores/dialogStore";
+import { useCategoryStore } from "../stores/categoryStore";
 import {
   ClipboardList,
   History,
@@ -240,9 +322,13 @@ const stockCountStore = useStockCountStore();
 const authStore = useAuthStore();
 const userStore = useUserStore();
 const dialogStore = useDialogStore();
+const categoryStore = useCategoryStore();
 
 const activeTab = ref("history");
 const activeCount = ref(null);
+const searchQuery = ref("");
+const showCompleteModal = ref(false);
+const isRecordOnly = ref(false);
 
 const isCompleted = computed(() => {
   return activeCount.value?.status === "completed";
@@ -255,7 +341,46 @@ onMounted(async () => {
       await userStore.fetchUsers(); // Loads users if not loaded to map user IDs
     } catch (e) {}
   }
+  if (categoryStore.categories.length === 0) {
+    try {
+      await categoryStore.fetchCategories({ limit: 1000 });
+    } catch (e) {}
+  }
 });
+
+function getCategoryName(id) {
+  if (!id) return "Uncategorized";
+  const cat = categoryStore.categories.find((c) => c.id === id);
+  return cat ? cat.name : "Uncategorized";
+}
+
+const groupedActiveItems = computed(() => {
+  if (!activeCount.value) return {};
+
+  let items = activeCount.value.items || [];
+
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    items = items.filter((i) =>
+      (i.productName || "").toLowerCase().includes(q),
+    );
+  }
+
+  const groups = {};
+  for (const item of items) {
+    const catName = getCategoryName(item.productCategory);
+    if (!groups[catName]) groups[catName] = [];
+    groups[catName].push(item);
+  }
+
+  return groups;
+});
+
+function isLatestCount(countId) {
+  if (!stockCountStore.stockCounts || stockCountStore.stockCounts.length === 0)
+    return false;
+  return stockCountStore.stockCounts[0].id === countId;
+}
 
 function formatDateWithoutTime(dateStr) {
   if (!dateStr) return "";
@@ -330,23 +455,47 @@ async function saveDraft() {
   await stockCountStore.fetchStockCounts();
 }
 
-async function completeCount() {
+function promptCompleteCount() {
   if (!activeCount.value) return;
   if (!validateCount()) return;
+  isRecordOnly.value = false;
+  showCompleteModal.value = true;
+}
 
-  const confirmMsg =
-    "Are you sure you want to complete this stock count? You won't be able to edit it afterward.";
-  if (!(await dialogStore.confirm(confirmMsg))) return;
+async function confirmCompleteCount() {
+  showCompleteModal.value = false;
+
+  const notesSuffix = isRecordOnly.value
+    ? " (Record Only Auto-Reconciled)"
+    : "";
+  const baseNotes = activeCount.value.notes
+    ? activeCount.value.notes.trim()
+    : "";
+  const finalNotes = baseNotes
+    ? `${baseNotes}${notesSuffix}`
+    : notesSuffix.trim();
 
   const payload = {
     status: "completed",
-    notes: activeCount.value.notes,
+    notes: finalNotes,
     items: activeCount.value.items,
   };
+
   await stockCountStore.updateStockCount(activeCount.value.id, payload);
-  dialogStore.success(
-    "Stock count completed! You can now reconcile the differences.",
-  );
+
+  if (isRecordOnly.value) {
+    await stockCountStore.reconcileStockCount(activeCount.value.id, {
+      user_id: authStore.currentUser?.id,
+      recordOnly: true,
+    });
+    dialogStore.success(
+      "Stock count completed & recorded successfully without updating stock quantities.",
+    );
+  } else {
+    dialogStore.success(
+      "Stock count completed! You can now reconcile the differences.",
+    );
+  }
 
   await stockCountStore.fetchStockCounts();
   activeTab.value = "history";
@@ -426,6 +575,29 @@ async function confirmReconcile(count) {
     margin-bottom: 1rem;
     padding: 0.5rem 0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  tbody tr.category-row {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  tbody tr.category-row td {
+    border: none;
+    border-bottom: 2px solid #e5e7eb;
+    padding: 0 0 0.5rem 0 !important;
+    text-align: left !important;
+    font-size: 1.1rem;
+    min-height: auto;
+    color: var(--text-color, #333);
+  }
+
+  tbody tr.category-row td::before {
+    content: none;
   }
 
   td {
@@ -693,5 +865,79 @@ async function confirmReconcile(count) {
 .secondary-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.category-header {
+  padding: 0.5rem 1rem;
+  text-align: left;
+  color: #374151;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+
+.modal-content {
+  background: var(--bg-white, #fff);
+  border-radius: var(--radius-xl, 1rem);
+  padding: 2rem;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.small-modal {
+  max-width: 500px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 </style>
