@@ -83,15 +83,26 @@
               @click="exportToExcel"
               class="export-btn"
               :disabled="exporting"
+              v-if="activeTab === 'inventory'"
             >
               <Download class="icon-sm" />
               <span class="btn-text">Export</span>
             </button>
-            <button @click="showBulkUploadModal = true" class="upload-btn">
+            <button
+              @click="showBulkUploadModal = true"
+              class="upload-btn"
+              v-if="activeTab === 'inventory'"
+            >
               <Upload class="icon-sm" />
               <span class="btn-text">Upload</span>
             </button>
-            <button @click="openAddModal" class="add-btn">+ Product</button>
+            <button
+              @click="openAddModal"
+              class="add-btn"
+              v-if="activeTab === 'inventory'"
+            >
+              + Product
+            </button>
           </div>
         </div>
 
@@ -1953,9 +1964,6 @@ function formatDateWithoutTime(dateString) {
 }
 
 @media (max-width: 1024px) {
-  .btn-text {
-    display: none;
-  }
   .desktop-search {
     min-width: 200px;
   }
