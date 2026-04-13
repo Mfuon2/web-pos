@@ -103,126 +103,117 @@
           </button>
         </div>
 
-        <div class="table-container">
-          <table class="po-table">
-            <thead>
-              <tr>
-                <th class="expand-col"></th>
-                <th>Date</th>
-                <th>Supplier</th>
-                <th>Status</th>
-                <th>Notes</th>
-                <th class="center-text">Products</th>
-                <th>Total</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="po in purchaseOrders" :key="po.id">
-                <tr
-                  :class="{ 'expanded-row': expandedPOs.includes(po.id) }"
-                  @click="togglePO(po)"
+        <DataListing
+          :data="purchaseOrders"
+          :columns="purchaseOrderColumns"
+          @rowClick="togglePO"
+          :expandedKeys="expandedPOs"
+          rowKey="id"
+        >
+          <template #cell-expand="{ item }">
+            <button class="expand-btn">
+              <ChevronDown v-if="!expandedPOs.includes(item.id)" class="icon-sm" />
+              <ChevronUp v-else class="icon-sm" />
+            </button>
+          </template>
+
+          <template #cell-date="{ item }">
+            {{ formatDate(item.createdAt) }}
+          </template>
+
+          <template #cell-supplier="{ item }">
+            {{ getSupplierName(item.supplierId) }}
+          </template>
+
+          <template #cell-status="{ item }">
+            <span class="status-badge" :class="item.status">{{ item.status }}</span>
+          </template>
+
+          <template #cell-notes="{ item }">
+            <div class="notes-cell" :title="item.notes">{{ item.notes || "-" }}</div>
+          </template>
+
+          <template #cell-products="{ item }">
+            <span class="item-count-badge">{{ item.itemCount || 0 }}</span>
+          </template>
+
+          <template #cell-total="{ item }">
+            {{ formatCurrency(item.total || item.computedTotal || 0) }}
+          </template>
+
+          <template #cell-actions="{ item }">
+            <div class="actions" @click.stop>
+              <button
+                v-if="item.status === 'pending'"
+                @click="handleReceivePO(item.id)"
+                class="action-btn receive-btn"
+                title="Mark Received"
+              >
+                <Package class="icon-sm" />
+              </button>
+              <button
+                @click="handleDeletePurchaseOrder(item.id)"
+                class="action-btn delete-btn"
+              >
+                <Trash2 class="icon-sm" />
+              </button>
+            </div>
+          </template>
+
+          <template #expandedRow="{ item }">
+            <div class="items-view-container" @click.stop>
+              <div class="items-header">
+                <h3>Order Items</h3>
+                <button
+                  @click.stop="openAddItemModal(item)"
+                  class="add-item-btn"
                 >
-                  <td class="expand-col">
-                    <button class="expand-btn">
-                      <ChevronDown
-                        v-if="!expandedPOs.includes(po.id)"
-                        class="icon-sm"
-                      />
-                      <ChevronUp v-else class="icon-sm" />
-                    </button>
-                  </td>
-                  <td>{{ formatDate(po.createdAt) }}</td>
-                  <td>{{ getSupplierName(po.supplierId) }}</td>
-                  <td>
-                    <span class="status-badge" :class="po.status">{{
-                      po.status
-                    }}</span>
-                  </td>
-                  <td class="notes-cell">{{ po.notes || "-" }}</td>
-                  <td class="center-text">
-                    <span class="item-count-badge">{{
-                      po.itemCount || 0
-                    }}</span>
-                  </td>
-                  <td class="amount">
-                    {{ formatCurrency(po.total || po.computedTotal || 0) }}
-                  </td>
-                  <td class="actions" @click.stop>
-                    <button
-                      v-if="po.status === 'pending'"
-                      @click="handleReceivePO(po.id)"
-                      class="action-btn receive-btn"
-                      title="Mark Received"
-                    >
-                      <Package class="icon-sm" />
-                    </button>
-                    <button
-                      @click="handleDeletePurchaseOrder(po.id)"
-                      class="action-btn delete-btn"
-                    >
-                      <Trash2 class="icon-sm" />
-                    </button>
-                  </td>
-                </tr>
-                <!-- Secondary Row (Items) -->
-                <tr v-if="expandedPOs.includes(po.id)" class="items-view-row">
-                  <td colspan="8">
-                    <div class="items-view-container">
-                      <div class="items-header">
-                        <h3>Order Items</h3>
-                        <button
-                          @click="openAddItemModal(po)"
-                          class="add-item-btn"
-                        >
-                          <Plus class="icon-xs" /> Add Product
-                        </button>
-                      </div>
-                      <table class="items-table">
-                        <thead>
-                          <tr>
-                            <th>Product Name</th>
-                            <th>Quantity</th>
-                            <th>Unit Cost</th>
-                            <th>Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-for="item in poItems[po.id]" :key="item.id">
-                            <td>{{ item.productName }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ formatCurrency(item.cost) }}</td>
-                            <td>
-                              {{ formatCurrency(item.quantity * item.cost) }}
-                            </td>
-                          </tr>
-                          <tr v-if="!poItems[po.id]?.length">
-                            <td colspan="4" class="empty-items">
-                              No items found for this order.
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-              <tr v-if="purchaseOrders.length === 0">
-                <td colspan="8" class="empty-state">
-                  No purchase orders found for this period.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <PaginationControls
-            v-if="purchaseOrdersPagination.total > 0"
-            :current-page="purchaseOrdersPagination.page"
-            :total-pages="purchaseOrdersPagination.totalPages"
-            :total="purchaseOrdersPagination.total"
-            :limit="purchaseOrdersPagination.limit"
-            @page-change="handlePurchaseOrdersPageChange"
-          />
-        </div>
+                  <Plus class="icon-xs" /> Add Product
+                </button>
+              </div>
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Product Name</th>
+                    <th>Quantity</th>
+                    <th>Unit Cost</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="poItem in poItems[item.id]" :key="poItem.id">
+                    <td>{{ poItem.productName }}</td>
+                    <td>{{ poItem.quantity }}</td>
+                    <td>{{ formatCurrency(poItem.cost) }}</td>
+                    <td>
+                      {{ formatCurrency(poItem.quantity * poItem.cost) }}
+                    </td>
+                  </tr>
+                  <tr v-if="!poItems[item.id]?.length">
+                    <td colspan="4" class="empty-items">
+                      No items found for this order.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          
+          <template #empty>
+            No purchase orders found for this period.
+          </template>
+          
+          <template #pagination>
+            <PaginationControls
+              v-if="purchaseOrdersPagination.total > 0"
+              :current-page="purchaseOrdersPagination.page"
+              :total-pages="purchaseOrdersPagination.totalPages"
+              :total="purchaseOrdersPagination.total"
+              :limit="purchaseOrdersPagination.limit"
+              @page-change="handlePurchaseOrdersPageChange"
+            />
+          </template>
+        </DataListing>
       </div>
 
       <!-- Expenses Tab -->
@@ -240,71 +231,69 @@
           </button>
         </div>
 
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="expense in expenses" :key="expense.id">
-                <td>
-                  {{
-                    formatJustDate(expense.incurredDate || expense.createdAt)
-                  }}
-                </td>
-                <td>
-                  <span class="category-badge">{{ expense.category }}</span>
-                </td>
-                <td>{{ expense.description }}</td>
-                <td class="amount">{{ formatCurrency(expense.amount) }}</td>
-                <td class="actions">
-                  <template v-if="expense.category !== 'Borrowed Items'">
-                    <button
-                      @click="handleEditExpense(expense)"
-                      class="action-btn edit-btn"
-                    >
-                      <Edit2 class="icon-sm" />
-                    </button>
-                    <button
-                      @click="handleDeleteExpense(expense.id)"
-                      class="action-btn delete-btn"
-                    >
-                      <Trash2 class="icon-sm" />
-                    </button>
-                  </template>
-                  <span v-else class="managed-badge"
-                    >Managed Automatically</span
-                  >
-                </td>
-              </tr>
-              <tr v-if="expenses.length === 0">
-                <td colspan="5" class="empty-state">
-                  No expenses found for this period.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <PaginationControls
-            v-if="expensesPagination.total > 0"
-            :current-page="expensesPagination.page"
-            :total-pages="expensesPagination.totalPages"
-            :total="expensesPagination.total"
-            :limit="expensesPagination.limit"
-            @page-change="handleExpensesPageChange"
-          />
-        </div>
+        <DataListing
+          :data="expenses"
+          :columns="expenseColumns"
+          rowKey="id"
+        >
+          <template #cell-date="{ item }">
+            {{ formatJustDate(item.incurredDate || item.createdAt) }}
+          </template>
+
+          <template #cell-category="{ item }">
+            <span class="category-badge">{{ item.category }}</span>
+          </template>
+
+          <template #cell-description="{ item }">
+            {{ item.description }}
+          </template>
+
+          <template #cell-amount="{ item }">
+            {{ formatCurrency(item.amount) }}
+          </template>
+
+          <template #cell-actions="{ item }">
+            <div class="actions">
+              <template v-if="item.category !== 'Borrowed Items'">
+                <button
+                  @click="handleEditExpense(item)"
+                  class="action-btn edit-btn"
+                >
+                  <Edit2 class="icon-sm" />
+                </button>
+                <button
+                  @click="handleDeleteExpense(item.id)"
+                  class="action-btn delete-btn"
+                >
+                  <Trash2 class="icon-sm" />
+                </button>
+              </template>
+              <span v-else class="managed-badge">Managed Automatically</span>
+            </div>
+          </template>
+          
+          <template #empty>
+            No expenses found for this period.
+          </template>
+
+          <template #pagination>
+            <PaginationControls
+              v-if="expensesPagination.total > 0"
+              :current-page="expensesPagination.page"
+              :total-pages="expensesPagination.totalPages"
+              :total="expensesPagination.total"
+              :limit="expensesPagination.limit"
+              @page-change="handleExpensesPageChange"
+            />
+          </template>
+        </DataListing>
       </div>
     </div>
 
     <ExpenseModal
       v-if="showExpenseModal"
       :expense="editingExpense"
+      :isSubmitting="isSavingExpense"
       @close="
         showExpenseModal = false;
         editingExpense = null;
@@ -316,6 +305,7 @@
       v-if="showPurchaseOrderModal"
       @close="showPurchaseOrderModal = false"
       @save="handleSavePurchaseOrder"
+      :isSubmitting="isSavingPO"
     />
 
     <!-- Add Item to PO Modal -->
@@ -396,6 +386,7 @@ import { useProductStore } from "../stores/productStore";
 import ExpenseModal from "../components/ExpenseModal.vue";
 import { useSupplierStore } from "../stores/supplierStore";
 import PurchaseOrderModal from "../components/PurchaseOrderModal.vue";
+import DataListing from "../components/DataListing.vue";
 import {
   Edit2,
   Trash2,
@@ -430,11 +421,31 @@ const purchaseOrdersPagination = computed(
 );
 
 const activeTab = ref("summary");
+const purchaseOrderColumns = [
+  { key: "expand", label: "", primary: false },
+  { key: "date", label: "Date", primary: true },
+  { key: "supplier", label: "Supplier" },
+  { key: "status", label: "Status", align: "center" },
+  { key: "notes", label: "Notes" },
+  { key: "products", label: "Products", align: "center" },
+  { key: "total", label: "Total", align: "right" },
+  { key: "actions", label: "Actions", align: "right" },
+];
+
+const expenseColumns = [
+  { key: "date", label: "Date", primary: true },
+  { key: "category", label: "Category" },
+  { key: "description", label: "Description" },
+  { key: "amount", label: "Amount", align: "right" },
+  { key: "actions", label: "Actions", align: "right" },
+];
 const startDate = ref(new Date().toISOString().split("T")[0]);
 const endDate = ref(new Date().toISOString().split("T")[0]);
 const showExpenseModal = ref(false);
 const showPurchaseOrderModal = ref(false);
 const editingExpense = ref(null);
+const isSavingPO = ref(false);
+const isSavingExpense = ref(false);
 
 // PO Expansion State
 const expandedPOs = ref([]);
@@ -574,6 +585,7 @@ function handleEditExpense(expense) {
 }
 
 async function handleSaveExpense(expenseData) {
+  isSavingExpense.value = true;
   try {
     if (editingExpense.value) {
       await financeStore.updateExpense(editingExpense.value.id, expenseData);
@@ -587,6 +599,8 @@ async function handleSaveExpense(expenseData) {
     fetchData();
   } catch (error) {
     dialogStore.error("Failed to save expense: " + error.message);
+  } finally {
+    isSavingExpense.value = false;
   }
 }
 
@@ -606,6 +620,7 @@ async function handleDeleteExpense(id) {
 }
 
 async function handleSavePurchaseOrder(poData) {
+  isSavingPO.value = true;
   try {
     await financeStore.addPurchaseOrder(poData);
     showPurchaseOrderModal.value = false;
@@ -613,6 +628,8 @@ async function handleSavePurchaseOrder(poData) {
     dialogStore.success("Purchase order created successfully");
   } catch (error) {
     dialogStore.error("Failed to save purchase order: " + error.message);
+  } finally {
+    isSavingPO.value = false;
   }
 }
 
