@@ -304,6 +304,7 @@
       v-if="showPurchaseOrderModal"
       @close="showPurchaseOrderModal = false"
       @save="handleSavePurchaseOrder"
+      :isSubmitting="isSavingPO"
     />
 
     <!-- Add Item to PO Modal -->
@@ -442,6 +443,7 @@ const endDate = ref(new Date().toISOString().split("T")[0]);
 const showExpenseModal = ref(false);
 const showPurchaseOrderModal = ref(false);
 const editingExpense = ref(null);
+const isSavingPO = ref(false);
 
 // PO Expansion State
 const expandedPOs = ref([]);
@@ -613,6 +615,7 @@ async function handleDeleteExpense(id) {
 }
 
 async function handleSavePurchaseOrder(poData) {
+  isSavingPO.value = true;
   try {
     await financeStore.addPurchaseOrder(poData);
     showPurchaseOrderModal.value = false;
@@ -620,6 +623,8 @@ async function handleSavePurchaseOrder(poData) {
     dialogStore.success("Purchase order created successfully");
   } catch (error) {
     dialogStore.error("Failed to save purchase order: " + error.message);
+  } finally {
+    isSavingPO.value = false;
   }
 }
 
