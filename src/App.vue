@@ -1,9 +1,9 @@
 <template>
   <div id="app">
-    <Navbar v-if="$route.path !== '/login'" />
+    <Navbar />
     <router-view />
     <GlassDialog />
-    <GlassDialog />
+    <UpdateDialog />
     
     <!-- First-Time Setup Wizard -->
     <SetupWizard 
@@ -13,16 +13,16 @@
     />
     
     <!-- PWA Install Prompt -->
-    <div v-if="pwaStore.canInstall && $route.path !== '/login'" class="install-prompt">
+    <div v-if="showInstallPrompt" class="install-prompt">
       <div class="install-content">
         <span class="install-icon">📱</span>
         <div class="install-text">
-          <h3>Install RetailMaster</h3>
-          <p>Add to home screen for a better experience</p>
+          <h3>Install App</h3>
+          <p>Add to home screen for offline access</p>
         </div>
         <div class="install-actions">
-          <button @click="pwaStore.canInstall = false" class="dismiss-btn">Not now</button>
-          <button @click="pwaStore.installApp" class="install-btn">Install</button>
+          <button @click="dismissInstall" class="dismiss-btn">Not now</button>
+          <button @click="installPWA" class="install-btn">Install</button>
         </div>
       </div>
     </div>
@@ -31,27 +31,20 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import Navbar from './components/Navbar.vue'
 import GlassDialog from './components/GlassDialog.vue'
 import SetupWizard from './components/SetupWizard.vue'
+import UpdateDialog from './components/UpdateDialog.vue'
 import { useSettingsStore } from './stores/settingsStore'
 import { useAuthStore } from './stores/authStore'
 import { useRouter } from 'vue-router'
-import { usePwaStore } from './stores/pwaStore'
 
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
-const pwaStore = usePwaStore()
 const router = useRouter()
-const route = useRoute()
 
-// Update document title based on current route
-watch(() => route.path, () => {
-  const pageTitle = route.meta.title || 'POS'
-  document.title = `${pageTitle} | RetailMaster POS`
-}, { immediate: true })
-
+const deferredPrompt = ref(null)
+const showInstallPrompt = ref(false)
 const showSetupWizard = ref(false)
 
 let activityCheckInterval = null
@@ -101,7 +94,14 @@ onMounted(async () => {
   // Check session validity periodically (every 5 minutes)
   activityCheckInterval = setInterval(checkSession, 5 * 60 * 1000)
   
-  // Activity Tracking logic remains
+  window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault()
+    // Stash the event so it can be triggered later.
+    deferredPrompt.value = e
+    // Update UI to notify the user they can add to home screen
+    showInstallPrompt.value = true
+  })
 })
 
 onUnmounted(() => {
@@ -127,8 +127,24 @@ watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
   }
 })
 
+async function installPWA() {
+  if (!deferredPrompt.value) return
+  
+  // Show the install prompt
+  deferredPrompt.value.prompt()
+  
+  // Wait for the user to respond to the prompt
+  const { outcome } = await deferredPrompt.value.userChoice
+  console.log(`User response to the install prompt: ${outcome}`)
+  
+  // We've used the prompt, and can't use it again, throw it away
+  deferredPrompt.value = null
+  showInstallPrompt.value = false
+}
+
 function dismissInstall() {
-  pwaStore.canInstall = false
+  showInstallPrompt.value = false
+  deferredPrompt.value = null
 }
 </script>
 
@@ -159,11 +175,6 @@ function dismissInstall() {
 @keyframes slideUp {
   from { transform: translate(-50%, 100%); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
-}
-
-
-.install-icon {
-  font-size: 2rem;
 }
 
 .install-content {

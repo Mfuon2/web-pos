@@ -11,10 +11,6 @@ const ROUTE_PERMISSIONS = {
   "/api/auth/login": ["*"],
   "/api/migrate-borrowed-items-v2": ["*"],
   "/api/images": ["*"], // Product images are public
-  
-  // Legacy/Conflict routes - Whitelisted to avoid 401 noise from other projects' service workers
-  "/api/status": ["*"],
-  "/api/auth/refresh": ["*"],
 
   // Sales - accessible by cashiers and admins
   "/api/sales": ["admin", "cashier"],

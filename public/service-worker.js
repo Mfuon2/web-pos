@@ -1,6 +1,6 @@
 // Service Worker for POS System PWA
-const CACHE_NAME = 'pos-system-v0.0.19';
-const APP_VERSION = '0.0.19';
+const CACHE_NAME = 'pos-system-v__VERSION__';
+const APP_VERSION = '__VERSION__';
 
 const urlsToCache = [
     '/',
@@ -22,8 +22,8 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - network first, fallback to cache for navigation
 self.addEventListener('fetch', (event) => {
-    // Only handle GET requests and http/https schemes
-    if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
+    // Only handle GET requests
+    if (event.request.method !== 'GET') return;
 
     // For navigation requests, try network first
     if (event.request.mode === 'navigate') {

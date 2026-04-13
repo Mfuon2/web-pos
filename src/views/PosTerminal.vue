@@ -347,52 +347,39 @@ function handleBarcodeSearch() {
 }
 
 async function handleCheckout() {
-  if (cart.value.length === 0 || processing.value) return;
+  if (cart.value.length === 0) return;
 
-  processing.value = true;
-  try {
-    // Check for negative stock
-    const deficits = [];
-    for (const item of cart.value) {
-      const product = products.value.find((p) => p.id === item.product_id);
-      if (product && product.stock - item.quantity < 0) {
-        deficits.push({
-          product: product,
-          deficit: item.quantity - Math.max(0, product.stock),
-        });
-      }
+  // Check for negative stock
+  const deficits = [];
+  for (const item of cart.value) {
+    const product = products.value.find((p) => p.id === item.product_id);
+    if (product && product.stock - item.quantity < 0) {
+      deficits.push({
+        product: product,
+        deficit: item.quantity - Math.max(0, product.stock),
+      });
     }
-
-    if (deficits.length > 0) {
-      // Start borrowing workflow
-      pendingDeficits.value = deficits;
-      showBorrowedModal.value = true;
-      // We keep processing = true until the modal is closed or transition to processCheckout
-      return;
-    }
-
-    // Confirm before completing the sale
-    const itemsList = cart.value
-      .map(
-        (item) =>
-          `${item.quantity}x ${item.name} @ ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}`,
-      )
-      .join("\n");
-
-    const confirmed = await dialogStore.confirm(
-      `Complete sale via ${paymentMethod.value}?\n\nItems:\n${itemsList}\n\nTotal: ${formatCurrency(cartTotal.value)}`,
-    );
-
-    if (!confirmed) {
-      processing.value = false;
-      return;
-    }
-
-    await processCheckout();
-  } catch (err) {
-    processing.value = false;
-    dialogStore.error("Unexpected error: " + err.message);
   }
+
+  if (deficits.length > 0) {
+    // Start borrowing workflow
+    pendingDeficits.value = deficits;
+    showBorrowedModal.value = true;
+    return;
+  }
+
+  // Confirm before completing the sale
+  const itemsList = cart.value
+    .map(item => `${item.quantity}x ${item.name} @ ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}`)
+    .join('\n');
+
+  const confirmed = await dialogStore.confirm(
+    `Complete sale via ${paymentMethod.value}?\n\nItems:\n${itemsList}\n\nTotal: ${formatCurrency(cartTotal.value)}`
+  );
+
+  if (!confirmed) return;
+
+  await processCheckout();
 }
 
 async function processCheckout(deduct_stock = true) {
@@ -436,7 +423,6 @@ function initiateBorrow() {
 }
 
 async function handleBorrowingConfirm(borrowings, reduceStock = true) {
-  processing.value = true;
   try {
     for (const borrowing of borrowings) {
       await borrowedStore.addBorrowedItem(borrowing);
@@ -448,7 +434,6 @@ async function handleBorrowingConfirm(borrowings, reduceStock = true) {
     await processCheckout(isManualBorrowing.value ? reduceStock : true);
   } catch (err) {
     dialogStore.error("Failed to record borrowings: " + err.message);
-    processing.value = false;
   } finally {
     isManualBorrowing.value = false;
   }
@@ -460,7 +445,6 @@ function handleBorrowingClose() {
     dialogStore.alert("Sale cancelled. Please adjust quantities or stock.");
   }
   isManualBorrowing.value = false;
-  processing.value = false; // Reset processing if cancelled
 }
 
 // Loan Workflow State

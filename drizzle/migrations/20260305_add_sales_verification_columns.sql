@@ -5,4 +5,4 @@
 SELECT 1;
 
 -- Update existing records to reflect the new default
--- UPDATE sale_items SET payment_status = 'unverified' WHERE payment_status IS NULL;
+UPDATE sale_items SET payment_status = 'unverified' WHERE payment_status IS NULL;

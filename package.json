@@ -1,6 +1,6 @@
 {
   "name": "pos-app",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Point of Sale Application with Vue.js and Cloudflare Pages",
   "type": "module",
   "scripts": {
