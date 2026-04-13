@@ -83,10 +83,11 @@
           <button type="button" class="cancel-btn" @click="$emit('close')">
             Cancel Sale
           </button>
-          <button type="submit" class="submit-btn" :disabled="!isFormValid">
-            {{
-              isManualBorrow ? "Confirm Borrowed Items" : "Confirm & Borrow All"
-            }}
+          <button type="submit" class="submit-btn" :disabled="!isFormValid || isSubmitting">
+            <span v-if="isSubmitting">Borrowing...</span>
+            <span v-else>
+              {{ isManualBorrow ? "Confirm Borrowed Items" : "Confirm & Borrow All" }}
+            </span>
           </button>
         </div>
       </form>
@@ -108,6 +109,10 @@ const props = defineProps({
     required: false,
   },
   isManualBorrow: {
+    type: Boolean,
+    default: false,
+  },
+  isSubmitting: {
     type: Boolean,
     default: false,
   },

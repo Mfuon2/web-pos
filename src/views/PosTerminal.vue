@@ -210,6 +210,7 @@
       :items="pendingDeficits"
       :borrowedAt="saleDate"
       :isManualBorrow="isManualBorrowing"
+      :isSubmitting="isBorrowingProcessing"
       @confirm="handleBorrowingConfirm"
       @close="handleBorrowingClose"
     />
@@ -370,11 +371,14 @@ async function handleCheckout() {
 
   // Confirm before completing the sale
   const itemsList = cart.value
-    .map(item => `${item.quantity}x ${item.name} @ ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}`)
-    .join('\n');
+    .map(
+      (item) =>
+        `${item.quantity}x ${item.name} @ ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}`,
+    )
+    .join("\n");
 
   const confirmed = await dialogStore.confirm(
-    `Complete sale via ${paymentMethod.value}?\n\nItems:\n${itemsList}\n\nTotal: ${formatCurrency(cartTotal.value)}`
+    `Complete sale via ${paymentMethod.value}?\n\nItems:\n${itemsList}\n\nTotal: ${formatCurrency(cartTotal.value)}`,
   );
 
   if (!confirmed) return;
@@ -404,6 +408,7 @@ async function processCheckout(deduct_stock = true) {
 const showBorrowedModal = ref(false);
 const pendingDeficits = ref([]);
 const isManualBorrowing = ref(false);
+const isBorrowingProcessing = ref(false);
 
 function initiateBorrow() {
   if (cart.value.length === 0) return;
@@ -423,6 +428,7 @@ function initiateBorrow() {
 }
 
 async function handleBorrowingConfirm(borrowings, reduceStock = true) {
+  isBorrowingProcessing.value = true;
   try {
     for (const borrowing of borrowings) {
       await borrowedStore.addBorrowedItem(borrowing);
@@ -436,6 +442,7 @@ async function handleBorrowingConfirm(borrowings, reduceStock = true) {
     dialogStore.error("Failed to record borrowings: " + err.message);
   } finally {
     isManualBorrowing.value = false;
+    isBorrowingProcessing.value = false;
   }
 }
 
