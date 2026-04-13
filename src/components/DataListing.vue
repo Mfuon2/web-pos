@@ -8,21 +8,24 @@
       <div class="toolbar-right">
         <!-- Column selector -->
         <div class="dropdown" ref="columnDropdownRef">
-          <button @click="showColumnDropdown = !showColumnDropdown" class="toolbar-btn">
+          <button
+            @click="showColumnDropdown = !showColumnDropdown"
+            class="toolbar-btn"
+          >
             <LayoutList class="icon-sm" />
             <span class="btn-text" v-if="!isMobile">Columns</span>
           </button>
           <div v-if="showColumnDropdown" class="dropdown-menu">
             <div class="dropdown-header">Visible Columns</div>
-            <label 
-              v-for="col in internalColumns" 
-              :key="col.key" 
+            <label
+              v-for="col in internalColumns"
+              :key="col.key"
               class="dropdown-item checkbox-label"
               :class="{ disabled: col.primary }"
             >
-              <input 
-                type="checkbox" 
-                v-model="col.visible" 
+              <input
+                type="checkbox"
+                v-model="col.visible"
                 :disabled="col.primary"
               />
               {{ col.label }}
@@ -32,16 +35,16 @@
 
         <!-- View mode toggle -->
         <div class="view-toggles">
-          <button 
-            @click="userViewMode = 'table'" 
+          <button
+            @click="userViewMode = 'table'"
             class="toolbar-btn icon-btn"
             :class="{ active: computedViewMode === 'table' }"
             title="Table View"
           >
             <Table class="icon-sm" />
           </button>
-          <button 
-            @click="userViewMode = 'grid'" 
+          <button
+            @click="userViewMode = 'grid'"
             class="toolbar-btn icon-btn"
             :class="{ active: computedViewMode === 'grid' }"
             title="Grid View"
@@ -57,8 +60,8 @@
       <table>
         <thead>
           <tr>
-            <th 
-              v-for="col in visibleColumns" 
+            <th
+              v-for="col in visibleColumns"
               :key="col.key"
               :class="`align-${col.align || 'left'}`"
             >
@@ -67,21 +70,31 @@
           </tr>
         </thead>
         <tbody>
-          <tr 
-            v-for="item in data" 
-            :key="item[rowKey]"
-            :class="getRowClass(item)"
-          >
-            <td 
-              v-for="col in visibleColumns" 
-              :key="col.key"
-              :class="`align-${col.align || 'left'}`"
+          <template v-for="item in data" :key="item[rowKey]">
+            <tr
+              :class="getRowClass(item)"
+              @click="$emit('rowClick', item)"
+              style="cursor: pointer"
             >
-              <slot :name="`cell-${col.key}`" :item="item">
-                {{ item[col.key] }}
-              </slot>
-            </td>
-          </tr>
+              <td
+                v-for="col in visibleColumns"
+                :key="col.key"
+                :class="`align-${col.align || 'left'}`"
+              >
+                <slot :name="`cell-${col.key}`" :item="item">
+                  {{ item[col.key] }}
+                </slot>
+              </td>
+            </tr>
+            <tr
+              v-if="$slots.expandedRow && expandedKeys.includes(item[rowKey])"
+              class="expanded-row-wrapper"
+            >
+              <td :colspan="visibleColumns.length" style="padding: 0">
+                <slot name="expandedRow" :item="item"></slot>
+              </td>
+            </tr>
+          </template>
           <tr v-if="data.length === 0">
             <td :colspan="visibleColumns.length" class="empty-state">
               <slot name="empty">No items found.</slot>
@@ -93,11 +106,13 @@
 
     <!-- Grid View -->
     <div v-else class="grid-container">
-      <div 
-        v-for="item in data" 
-        :key="item[rowKey]" 
+      <div
+        v-for="item in data"
+        :key="item[rowKey]"
         class="grid-card"
         :class="getRowClass(item)"
+        @click="$emit('rowClick', item)"
+        style="cursor: pointer"
       >
         <div class="card-header" v-if="primaryColumn">
           <div class="primary-content">
@@ -106,14 +121,21 @@
             </slot>
           </div>
           <!-- Optionally move actions to the top right of the card -->
-          <div class="card-actions" v-if="hasVisibleColumn('actions')">
+          <div
+            class="card-actions"
+            v-if="hasVisibleColumn('actions')"
+            @click.stop
+          >
             <slot name="cell-actions" :item="item"></slot>
           </div>
         </div>
-        
+
         <div class="card-body">
           <template v-for="col in visibleColumns" :key="col.key">
-            <div class="grid-row" v-if="col.key !== primaryColumn?.key && col.key !== 'actions'">
+            <div
+              class="grid-row"
+              v-if="col.key !== primaryColumn?.key && col.key !== 'actions'"
+            >
               <span class="grid-label">{{ col.label }}</span>
               <span class="grid-value" :class="`align-${col.align || 'left'}`">
                 <slot :name="`cell-${col.key}`" :item="item">
@@ -123,12 +145,19 @@
             </div>
           </template>
         </div>
+
+        <div
+          v-if="$slots.expandedRow && expandedKeys.includes(item[rowKey])"
+          class="card-expanded"
+        >
+          <slot name="expandedRow" :item="item"></slot>
+        </div>
       </div>
       <div v-if="data.length === 0" class="empty-state card">
         <slot name="empty">No items found.</slot>
       </div>
     </div>
-    
+
     <div class="listing-footer">
       <slot name="pagination"></slot>
     </div>
@@ -136,8 +165,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { Table, LayoutGrid, LayoutList } from 'lucide-vue-next';
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { Table, LayoutGrid, LayoutList } from "lucide-vue-next";
 
 const props = defineProps({
   data: {
@@ -151,39 +180,54 @@ const props = defineProps({
   },
   rowKey: {
     type: String,
-    default: 'id'
+    default: "id",
   },
   rowClass: {
     type: Function,
-    default: () => ''
-  }
+    default: () => "",
+  },
+  expandedKeys: {
+    type: Array,
+    default: () => [],
+  },
 });
+
+defineEmits(["rowClick"]);
 
 // Internal Columns State
 const internalColumns = ref([]);
 
-watch(() => props.columns, (newCols) => {
-  // Try to preserve existing visibility state if columns change order but keep same keys
-  const oldVisibilities = {};
-  internalColumns.value.forEach(col => {
-    oldVisibilities[col.key] = col.visible;
-  });
+watch(
+  () => props.columns,
+  (newCols) => {
+    // Try to preserve existing visibility state if columns change order but keep same keys
+    const oldVisibilities = {};
+    internalColumns.value.forEach((col) => {
+      oldVisibilities[col.key] = col.visible;
+    });
 
-  internalColumns.value = newCols.map(col => {
-    return {
-      ...col,
-      visible: Object.prototype.hasOwnProperty.call(oldVisibilities, col.key) 
-        ? oldVisibilities[col.key] 
-        : (!col.hidden || col.primary)
-    };
-  });
-}, { immediate: true, deep: true });
+    internalColumns.value = newCols.map((col) => {
+      return {
+        ...col,
+        visible: Object.prototype.hasOwnProperty.call(oldVisibilities, col.key)
+          ? oldVisibilities[col.key]
+          : !col.hidden || col.primary,
+      };
+    });
+  },
+  { immediate: true, deep: true },
+);
 
-const visibleColumns = computed(() => internalColumns.value.filter(c => c.visible));
-const primaryColumn = computed(() => internalColumns.value.find(c => c.primary) || internalColumns.value[0]);
+const visibleColumns = computed(() =>
+  internalColumns.value.filter((c) => c.visible),
+);
+const primaryColumn = computed(
+  () =>
+    internalColumns.value.find((c) => c.primary) || internalColumns.value[0],
+);
 
 function hasVisibleColumn(key) {
-  return visibleColumns.value.some(c => c.key === key);
+  return visibleColumns.value.some((c) => c.key === key);
 }
 
 function getRowClass(item) {
@@ -200,18 +244,18 @@ const checkMobile = () => {
 
 onMounted(() => {
   checkMobile();
-  window.addEventListener('resize', checkMobile);
-  document.addEventListener('click', closeDropdown);
+  window.addEventListener("resize", checkMobile);
+  document.addEventListener("click", closeDropdown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile);
-  document.removeEventListener('click', closeDropdown);
+  window.removeEventListener("resize", checkMobile);
+  document.removeEventListener("click", closeDropdown);
 });
 
 const computedViewMode = computed(() => {
   if (userViewMode.value) return userViewMode.value;
-  return isMobile.value ? 'grid' : 'table';
+  return isMobile.value ? "grid" : "table";
 });
 
 // Dropdown Logic
@@ -285,7 +329,8 @@ const closeDropdown = (e) => {
   border-radius: var(--radius-sm);
 }
 
-.icon-btn:hover, .icon-btn.active {
+.icon-btn:hover,
+.icon-btn.active {
   background: var(--bg-white);
   color: var(--primary-color);
   box-shadow: var(--shadow-sm);
@@ -365,7 +410,9 @@ const closeDropdown = (e) => {
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   display: flex;
   flex-direction: column;
 }
@@ -422,7 +469,24 @@ const closeDropdown = (e) => {
   word-break: break-word;
 }
 
-.align-center { text-align: center; justify-content: center; }
-.align-right { text-align: right; justify-content: flex-end; }
-.align-left { text-align: left; justify-content: flex-start; }
+.align-center {
+  text-align: center;
+  justify-content: center;
+}
+.align-right {
+  text-align: right;
+  justify-content: flex-end;
+}
+.align-left {
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.card-expanded {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  width: 100%;
+  overflow-x: auto;
+}
 </style>
