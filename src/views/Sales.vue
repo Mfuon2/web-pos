@@ -5,11 +5,7 @@
         <Receipt class="header-icon" />
         Sales History
       </h1>
-      <button 
-        v-if="isAdmin" 
-        class="export-btn" 
-        @click="openExportModal"
-      >
+      <button v-if="isAdmin" class="export-btn" @click="openExportModal">
         <Download class="icon-sm" />
         Export
       </button>
@@ -874,9 +870,15 @@ onMounted(() => {
   font-size: var(--font-size-sm);
 }
 
-.items-table-header {
+.items-table-header,
+.item-row {
   display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   padding: 0.75rem 0.5rem;
+}
+
+.items-table-header {
   color: var(--text-secondary);
   font-size: var(--font-size-xs);
   text-transform: uppercase;
@@ -885,12 +887,18 @@ onMounted(() => {
   margin-bottom: 0.5rem;
 }
 
-.items-table-header span:first-child {
+.items-table-header span:first-child,
+.item-name {
   flex: 1;
+  min-width: 0;
 }
 
-.items-table-header span:not(:first-child) {
+.items-table-header span:not(:first-child),
+.item-qty,
+.item-price,
+.item-subtotal {
   width: 80px;
+  flex-shrink: 0;
 }
 
 .text-right {
@@ -898,8 +906,6 @@ onMounted(() => {
 }
 
 .item-row {
-  display: flex;
-  padding: 0.5rem;
   border-bottom: var(--border-width) dashed var(--border-color);
 }
 
