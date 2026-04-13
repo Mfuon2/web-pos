@@ -98,6 +98,14 @@
             <p class="file-type">Excel files only (.xlsx, .xls)</p>
           </div>
         </div>
+
+        <div class="divider">
+          <span>OR</span>
+        </div>
+
+        <button @click="startManualEntry" class="manual-entry-btn">
+          <Plus class="icon-sm" /> Enter Products Manually
+        </button>
       </div>
 
       <!-- Step 2: Verification -->
@@ -115,6 +123,13 @@
             <span class="stat-value">{{ formatCurrency(computedTotal) }}</span>
             <span class="stat-label">Total Amount</span>
           </div>
+        </div>
+
+        <div class="list-header">
+          <h3>Verification List</h3>
+          <button @click="openAddModal" class="secondary-btn add-item-btn">
+            <Plus class="icon-sm" /> Add Item
+          </button>
         </div>
 
         <div class="verification-list">
@@ -215,7 +230,7 @@
           v-if="step === 2"
           @click="step = 1"
           class="secondary-btn"
-          :disabled="loading"
+          :disabled="loading || isSubmitting"
         >
           Back
         </button>
@@ -226,11 +241,77 @@
           v-if="step === 2"
           @click="handleSubmit"
           class="submit-btn"
-          :disabled="validItemsCount === 0 || loading"
+          :disabled="validItemsCount === 0 || loading || isSubmitting"
         >
           {{
-            loading ? "Processing..." : `Record PO (${validItemsCount} items)`
+            loading || isSubmitting ? "Processing..." : `Record PO (${validItemsCount} items)`
           }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Product Dialog (Nested) -->
+  <div v-if="showAddModal" class="modal-overlay nested-overlay">
+    <div class="modal-content small-modal">
+      <div class="modal-header">
+        <h3 style="margin: 0; font-size: 1.25rem">Add Product</h3>
+        <button class="close-btn" @click="showAddModal = false">
+          <X class="icon-sm" />
+        </button>
+      </div>
+      <div class="form-group mb-3">
+        <label>Action</label>
+        <select v-model="manualItem.type">
+          <option value="existing">Existing Product</option>
+          <option value="new">New Product</option>
+        </select>
+      </div>
+
+      <div class="form-group mb-3" v-if="manualItem.type === 'existing'">
+        <label>Select Product</label>
+        <select v-model="manualItem.matchedWith" required>
+          <option v-for="p in sortedProducts" :key="p.id" :value="p">
+            {{ p.name }} (Stock: {{ p.stock }})
+          </option>
+        </select>
+      </div>
+      <div class="form-group mb-3" v-if="manualItem.type === 'new'">
+        <label>Product Name</label>
+        <input v-model="manualItem.name" type="text" required />
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Quantity</label>
+          <input
+            v-model.number="manualItem.quantity"
+            type="number"
+            min="1"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label>Cost</label>
+          <input
+            v-model.number="manualItem.cost"
+            type="number"
+            min="0"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button @click="showAddModal = false" class="secondary-btn">
+          Cancel
+        </button>
+        <button
+          @click="addManualProduct"
+          class="submit-btn"
+          :disabled="!isManualItemValid"
+        >
+          Add
         </button>
       </div>
     </div>
@@ -249,10 +330,18 @@ import {
   FileSpreadsheet,
   Check,
   CheckCircle,
+  Plus,
 } from "lucide-vue-next";
 import * as XLSX from "xlsx";
 import { isAlmostMatch, generateBarcode } from "../utils/stringUtils";
 import { formatCurrency } from "../utils/currency";
+
+const props = defineProps({
+  isSubmitting: {
+    type: Boolean,
+    default: false,
+  },
+});
 
 const emit = defineEmits(["close", "save"]);
 const supplierStore = useSupplierStore();
@@ -266,6 +355,15 @@ const step = ref(1);
 const isDragging = ref(false);
 const loading = ref(false);
 const parsedItems = ref([]);
+
+const showAddModal = ref(false);
+const manualItem = ref({
+  type: "existing",
+  matchedWith: null,
+  name: "",
+  quantity: 1,
+  cost: 0,
+});
 
 const formData = ref({
   supplier_id: null,
@@ -297,6 +395,63 @@ const computedTotal = computed(() => {
     .filter((i) => i.status === "valid" || i.status === "new")
     .reduce((sum, i) => sum + i.quantity * i.cost, 0);
 });
+
+const sortedProducts = computed(() => {
+  return [...products.value].sort((a, b) => a.name.localeCompare(b.name));
+});
+
+const isManualItemValid = computed(() => {
+  if (manualItem.value.quantity <= 0 || manualItem.value.cost < 0) return false;
+  if (manualItem.value.type === "existing" && !manualItem.value.matchedWith)
+    return false;
+  if (manualItem.value.type === "new" && !manualItem.value.name.trim())
+    return false;
+  return true;
+});
+
+function openAddModal() {
+  manualItem.value = {
+    type: "existing",
+    matchedWith: null,
+    name: "",
+    quantity: 1,
+    cost: 0,
+  };
+  showAddModal.value = true;
+}
+
+function addManualProduct() {
+  if (!isManualItemValid.value) return;
+
+  if (manualItem.value.type === "existing") {
+    parsedItems.value.unshift({
+      name: manualItem.value.matchedWith.name,
+      quantity: manualItem.value.quantity,
+      cost: manualItem.value.cost,
+      status: "valid",
+      suggestions: [manualItem.value.matchedWith],
+      matchedWith: manualItem.value.matchedWith,
+    });
+  } else {
+    parsedItems.value.unshift({
+      name: manualItem.value.name,
+      quantity: manualItem.value.quantity,
+      cost: manualItem.value.cost,
+      status: "new",
+      suggestions: [],
+      matchedWith: null,
+    });
+  }
+
+  showAddModal.value = false;
+}
+
+function startManualEntry() {
+  step.value = 2;
+  if (parsedItems.value.length === 0) {
+    openAddModal();
+  }
+}
 
 function downloadTemplate() {
   const ws = XLSX.utils.json_to_sheet([
@@ -397,8 +552,8 @@ function resolveConflict(index, action) {
 }
 
 async function handleSubmit() {
-  loading.value = true;
   try {
+    loading.value = true;
     const finalItems = [];
 
     for (const item of parsedItems.value) {
@@ -445,6 +600,75 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+.divider:not(:empty)::before {
+  margin-right: 0.5em;
+}
+.divider:not(:empty)::after {
+  margin-left: 0.5em;
+}
+.manual-entry-btn {
+  width: 100%;
+  padding: 1rem;
+  background: white;
+  border: 2px dashed #cbd5e1;
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+.manual-entry-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(102, 126, 234, 0.05);
+}
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.list-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+.add-item-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.nested-overlay {
+  z-index: 1010;
+}
+.small-modal {
+  max-width: 500px;
+}
 .modal-overlay {
   position: fixed;
   top: 0;

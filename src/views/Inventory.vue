@@ -83,15 +83,26 @@
               @click="exportToExcel"
               class="export-btn"
               :disabled="exporting"
+              v-if="activeTab === 'inventory'"
             >
               <Download class="icon-sm" />
               <span class="btn-text">Export</span>
             </button>
-            <button @click="showBulkUploadModal = true" class="upload-btn">
+            <button
+              @click="showBulkUploadModal = true"
+              class="upload-btn"
+              v-if="activeTab === 'inventory'"
+            >
               <Upload class="icon-sm" />
               <span class="btn-text">Upload</span>
             </button>
-            <button @click="openAddModal" class="add-btn">+ Product</button>
+            <button
+              @click="openAddModal"
+              class="add-btn"
+              v-if="activeTab === 'inventory'"
+            >
+              + Product
+            </button>
           </div>
         </div>
 
@@ -115,78 +126,81 @@
           </div>
         </div>
 
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Barcode</th>
-                <th>Price</th>
-                <th>Cost</th>
-                <th>Expected Profit</th>
-                <th>Stock</th>
-                <th>Total Value</th>
-                <th>Category</th>
-                <th v-if="activeTab === 'inventory'">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="product in products"
-                :key="product.id"
-                :class="{ 'deleted-row': product.deleted_at }"
+        <DataListing
+          :data="products"
+          :columns="computedInventoryColumns"
+          rowKey="id"
+          :rowClass="(product) => (product.deleted_at ? 'deleted-row' : '')"
+        >
+          <template #cell-name="{ item }">
+            <span :class="{ strikethrough: item.deleted_at }">{{
+              item.name
+            }}</span>
+            <span v-if="item.deleted_at" class="deleted-badge">Deleted</span>
+          </template>
+
+          <template #cell-barcode="{ item }">
+            <code>{{ item.barcode || "N/A" }}</code>
+          </template>
+
+          <template #cell-price="{ item }">
+            {{ formatCurrency(item.price) }}
+          </template>
+
+          <template #cell-cost="{ item }">
+            {{ formatCurrency(item.cost || 0) }}
+          </template>
+
+          <template #cell-profit="{ item }">
+            {{ formatCurrency(item.price - (item.cost || 0)) }}
+          </template>
+
+          <template #cell-stock="{ item }">
+            <span :class="{ 'low-stock': item.stock < 10 }">{{
+              item.stock
+            }}</span>
+          </template>
+
+          <template #cell-value="{ item }">
+            {{ formatCurrency(item.price * item.stock) }}
+          </template>
+
+          <template #cell-category="{ item }">
+            {{ item.category || "N/A" }}
+          </template>
+
+          <template #cell-actions="{ item }">
+            <div class="actions">
+              <button
+                @click="openEditModal(item)"
+                class="action-btn edit-btn"
+                title="Edit"
+                :disabled="!!item.deleted_at"
               >
-                <td>
-                  <span :class="{ strikethrough: product.deleted_at }">{{
-                    product.name
-                  }}</span>
-                  <span v-if="product.deleted_at" class="deleted-badge"
-                    >Deleted</span
-                  >
-                </td>
-                <td>
-                  <code>{{ product.barcode || "N/A" }}</code>
-                </td>
-                <td>{{ formatCurrency(product.price) }}</td>
-                <td>{{ formatCurrency(product.cost || 0) }}</td>
-                <td>
-                  {{ formatCurrency(product.price - (product.cost || 0)) }}
-                </td>
-                <td :class="{ 'low-stock': product.stock < 10 }">
-                  {{ product.stock }}
-                </td>
-                <td>{{ formatCurrency(product.price * product.stock) }}</td>
-                <td>{{ product.category || "N/A" }}</td>
-                <td class="actions" v-if="activeTab === 'inventory'">
-                  <button
-                    @click="openEditModal(product)"
-                    class="action-btn edit-btn"
-                    title="Edit"
-                    :disabled="!!product.deleted_at"
-                  >
-                    <Edit2 class="icon-sm" />
-                  </button>
-                  <button
-                    @click="handleDelete(product.id)"
-                    class="action-btn delete-btn"
-                    title="Delete"
-                    :disabled="!!product.deleted_at"
-                  >
-                    <Trash2 class="icon-sm" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <PaginationControls
-            v-if="pagination.total > 0"
-            :current-page="pagination.page"
-            :total-pages="pagination.totalPages"
-            :total="pagination.total"
-            :limit="pagination.limit"
-            @page-change="handlePageChange"
-          />
-        </div>
+                <Edit2 class="icon-sm" />
+              </button>
+              <button
+                @click="handleDelete(item.id)"
+                class="action-btn delete-btn"
+                title="Delete"
+                :disabled="!!item.deleted_at"
+              >
+                <Trash2 class="icon-sm" />
+              </button>
+            </div>
+          </template>
+
+          <template #pagination>
+            <PaginationControls
+              v-if="pagination.total > 0"
+              :current-page="pagination.page"
+              :total-pages="pagination.totalPages"
+              :total="pagination.total"
+              :limit="pagination.limit"
+              @page-change="handlePageChange"
+            />
+          </template>
+        </DataListing>
       </div>
 
       <!-- Borrowed Tab -->
@@ -251,133 +265,100 @@
           </div>
         </div>
 
-        <!-- Mobile Search Bar -->
-        <div class="search-bar-container mobile-search">
-          <div class="search-input-wrapper">
-            <Search class="search-icon" />
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search by name, barcode or source..."
-              class="search-input"
-            />
-            <button
-              v-if="searchQuery"
-              @click="searchQuery = ''"
-              class="clear-search"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
+        <DataListing
+          :data="borrowedItems"
+          :columns="borrowedColumns"
+          rowKey="id"
+        >
+          <template #cell-product="{ item }">
+            <strong>{{ item.product_name }}</strong>
+            <br />
+            <small>{{ item.product_barcode }}</small>
+          </template>
 
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Quantity</th>
-                <th>Borrowed From</th>
-                <th>Reason</th>
-                <th>Status</th>
-                <th>Borrowed Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in borrowedItems" :key="item.id">
-                <td>
-                  <strong>{{ item.product_name }}</strong>
-                  <br />
-                  <small>{{ item.product_barcode }}</small>
-                </td>
-                <td class="center-align-text">{{ item.quantity }}</td>
-                <td>{{ item.borrowed_from }}</td>
-                <td>{{ item.reason }}</td>
-                <td>
-                  <div class="status-container">
-                    <span class="status-badge" :class="item.status">{{
-                      item.status
-                    }}</span>
-                    <div
-                      v-if="
-                        item.status !== 'pending' ||
-                        (item.returned_quantity === 0 &&
-                          item.paid_quantity === 0)
-                      "
-                      class="return-progress"
-                    >
-                      <small v-if="item.returned_quantity > 0"
-                        >{{ item.returned_quantity }} returned</small
-                      >
-                      <small v-if="item.paid_quantity > 0"
-                        >{{ item.paid_quantity }} paid</small
-                      >
-                      <small
-                        v-if="
-                          item.returned_quantity === 0 &&
-                          item.paid_quantity === 0
-                        "
-                        >0 / {{ item.quantity }} settled</small
-                      >
-                      <small
-                        v-else-if="
-                          item.returned_quantity + item.paid_quantity <
-                          item.quantity
-                        "
-                        >({{ item.returned_quantity + item.paid_quantity }} /
-                        {{ item.quantity }})</small
-                      >
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div>
-                    {{
-                      item.borrowed_at
-                        ? formatDateWithoutTime(item.borrowed_at)
-                        : formatDateWithoutTime(item.created_at)
-                    }}
-                  </div>
-                  <small class="text-secondary" style="font-size: 0.8em"
-                    >Created: {{ formatDate(item.created_at) }}</small
-                  >
-                </td>
-                <td class="actions">
-                  <button
-                    @click="openManageBorrowedModal(item)"
-                    class="action-btn manage-btn"
-                    title="Manage Returns / Payment"
-                    v-if="item.status !== 'returned' && item.status !== 'paid'"
-                  >
-                    <Check class="icon-sm" />
-                  </button>
-                  <button
-                    @click="openEditBorrowedModal(item)"
-                    class="action-btn edit-btn"
-                    title="Edit Details"
-                    v-if="item.status !== 'returned' && item.status !== 'paid'"
-                  >
-                    <Edit2 class="icon-sm" />
-                  </button>
-                  <button
-                    @click="openViewBorrowedModal(item)"
-                    class="action-btn view-btn"
-                    title="View Details"
-                    v-if="item.status === 'returned' || item.status === 'paid'"
-                  >
-                    <Eye class="icon-sm" />
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="borrowedItems.length === 0">
-                <td colspan="7" class="empty-state">
-                  No borrowed items recorded.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <template #cell-status="{ item }">
+            <div class="status-container">
+              <span class="status-badge" :class="item.status">{{
+                item.status
+              }}</span>
+              <div
+                v-if="
+                  item.status !== 'pending' ||
+                  (item.returned_quantity === 0 && item.paid_quantity === 0)
+                "
+                class="return-progress"
+              >
+                <small v-if="item.returned_quantity > 0"
+                  >{{ item.returned_quantity }} returned</small
+                >
+                <small v-if="item.paid_quantity > 0"
+                  >{{ item.paid_quantity }} paid</small
+                >
+                <small
+                  v-if="
+                    (item.returned_quantity || 0) === 0 &&
+                    (item.paid_quantity || 0) === 0
+                  "
+                  >0 / {{ item.quantity }} settled</small
+                >
+                <small
+                  v-else-if="
+                    (item.returned_quantity || 0) + (item.paid_quantity || 0) <
+                    item.quantity
+                  "
+                  >({{
+                    (item.returned_quantity || 0) + (item.paid_quantity || 0)
+                  }}
+                  / {{ item.quantity }})</small
+                >
+              </div>
+            </div>
+          </template>
+
+          <template #cell-date="{ item }">
+            <div>
+              {{
+                item.borrowed_at
+                  ? formatDateWithoutTime(item.borrowed_at)
+                  : formatDateWithoutTime(item.created_at)
+              }}
+            </div>
+            <small class="text-secondary" style="font-size: 0.8em"
+              >Created: {{ formatDate(item.created_at) }}</small
+            >
+          </template>
+
+          <template #cell-actions="{ item }">
+            <div class="actions">
+              <button
+                @click="openManageBorrowedModal(item)"
+                class="action-btn manage-btn"
+                title="Manage Returns / Payment"
+                v-if="item.status !== 'returned' && item.status !== 'paid'"
+              >
+                <Check class="icon-sm" />
+              </button>
+              <button
+                @click="openEditBorrowedModal(item)"
+                class="action-btn edit-btn"
+                title="Edit Details"
+                v-if="item.status !== 'returned' && item.status !== 'paid'"
+              >
+                <Edit2 class="icon-sm" />
+              </button>
+              <button
+                @click="openViewBorrowedModal(item)"
+                class="action-btn view-btn"
+                title="View Details"
+                v-if="item.status === 'returned' || item.status === 'paid'"
+              >
+                <Eye class="icon-sm" />
+              </button>
+            </div>
+          </template>
+
+          <template #empty> No borrowed items recorded. </template>
+        </DataListing>
       </div>
 
       <!-- Loaned Tab -->
@@ -424,100 +405,90 @@
           </div>
         </div>
 
-        <div class="table-container">
-          <table class="inventory-table">
-            <thead>
-              <tr>
-                <th>Borrower</th>
-                <th>Items</th>
-                <th>Collateral</th>
-                <th>Status</th>
-                <th>Loaned Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="loan in loans" :key="loan.id">
-                <td>
-                  <strong>{{ loan.borrower_name }}</strong>
-                  <div v-if="loan.borrower_contact">
-                    <small>{{ loan.borrower_contact }}</small>
-                  </div>
-                </td>
-                <td>
-                  <ul class="loan-items-list">
-                    <li v-for="item in loan.items" :key="item.product_id">
-                      {{ item.quantity }}x {{ item.product_name }}
-                    </li>
-                  </ul>
-                </td>
-                <td>
-                  <div v-if="loan.collateral">
-                    <strong>{{ loan.collateral }}</strong>
-                    <div v-if="loan.collateral_description">
-                      <small>{{ loan.collateral_description }}</small>
-                    </div>
-                  </div>
-                  <span v-else class="text-secondary">None</span>
-                </td>
-                <td>
-                  <div class="status-container">
-                    <span class="status-badge" :class="loan.status">{{
-                      loan.status
-                    }}</span>
-                    <div
-                      v-if="loan.status === 'partially_returned'"
-                      class="return-progress"
-                    >
-                      <small>{{ getLoanReturnProgress(loan) }}</small>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div>
-                    {{
-                      loan.loaned_at
-                        ? formatDateWithoutTime(loan.loaned_at)
-                        : formatDateWithoutTime(loan.created_at)
-                    }}
-                  </div>
-                  <small class="text-secondary" style="font-size: 0.8em"
-                    >Created: {{ formatDate(loan.created_at) }}</small
-                  >
-                </td>
-                <td class="actions">
-                  <button
-                    @click="openManageLoanModal(loan)"
-                    class="action-btn manage-btn"
-                    title="Manage Returns"
-                    v-if="loan.status !== 'returned'"
-                  >
-                    <Check class="icon-sm" />
-                  </button>
-                  <button
-                    @click="openEditLoanModal(loan)"
-                    class="action-btn edit-btn"
-                    title="Update Details"
-                    v-if="loan.status !== 'returned'"
-                  >
-                    <Edit2 class="icon-sm" />
-                  </button>
-                  <button
-                    @click="openViewLoanModal(loan)"
-                    class="action-btn view-btn"
-                    title="View Details"
-                    v-if="loan.status === 'returned'"
-                  >
-                    <Eye class="icon-sm" />
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="loans.length === 0">
-                <td colspan="6" class="empty-state">No active loans.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <DataListing :data="loans" :columns="loanedColumns" rowKey="id">
+          <template #cell-borrower="{ item }">
+            <strong>{{ item.borrower_name }}</strong>
+            <div v-if="item.borrower_contact">
+              <small>{{ item.borrower_contact }}</small>
+            </div>
+          </template>
+
+          <template #cell-items="{ item }">
+            <ul class="loan-items-list">
+              <li v-for="loanItem in item.items" :key="loanItem.product_id">
+                {{ loanItem.quantity }}x {{ loanItem.product_name }}
+              </li>
+            </ul>
+          </template>
+
+          <template #cell-collateral="{ item }">
+            <div v-if="item.collateral">
+              <strong>{{ item.collateral }}</strong>
+              <div v-if="item.collateral_description">
+                <small>{{ item.collateral_description }}</small>
+              </div>
+            </div>
+            <span v-else class="text-secondary">None</span>
+          </template>
+
+          <template #cell-status="{ item }">
+            <div class="status-container">
+              <span class="status-badge" :class="item.status">{{
+                item.status
+              }}</span>
+              <div
+                v-if="item.status === 'partially_returned'"
+                class="return-progress"
+              >
+                <small>{{ getLoanReturnProgress(item) }}</small>
+              </div>
+            </div>
+          </template>
+
+          <template #cell-date="{ item }">
+            <div>
+              {{
+                item.loaned_at
+                  ? formatDateWithoutTime(item.loaned_at)
+                  : formatDateWithoutTime(item.created_at)
+              }}
+            </div>
+            <small class="text-secondary" style="font-size: 0.8em"
+              >Created: {{ formatDate(item.created_at) }}</small
+            >
+          </template>
+
+          <template #cell-actions="{ item }">
+            <div class="actions">
+              <button
+                @click="openManageLoanModal(item)"
+                class="action-btn manage-btn"
+                title="Manage Returns"
+                v-if="item.status !== 'returned'"
+              >
+                <Check class="icon-sm" />
+              </button>
+              <button
+                @click="openEditLoanModal(item)"
+                class="action-btn edit-btn"
+                title="Update Details"
+                v-if="item.status !== 'returned'"
+              >
+                <Edit2 class="icon-sm" />
+              </button>
+              <button
+                @click="openViewLoanModal(item)"
+                class="action-btn view-btn"
+                title="View Details"
+                v-if="item.status === 'returned'"
+              >
+                <Eye class="icon-sm" />
+              </button>
+            </div>
+          </template>
+
+          <template #empty> No active loans. </template>
+        </DataListing>
       </div>
     </div>
 
@@ -868,8 +839,14 @@
               <p class="upload-hint">JPG, PNG, or WebP (max 2MB)</p>
             </div>
           </div>
-          <button type="submit" class="submit-btn">
-            {{ isEditing ? "Update Product" : "Add Product" }}
+          <button type="submit" class="submit-btn" :disabled="isSubmitting">
+            {{
+              isSubmitting
+                ? "Submitting..."
+                : isEditing
+                  ? "Update Product"
+                  : "Add Product"
+            }}
           </button>
         </form>
       </div>
@@ -1055,24 +1032,32 @@
             </div>
           </div>
 
-          <div class="divider">OR</div>
-
-          <button
-            @click="handleReturnAllLoan"
-            class="submit-btn"
-            :disabled="
-              loanStore.loading ||
-              editingLoanDetail?.items.every(
-                (item) => (item.returned_quantity || 0) >= item.quantity,
+          <div
+            v-if="
+              editingLoanDetail?.items.some(
+                (item) => (item.returned_quantity || 0) < item.quantity,
               )
             "
           >
-            {{
-              loanStore.loading
-                ? "Processing..."
-                : "Return All Outstanding Items"
-            }}
-          </button>
+            <div class="divider">OR</div>
+
+            <button
+              @click="handleReturnAllLoan"
+              class="submit-btn"
+              :disabled="
+                loanStore.loading ||
+                editingLoanDetail?.items.every(
+                  (item) => (item.returned_quantity || 0) >= item.quantity,
+                )
+              "
+            >
+              {{
+                loanStore.loading
+                  ? "Processing..."
+                  : "Return All Outstanding Items"
+              }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1182,6 +1167,7 @@ import {
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkUploadModal from "../components/BulkUploadModal.vue";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import DataListing from "../components/DataListing.vue";
 import * as XLSX from "xlsx";
 import { apiFetch } from "../utils/api";
 import { useDialogStore } from "../stores/dialogStore";
@@ -1199,6 +1185,42 @@ const authStore = useAuthStore();
 const currentUser = computed(() => authStore.currentUser);
 const isAdmin = computed(() => currentUser.value?.role === "admin");
 const isCashier = computed(() => currentUser.value?.role === "cashier");
+
+const computedInventoryColumns = computed(() => {
+  const cols = [
+    { key: "name", label: "Name", primary: true },
+    { key: "barcode", label: "Barcode" },
+    { key: "price", label: "Price" },
+    { key: "cost", label: "Cost" },
+    { key: "profit", label: "Expected Profit" },
+    { key: "stock", label: "Stock" },
+    { key: "value", label: "Total Value" },
+    { key: "category", label: "Category" },
+  ];
+  if (activeTab.value === "inventory") {
+    cols.push({ key: "actions", label: "Actions" });
+  }
+  return cols;
+});
+
+const borrowedColumns = [
+  { key: "product", label: "Product", primary: true },
+  { key: "quantity", label: "Quantity" },
+  { key: "borrowed_from", label: "Borrowed From" },
+  { key: "reason", label: "Reason", hidden: true },
+  { key: "status", label: "Status" },
+  { key: "date", label: "Borrowed Date" },
+  { key: "actions", label: "Actions" },
+];
+
+const loanedColumns = [
+  { key: "borrower", label: "Borrower", primary: true },
+  { key: "items", label: "Items" },
+  { key: "collateral", label: "Collateral" },
+  { key: "status", label: "Status" },
+  { key: "date", label: "Loaned Date" },
+  { key: "actions", label: "Actions" },
+];
 
 const products = computed(() => productStore.products);
 const categories = computed(() => categoryStore.categories);
@@ -1609,6 +1631,7 @@ const showModal = ref(false);
 const showBulkUploadModal = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
+const isSubmitting = ref(false);
 
 const formData = ref({
   name: "",
@@ -1731,6 +1754,7 @@ async function uploadImage(productId) {
 
 async function handleSubmit() {
   try {
+    isSubmitting.value = true;
     if (isEditing.value) {
       await productStore.updateProduct(editingId.value, formData.value);
       if (pendingImageFile.value) {
@@ -1752,6 +1776,8 @@ async function handleSubmit() {
     closeModal();
   } catch (error) {
     dialogStore.error("Operation failed: " + error.message);
+  } finally {
+    isSubmitting.value = false;
   }
 }
 
@@ -1973,9 +1999,6 @@ function formatDateWithoutTime(dateString) {
 }
 
 @media (max-width: 1024px) {
-  .btn-text {
-    display: none;
-  }
   .desktop-search {
     min-width: 200px;
   }

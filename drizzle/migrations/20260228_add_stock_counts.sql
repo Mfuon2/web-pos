@@ -25,3 +25,4 @@ CREATE TABLE IF NOT EXISTS stock_count_items (
     FOREIGN KEY (stock_count_id) REFERENCES stock_counts(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
+SELECT 1;

@@ -4,7 +4,8 @@
 -- 2. Backfills the date from created_at timestamp
 
 -- Step 1: Add the incurred_date column
-ALTER TABLE expenses ADD COLUMN incurred_date DATE;
+-- ALTER TABLE expenses ADD COLUMN incurred_date DATE;
+SELECT 1;
 
 -- Step 2: Backfill incurred_date from created_at
 -- Extract just the date portion (YYYY-MM-DD) from the timestamp

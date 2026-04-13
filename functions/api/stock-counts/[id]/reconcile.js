@@ -14,7 +14,7 @@ export async function onRequestPost(context) {
     const db = getDb(env);
     const stockCountId = parseInt(id);
     const body = await request.json();
-    const { user_id } = body;
+    const { user_id, recordOnly } = body;
 
     if (!user_id) {
       return new Response(
@@ -48,15 +48,17 @@ export async function onRequestPost(context) {
 
     // Process reconciliation
     // 1. Update the actual stock table
-    for (const item of items) {
-      if (item.actualCount !== null && item.actualCount !== undefined) {
-        await db
-          .update(stock)
-          .set({
-            count: item.actualCount,
-            updatedAt: sql`datetime('now')`,
-          })
-          .where(eq(stock.productId, item.productId));
+    if (!recordOnly) {
+      for (const item of items) {
+        if (item.actualCount !== null && item.actualCount !== undefined) {
+          await db
+            .update(stock)
+            .set({
+              count: item.actualCount,
+              updatedAt: sql`datetime('now')`,
+            })
+            .where(eq(stock.productId, item.productId));
+        }
       }
     }
 

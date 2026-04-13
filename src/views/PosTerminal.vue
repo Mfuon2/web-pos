@@ -27,13 +27,18 @@
       <div v-if="loading" class="loading">Loading products...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
 
-      <div v-else class="products-grid">
-        <ProductCard
-          v-for="product in filteredProducts"
-          :key="product.id"
-          :product="product"
-          @add-to-cart="addToCart"
-        />
+      <div v-else class="products-container">
+        <div v-for="group in groupedFilteredProducts" :key="group.category" class="category-group">
+          <h3 class="category-title">{{ group.category }}</h3>
+          <div class="products-grid">
+            <ProductCard
+              v-for="product in group.products"
+              :key="product.id"
+              :product="product"
+              @add-to-cart="addToCart"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -210,6 +215,7 @@
       :items="pendingDeficits"
       :borrowedAt="saleDate"
       :isManualBorrow="isManualBorrowing"
+      :isSubmitting="isBorrowingProcessing"
       @confirm="handleBorrowingConfirm"
       @close="handleBorrowingClose"
     />
@@ -304,6 +310,23 @@ const filteredProducts = computed(() => {
   });
 });
 
+const groupedFilteredProducts = computed(() => {
+  const groups = {};
+  filteredProducts.value.forEach(product => {
+    const cat = product.category || 'Uncategorized';
+    if (!groups[cat]) {
+      groups[cat] = { category: cat, products: [] };
+    }
+    groups[cat].products.push(product);
+  });
+  
+  return Object.values(groups).sort((a, b) => {
+    if (a.category === 'Uncategorized') return 1;
+    if (b.category === 'Uncategorized') return -1;
+    return a.category.localeCompare(b.category);
+  });
+});
+
 function addToCart(product) {
   cartStore.addItem(product);
   // Optional: Show a toast notification here
@@ -370,11 +393,14 @@ async function handleCheckout() {
 
   // Confirm before completing the sale
   const itemsList = cart.value
-    .map(item => `${item.quantity}x ${item.name} @ ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}`)
-    .join('\n');
+    .map(
+      (item) =>
+        `${item.quantity}x ${item.name} @ ${formatCurrency(item.price)} = ${formatCurrency(item.quantity * item.price)}`,
+    )
+    .join("\n");
 
   const confirmed = await dialogStore.confirm(
-    `Complete sale via ${paymentMethod.value}?\n\nItems:\n${itemsList}\n\nTotal: ${formatCurrency(cartTotal.value)}`
+    `Complete sale via ${paymentMethod.value}?\n\nItems:\n${itemsList}\n\nTotal: ${formatCurrency(cartTotal.value)}`,
   );
 
   if (!confirmed) return;
@@ -404,6 +430,7 @@ async function processCheckout(deduct_stock = true) {
 const showBorrowedModal = ref(false);
 const pendingDeficits = ref([]);
 const isManualBorrowing = ref(false);
+const isBorrowingProcessing = ref(false);
 
 function initiateBorrow() {
   if (cart.value.length === 0) return;
@@ -423,6 +450,7 @@ function initiateBorrow() {
 }
 
 async function handleBorrowingConfirm(borrowings, reduceStock = true) {
+  isBorrowingProcessing.value = true;
   try {
     for (const borrowing of borrowings) {
       await borrowedStore.addBorrowedItem(borrowing);
@@ -436,6 +464,7 @@ async function handleBorrowingConfirm(borrowings, reduceStock = true) {
     dialogStore.error("Failed to record borrowings: " + err.message);
   } finally {
     isManualBorrowing.value = false;
+    isBorrowingProcessing.value = false;
   }
 }
 
@@ -581,12 +610,30 @@ const vFocus = {
   border-color: var(--primary-color);
 }
 
+.products-container {
+  overflow-y: auto;
+  padding: 0.5rem;
+  flex: 1;
+}
+
+.category-group {
+  margin-bottom: 1.5rem;
+}
+
+.category-title {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
 .products-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 0.5rem;
-  overflow-y: auto;
-  padding: 0.5rem;
   align-content: start;
 }
 
