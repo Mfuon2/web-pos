@@ -839,8 +839,14 @@
               <p class="upload-hint">JPG, PNG, or WebP (max 2MB)</p>
             </div>
           </div>
-          <button type="submit" class="submit-btn">
-            {{ isEditing ? "Update Product" : "Add Product" }}
+          <button type="submit" class="submit-btn" :disabled="isSubmitting">
+            {{
+              isSubmitting
+                ? "Submitting..."
+                : isEditing
+                  ? "Update Product"
+                  : "Add Product"
+            }}
           </button>
         </form>
       </div>
@@ -1617,6 +1623,7 @@ const showModal = ref(false);
 const showBulkUploadModal = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
+const isSubmitting = ref(false);
 
 const formData = ref({
   name: "",
@@ -1739,6 +1746,7 @@ async function uploadImage(productId) {
 
 async function handleSubmit() {
   try {
+    isSubmitting.value = true;
     if (isEditing.value) {
       await productStore.updateProduct(editingId.value, formData.value);
       if (pendingImageFile.value) {
@@ -1760,6 +1768,8 @@ async function handleSubmit() {
     closeModal();
   } catch (error) {
     dialogStore.error("Operation failed: " + error.message);
+  } finally {
+    isSubmitting.value = false;
   }
 }
 
