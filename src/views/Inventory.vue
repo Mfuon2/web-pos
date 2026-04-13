@@ -251,26 +251,6 @@
           </div>
         </div>
 
-        <!-- Mobile Search Bar -->
-        <div class="search-bar-container mobile-search">
-          <div class="search-input-wrapper">
-            <Search class="search-icon" />
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search by name, barcode or source..."
-              class="search-input"
-            />
-            <button
-              v-if="searchQuery"
-              @click="searchQuery = ''"
-              class="clear-search"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
         <div class="table-container">
           <table>
             <thead>
