@@ -293,6 +293,7 @@
     <ExpenseModal
       v-if="showExpenseModal"
       :expense="editingExpense"
+      :isSubmitting="isSavingExpense"
       @close="
         showExpenseModal = false;
         editingExpense = null;
@@ -444,6 +445,7 @@ const showExpenseModal = ref(false);
 const showPurchaseOrderModal = ref(false);
 const editingExpense = ref(null);
 const isSavingPO = ref(false);
+const isSavingExpense = ref(false);
 
 // PO Expansion State
 const expandedPOs = ref([]);
@@ -583,6 +585,7 @@ function handleEditExpense(expense) {
 }
 
 async function handleSaveExpense(expenseData) {
+  isSavingExpense.value = true;
   try {
     if (editingExpense.value) {
       await financeStore.updateExpense(editingExpense.value.id, expenseData);
@@ -596,6 +599,8 @@ async function handleSaveExpense(expenseData) {
     fetchData();
   } catch (error) {
     dialogStore.error("Failed to save expense: " + error.message);
+  } finally {
+    isSavingExpense.value = false;
   }
 }
 

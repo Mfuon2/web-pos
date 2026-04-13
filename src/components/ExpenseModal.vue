@@ -36,8 +36,8 @@
           <label>Description</label>
           <textarea v-model="formData.description" rows="3"></textarea>
         </div>
-        <button type="submit" class="submit-btn">
-          {{ expense ? "Update Expense" : "Save Expense" }}
+        <button type="submit" class="submit-btn" :disabled="isSubmitting">
+          {{ isSubmitting ? "Submitting..." : (expense ? "Update Expense" : "Save Expense") }}
         </button>
       </form>
     </div>
@@ -54,6 +54,10 @@ const props = defineProps({
   expense: {
     type: Object,
     default: null,
+  },
+  isSubmitting: {
+    type: Boolean,
+    default: false,
   },
 });
 
