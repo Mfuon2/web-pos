@@ -1,6 +1,6 @@
 import { getNairobiTimestamp } from "../../utils/timezone.js";
 import { getDb } from "../../../drizzle/db";
-import { products, categories } from "../../../drizzle/schema";
+import { products, categories, stock } from "../../../drizzle/schema";
 import { eq, inArray } from "drizzle-orm";
 
 export async function onRequestPost(context) {
