@@ -62,54 +62,51 @@
           </div>
         </div>
 
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="category in categories" :key="category.id">
-                <td>
-                  <strong>{{ category.name }}</strong>
-                </td>
-                <td>{{ category.description || "N/A" }}</td>
-                <td>{{ formatDate(category.createdAt) }}</td>
-                <td class="actions">
-                  <button
-                    @click="openCategoryModal(category)"
-                    class="action-btn edit-btn"
-                  >
-                    <Edit2 class="icon-sm" />
-                  </button>
-                  <button
-                    @click="handleDeleteCategory(category.id)"
-                    class="action-btn delete-btn"
-                  >
-                    <Trash2 class="icon-sm" />
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="categories.length === 0">
-                <td colspan="4" class="empty-state">
-                  No categories found. Add your first category.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <PaginationControls
-            v-if="categoryPagination.total > 0"
-            :current-page="categoryPagination.page"
-            :total-pages="categoryPagination.totalPages"
-            :total="categoryPagination.total"
-            :limit="categoryPagination.limit"
-            @page-change="handleCategoryPageChange"
-          />
-        </div>
+        <DataListing
+          :data="categories"
+          :columns="categoryColumns"
+        >
+          <template #cell-name="{ item }">
+            <strong>{{ item.name }}</strong>
+          </template>
+          <template #cell-description="{ item }">
+            {{ item.description || "N/A" }}
+          </template>
+          <template #cell-createdAt="{ item }">
+            {{ formatDate(item.createdAt) }}
+          </template>
+          <template #cell-actions="{ item }">
+            <div class="actions">
+              <button
+                @click="openCategoryModal(item)"
+                class="action-btn edit-btn"
+              >
+                <Edit2 class="icon-sm" />
+              </button>
+              <button
+                @click="handleDeleteCategory(item.id)"
+                class="action-btn delete-btn"
+              >
+                <Trash2 class="icon-sm" />
+              </button>
+            </div>
+          </template>
+          
+          <template #empty>
+            No categories found. Add your first category.
+          </template>
+          
+          <template #pagination>
+            <PaginationControls
+              v-if="categoryPagination.total > 0"
+              :current-page="categoryPagination.page"
+              :total-pages="categoryPagination.totalPages"
+              :total="categoryPagination.total"
+              :limit="categoryPagination.limit"
+              @page-change="handleCategoryPageChange"
+            />
+          </template>
+        </DataListing>
       </div>
 
       <!-- Suppliers Tab -->
@@ -131,56 +128,54 @@
           </div>
         </div>
 
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Contact Person</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="supplier in suppliers" :key="supplier.id">
-                <td>
-                  <strong>{{ supplier.name }}</strong>
-                </td>
-                <td>{{ supplier.contactPerson || "N/A" }}</td>
-                <td>{{ supplier.phone || "N/A" }}</td>
-                <td>{{ supplier.email || "N/A" }}</td>
-                <td class="actions">
-                  <button
-                    @click="openSupplierModal(supplier)"
-                    class="action-btn edit-btn"
-                  >
-                    <Edit2 class="icon-sm" />
-                  </button>
-                  <button
-                    @click="handleDeleteSupplier(supplier.id)"
-                    class="action-btn delete-btn"
-                  >
-                    <Trash2 class="icon-sm" />
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="suppliers.length === 0">
-                <td colspan="5" class="empty-state">
-                  No suppliers found. Add your first supplier.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <PaginationControls
-            v-if="supplierPagination.total > 0"
-            :current-page="supplierPagination.page"
-            :total-pages="supplierPagination.totalPages"
-            :total="supplierPagination.total"
-            :limit="supplierPagination.limit"
-            @page-change="handleSupplierPageChange"
-          />
-        </div>
+        <DataListing
+          :data="suppliers"
+          :columns="supplierColumns"
+        >
+          <template #cell-name="{ item }">
+            <strong>{{ item.name }}</strong>
+          </template>
+          <template #cell-contactPerson="{ item }">
+            {{ item.contactPerson || "N/A" }}
+          </template>
+          <template #cell-phone="{ item }">
+            {{ item.phone || "N/A" }}
+          </template>
+          <template #cell-email="{ item }">
+            {{ item.email || "N/A" }}
+          </template>
+          <template #cell-actions="{ item }">
+            <div class="actions">
+              <button
+                @click="openSupplierModal(item)"
+                class="action-btn edit-btn"
+              >
+                <Edit2 class="icon-sm" />
+              </button>
+              <button
+                @click="handleDeleteSupplier(item.id)"
+                class="action-btn delete-btn"
+              >
+                <Trash2 class="icon-sm" />
+              </button>
+            </div>
+          </template>
+          
+          <template #empty>
+            No suppliers found. Add your first supplier.
+          </template>
+          
+          <template #pagination>
+            <PaginationControls
+              v-if="supplierPagination.total > 0"
+              :current-page="supplierPagination.page"
+              :total-pages="supplierPagination.totalPages"
+              :total="supplierPagination.total"
+              :limit="supplierPagination.limit"
+              @page-change="handleSupplierPageChange"
+            />
+          </template>
+        </DataListing>
       </div>
 
       <!-- Users Tab -->
@@ -193,68 +188,64 @@
           </button>
         </div>
 
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Status</th>
-                <th>Role</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="user in users" :key="user.id">
-                <td>
-                  <strong>{{ user.username }}</strong>
-                </td>
-                <td>
-                  <span
-                    class="status-badge"
-                    :class="isUserOnline(user) ? 'online' : 'offline'"
-                  >
-                    <span class="status-dot"></span>
-                    {{ isUserOnline(user) ? "Online" : "Offline" }}
-                  </span>
-                </td>
-                <td>
-                  <span class="role-badge" :class="user.role">{{
-                    user.role
-                  }}</span>
-                </td>
-                <td>{{ formatDate(user.createdAt) }}</td>
-                <td class="actions">
-                  <button
-                    @click="openUserModal(user)"
-                    class="action-btn edit-btn"
-                    title="Edit User"
-                  >
-                    <Edit2 class="icon-sm" />
-                  </button>
-                  <button
-                    @click="handleDeleteUser(user.id)"
-                    class="action-btn delete-btn"
-                    title="Delete User"
-                  >
-                    <Trash2 class="icon-sm" />
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="users.length === 0">
-                <td colspan="5" class="empty-state">No users found.</td>
-              </tr>
-            </tbody>
-          </table>
-          <PaginationControls
-            v-if="userPagination.total > 0"
-            :current-page="userPagination.page"
-            :total-pages="userPagination.totalPages"
-            :total="userPagination.total"
-            :limit="userPagination.limit"
-            @page-change="handleUserPageChange"
-          />
-        </div>
+        <DataListing
+          :data="users"
+          :columns="userColumns"
+        >
+          <template #cell-username="{ item }">
+            <strong>{{ item.username }}</strong>
+          </template>
+          <template #cell-status="{ item }">
+            <span
+              class="status-badge"
+              :class="isUserOnline(item) ? 'online' : 'offline'"
+            >
+              <span class="status-dot"></span>
+              {{ isUserOnline(item) ? "Online" : "Offline" }}
+            </span>
+          </template>
+          <template #cell-role="{ item }">
+            <span class="role-badge" :class="item.role">{{
+              item.role
+            }}</span>
+          </template>
+          <template #cell-createdAt="{ item }">
+            {{ formatDate(item.createdAt) }}
+          </template>
+          <template #cell-actions="{ item }">
+            <div class="actions">
+              <button
+                @click="openUserModal(item)"
+                class="action-btn edit-btn"
+                title="Edit User"
+              >
+                <Edit2 class="icon-sm" />
+              </button>
+              <button
+                @click="handleDeleteUser(item.id)"
+                class="action-btn delete-btn"
+                title="Delete User"
+              >
+                <Trash2 class="icon-sm" />
+              </button>
+            </div>
+          </template>
+          
+          <template #empty>
+            No users found.
+          </template>
+          
+          <template #pagination>
+            <PaginationControls
+              v-if="userPagination.total > 0"
+              :current-page="userPagination.page"
+              :total-pages="userPagination.totalPages"
+              :total="userPagination.total"
+              :limit="userPagination.limit"
+              @page-change="handleUserPageChange"
+            />
+          </template>
+        </DataListing>
       </div>
 
       <!-- Settings Tab -->
@@ -595,6 +586,7 @@ import {
 import PaginationControls from "../components/PaginationControls.vue";
 import BulkCategoryModal from "../components/BulkCategoryModal.vue";
 import BulkSupplierModal from "../components/BulkSupplierModal.vue";
+import DataListing from "../components/DataListing.vue";
 
 import { useDialogStore } from "../stores/dialogStore";
 import { useSettingsStore } from "../stores/settingsStore";
@@ -657,6 +649,29 @@ const settingsForm = ref({
   phone: "",
   email: "",
 });
+
+const categoryColumns = [
+  { key: 'name', label: 'Name', primary: true },
+  { key: 'description', label: 'Description' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'actions', label: 'Actions', align: 'right' }
+];
+
+const supplierColumns = [
+  { key: 'name', label: 'Name', primary: true },
+  { key: 'contactPerson', label: 'Contact Person' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'email', label: 'Email' },
+  { key: 'actions', label: 'Actions', align: 'right' }
+];
+
+const userColumns = [
+  { key: 'username', label: 'Username', primary: true },
+  { key: 'status', label: 'Status' },
+  { key: 'role', label: 'Role' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'actions', label: 'Actions', align: 'right' }
+];
 
 function formatDate(dateString) {
   if (!dateString) return "N/A";
