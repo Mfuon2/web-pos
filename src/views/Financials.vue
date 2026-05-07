@@ -29,7 +29,10 @@
           <label>End Date:</label>
           <input v-model="endDate" type="date" />
         </div>
-        <button @click="fetchData" class="filter-btn">Apply Filter</button>
+        <button @click="fetchData" class="filter-btn" :disabled="isFetching">
+          <template v-if="isFetching">Applying...</template>
+          <template v-else>Apply Filter</template>
+        </button>
       </div>
     </div>
 
@@ -704,6 +707,7 @@ const newItem = ref({
 });
 const savingItem = ref(false);
 const showInactive = ref(false);
+const isFetching = ref(false);
 
 const normalizedDailyTrends = computed(() => {
   if (
@@ -892,13 +896,20 @@ function getSupplierName(id) {
 }
 
 async function fetchData() {
-  await Promise.all([
-    financeStore.fetchSummary(startDate.value, endDate.value),
-    financeStore.fetchExpenses(startDate.value, endDate.value, 1, 20),
-    financeStore.fetchPurchaseOrders(startDate.value, endDate.value, 1, 20),
-    supplierStore.fetchSuppliers(),
-    productStore.fetchProducts({ limit: 1000 }),
-  ]);
+  isFetching.value = true;
+  try {
+    await Promise.all([
+      financeStore.fetchSummary(startDate.value, endDate.value),
+      financeStore.fetchExpenses(startDate.value, endDate.value, 1, 20),
+      financeStore.fetchPurchaseOrders(startDate.value, endDate.value, 1, 20),
+      supplierStore.fetchSuppliers(),
+      productStore.fetchProducts({ limit: 1000 }),
+    ]);
+  } catch (error) {
+    dialogStore.error("Failed to refresh data: " + error.message);
+  } finally {
+    isFetching.value = false;
+  }
 }
 
 async function togglePO(po) {
