@@ -5,7 +5,6 @@ import Inventory from "../views/Inventory.vue";
 import Financials from "../views/Financials.vue";
 import Setups from "../views/Setups.vue";
 import Sales from "../views/Sales.vue";
-import SalesSummary from "../views/SalesSummary.vue";
 import Login from "../views/Login.vue";
 
 const router = createRouter({
@@ -34,12 +33,6 @@ const router = createRouter({
       name: "sales",
       component: Sales,
       meta: { roles: ["admin", "cashier"] },
-    },
-    {
-      path: "/sales-summary",
-      name: "sales-summary",
-      component: SalesSummary,
-      meta: { roles: ["admin"] },
     },
     {
       path: "/inventory",

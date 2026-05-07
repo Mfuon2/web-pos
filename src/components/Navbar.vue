@@ -35,15 +35,6 @@
         POS Terminal
       </router-link>
       <router-link
-        v-if="isAdmin"
-        to="/sales-summary"
-        :class="{ active: $route.path === '/sales-summary' }"
-        @click="isMenuOpen = false"
-      >
-        <TrendingUp class="nav-icon" />
-        Summary
-      </router-link>
-      <router-link
         v-if="isAdmin || isCashier"
         to="/sales"
         :class="{ active: $route.path === '/sales' }"
@@ -120,7 +111,6 @@ import {
   Wallet,
   Settings,
   LogOut,
-  TrendingUp,
   ClipboardList,
 } from "lucide-vue-next";
 
