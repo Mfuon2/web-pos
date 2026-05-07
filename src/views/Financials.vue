@@ -29,7 +29,10 @@
           <label>End Date:</label>
           <input v-model="endDate" type="date" />
         </div>
-        <button @click="fetchData" class="filter-btn">Apply Filter</button>
+        <button @click="fetchData" class="filter-btn" :disabled="isFetching">
+          <template v-if="isFetching">Applying...</template>
+          <template v-else>Apply Filter</template>
+        </button>
       </div>
     </div>
 
@@ -93,7 +96,10 @@
                   )
                 }}
               </p>
-              <span class="detail">Purchases + Expenses</span>
+              <span class="detail">
+                Purchases ({{ formatNumber(summary.total_stock_purchases) }}) +
+                Expenses ({{ formatNumber(summary.total_expenses) }})
+              </span>
             </div>
             <div
               class="summary-card profit"
@@ -642,7 +648,7 @@ import {
 } from "lucide-vue-next";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { formatCurrency } from "../utils/currency";
+import { formatCurrency, formatNumber } from "../utils/currency";
 import PaginationControls from "../components/PaginationControls.vue";
 
 import { useDialogStore } from "../stores/dialogStore";
@@ -701,6 +707,7 @@ const newItem = ref({
 });
 const savingItem = ref(false);
 const showInactive = ref(false);
+const isFetching = ref(false);
 
 const normalizedDailyTrends = computed(() => {
   if (
@@ -889,13 +896,20 @@ function getSupplierName(id) {
 }
 
 async function fetchData() {
-  await Promise.all([
-    financeStore.fetchSummary(startDate.value, endDate.value),
-    financeStore.fetchExpenses(startDate.value, endDate.value, 1, 20),
-    financeStore.fetchPurchaseOrders(startDate.value, endDate.value, 1, 20),
-    supplierStore.fetchSuppliers(),
-    productStore.fetchProducts({ limit: 1000 }),
-  ]);
+  isFetching.value = true;
+  try {
+    await Promise.all([
+      financeStore.fetchSummary(startDate.value, endDate.value),
+      financeStore.fetchExpenses(startDate.value, endDate.value, 1, 20),
+      financeStore.fetchPurchaseOrders(startDate.value, endDate.value, 1, 20),
+      supplierStore.fetchSuppliers(),
+      productStore.fetchProducts({ limit: 1000 }),
+    ]);
+  } catch (error) {
+    dialogStore.error("Failed to refresh data: " + error.message);
+  } finally {
+    isFetching.value = false;
+  }
 }
 
 async function togglePO(po) {
@@ -1551,6 +1565,13 @@ onMounted(() => {
     align-items: flex-start;
     gap: 1rem;
   }
+  .date-input {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .date-input label {
+    align-self: flex-start;
+  }
 }
 
 .financials {
@@ -1659,12 +1680,9 @@ onMounted(() => {
 /* Tabs */
 .tabs {
   display: flex;
-  gap: 0.5rem;
+  gap: 1rem;
   margin-bottom: 2rem;
-  background: var(--bg-white);
-  padding: 0.5rem;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-bottom: var(--border-width) solid var(--border-color);
   overflow-x: auto;
   white-space: nowrap;
 }
@@ -1674,8 +1692,8 @@ onMounted(() => {
   padding: 1rem 1.5rem;
   background: transparent;
   border: none;
-  border-radius: var(--radius-md);
-  font-weight: 600;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-weight: 500;
   font-size: 1rem;
   color: var(--text-secondary);
   cursor: pointer;
@@ -1689,7 +1707,6 @@ onMounted(() => {
 
 .tab:hover {
   background: var(--bg-hover);
-  color: var(--primary-color);
 }
 
 .tab.active {
@@ -2173,8 +2190,16 @@ table {
     align-items: stretch;
   }
   .date-input {
-    flex-direction: column;
-    align-items: stretch;
+    flex: 1;
+    min-width: 140px;
+  }
+  .date-input label {
+    margin-bottom: 0.25rem;
+    min-width: 60px;
+  }
+  .filter-btn {
+    height: 42px;
+    margin-top: auto;
   }
   .date-filter input {
     width: 100%;
