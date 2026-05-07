@@ -49,6 +49,7 @@
               <tr>
                 <th>Date</th>
                 <th>Status</th>
+                <th class="history-notes-col">Notes</th>
                 <th>Discrepancy</th>
                 <th>Counted By</th>
                 <th>Reconciled By</th>
@@ -64,6 +65,9 @@
                   <span class="status-badge" :class="count.status">{{
                     count.status
                   }}</span>
+                </td>
+                <td data-label="Notes" class="history-notes-cell">
+                  {{ count.notes || "N/A" }}
                 </td>
                 <td data-label="Discrepancy">
                   <span
@@ -81,7 +85,7 @@
                 <td data-label="Reconciled By">
                   {{
                     count.reconciledBy
-                      ? `${getUserName(count.reconciledBy) || count.reconciledBy} ${count.notes?.includes("Auto-Reconciled") ? `${count.notes}` : ""}`
+                      ? `${getUserName(count.reconciledBy) || count.reconciledBy}`
                       : count.status === "completed"
                         ? "N/A"
                         : "Pending"
@@ -111,7 +115,7 @@
                 </td>
               </tr>
               <tr v-if="stockCountStore.stockCounts.length === 0">
-                <td colspan="6" class="empty-state">No stock counts found.</td>
+                <td colspan="7" class="empty-state">No stock counts found.</td>
               </tr>
             </tbody>
           </table>
@@ -130,104 +134,128 @@
         </div>
 
         <div class="count-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Count Date</label>
-              <input
-                type="date"
-                v-model="activeCount.countDate"
-                :disabled="isCompleted"
-              />
-            </div>
-            <div class="form-group">
-              <label>Notes</label>
-              <input
-                type="text"
-                v-model="activeCount.notes"
-                :disabled="isCompleted"
-                placeholder="e.g., Monthly audit"
-              />
+          <div class="form-section count-details-section">
+            <h3 class="section-title">Count Details</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Count Date</label>
+                <input
+                  type="date"
+                  v-model="activeCount.countDate"
+                  :disabled="isCompleted"
+                />
+              </div>
+              <div class="form-group notes-group">
+                <label>Notes</label>
+                <textarea
+                  v-model="activeCount.notes"
+                  :disabled="isCompleted"
+                  placeholder="e.g., Monthly audit"
+                  rows="2"
+                ></textarea>
+              </div>
             </div>
           </div>
 
-          <div class="form-group mb-4" v-if="!isCompleted">
-            <input
-              type="text"
-              v-model="searchQuery"
-              placeholder="Search product name..."
-            />
-          </div>
+          <div class="form-section count-items-section mt-4">
+            <h3 class="section-title">Stock Items</h3>
+            <div class="form-group mb-4" v-if="!isCompleted">
+              <div class="search-wrapper">
+                <Search class="search-icon" />
+                <input
+                  type="text"
+                  v-model="searchQuery"
+                  placeholder="Search product name..."
+                  class="search-input"
+                />
+              </div>
+            </div>
 
-          <div class="table-container mt-4">
-            <table>
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th class="text-center">Previous Count</th>
-                  <th class="text-center">System Count</th>
-                  <th class="text-center">Actual Count</th>
-                  <th class="text-center">Variance</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody
-                v-for="(items, categoryName) in groupedActiveItems"
-                :key="categoryName"
-              >
-                <tr class="category-row">
-                  <td colspan="6" class="category-header font-bold">
-                    {{ categoryName }}
-                  </td>
-                </tr>
-                <tr v-for="item in items" :key="item.id">
-                  <td data-label="Product">{{ item.productName }}</td>
-                  <td
-                    data-label="Previous Count"
-                    class="text-center text-secondary"
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th class="text-center">Previous Count</th>
+                    <th class="text-center">System Count</th>
+                    <th class="text-center">Actual Count</th>
+                    <th class="text-center">Variance</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody
+                  v-for="(items, categoryName) in groupedActiveItems"
+                  :key="categoryName"
+                >
+                  <tr
+                    class="category-row clickable"
+                    @click="toggleCategory(categoryName)"
                   >
-                    {{
-                      item.previousCount !== null &&
-                      item.previousCount !== undefined
-                        ? item.previousCount
-                        : "-"
-                    }}
-                  </td>
-                  <td data-label="System Count" class="text-center">
-                    {{ item.systemCount }}
-                  </td>
-                  <td data-label="Actual Count" class="text-center">
-                    <input
-                      type="number"
-                      v-model.number="item.actualCount"
-                      @input="recalculateVariance(item)"
-                      class="count-input center-align"
-                      :disabled="isCompleted"
-                    />
-                  </td>
-                  <td
-                    data-label="Variance"
-                    class="text-center"
-                    :class="getVarianceClass(item.variance)"
+                    <td colspan="6" class="category-header font-bold">
+                      <div class="flex items-center gap-1">
+                        <ChevronDown
+                          v-if="!collapsedCategories.has(categoryName)"
+                          class="icon-sm"
+                        />
+                        <ChevronRight v-else class="icon-sm" />
+                        {{ categoryName }}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr
+                    v-if="!collapsedCategories.has(categoryName)"
+                    v-for="item in items"
+                    :key="item.id"
                   >
-                    <strong>{{
-                      item.variance > 0 ? "+" + item.variance : item.variance
-                    }}</strong>
-                  </td>
-                  <td data-label="Reason">
-                    <input
-                      v-if="item.variance !== 0"
-                      type="text"
-                      v-model="item.reason"
-                      placeholder="Reason for discrepancy"
-                      class="reason-input w-full"
-                      :disabled="isCompleted"
-                      required
-                    />
-                    <span v-else class="text-secondary">-</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    <td data-label="Product">{{ item.productName }}</td>
+                    <td
+                      data-label="Previous Count"
+                      class="text-center text-secondary"
+                    >
+                      {{
+                        item.previousCount !== null &&
+                        item.previousCount !== undefined
+                          ? item.previousCount
+                          : "-"
+                      }}
+                    </td>
+                    <td data-label="System Count" class="text-center">
+                      {{ item.systemCount }}
+                    </td>
+                    <td data-label="Actual Count" class="text-center">
+                      <input
+                        type="number"
+                        v-model.number="item.actualCount"
+                        @input="recalculateVariance(item)"
+                        class="count-input center-align"
+                        :disabled="isCompleted"
+                      />
+                    </td>
+                    <td
+                      data-label="Variance"
+                      class="text-center"
+                      :class="getVarianceClass(item.variance)"
+                    >
+                      <strong>{{
+                        item.variance > 0 ? "+" + item.variance : item.variance
+                      }}</strong>
+                    </td>
+                    <td data-label="Reason">
+                      <input
+                        v-if="item.variance !== 0"
+                        type="text"
+                        v-model="item.reason"
+                        placeholder="Reason for discrepancy"
+                        class="reason-input w-full"
+                        :disabled="isCompleted"
+                        required
+                      />
+                      <span v-else class="text-secondary">-</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div
@@ -267,6 +295,42 @@
             Are you sure you want to complete this stock count? You won't be
             able to edit it afterward.
           </p>
+
+          <div v-if="varianceItems.length > 0" class="variance-summary mt-4">
+            <h4 class="variance-title">Variance Discrepancies</h4>
+            <div class="variance-list-scroll">
+              <table class="variance-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th class="text-center">System</th>
+                    <th class="text-center">Actual</th>
+                    <th class="text-center">Var</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in varianceItems" :key="item.id">
+                    <td>{{ item.productName }}</td>
+                    <td class="text-center">{{ item.systemCount }}</td>
+                    <td class="text-center">{{ item.actualCount }}</td>
+                    <td
+                      class="text-center"
+                      :class="getVarianceClass(item.variance)"
+                    >
+                      {{
+                        item.variance > 0 ? "+" + item.variance : item.variance
+                      }}
+                    </td>
+                    <td class="variance-reason">{{ item.reason }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="variance-summary no-variance mt-4">
+            <p>No variances detected.</p>
+          </div>
           <label
             style="
               display: flex;
@@ -316,6 +380,8 @@ import {
   Eye,
   Edit2,
   CheckCircle,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-vue-next";
 
 const stockCountStore = useStockCountStore();
@@ -329,9 +395,15 @@ const activeCount = ref(null);
 const searchQuery = ref("");
 const showCompleteModal = ref(false);
 const isRecordOnly = ref(false);
+const collapsedCategories = ref(new Set());
 
 const isCompleted = computed(() => {
   return activeCount.value?.status === "completed";
+});
+
+const varianceItems = computed(() => {
+  if (!activeCount.value) return [];
+  return activeCount.value.items.filter((item) => item.variance !== 0);
 });
 
 onMounted(async () => {
@@ -375,6 +447,14 @@ const groupedActiveItems = computed(() => {
 
   return groups;
 });
+
+function toggleCategory(categoryName) {
+  if (collapsedCategories.value.has(categoryName)) {
+    collapsedCategories.value.delete(categoryName);
+  } else {
+    collapsedCategories.value.add(categoryName);
+  }
+}
 
 function isLatestCount(countId) {
   if (!stockCountStore.stockCounts || stockCountStore.stockCounts.length === 0)
@@ -545,6 +625,14 @@ async function confirmReconcile(count) {
     min-width: 120px;
     padding: 0.75rem 1rem;
     font-size: var(--font-size-sm);
+  }
+
+  .notes-group {
+    grid-column: span 1 !important;
+  }
+
+  .form-section {
+    padding: 1rem !important;
   }
 
   .table-container {
@@ -797,15 +885,32 @@ async function confirmReconcile(count) {
 .count-input {
   width: 80px;
   padding: 0.25rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-white);
+  transition: border-color 0.2s;
 }
 
 .reason-input {
   width: 100%;
   padding: 0.25rem 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-white);
+  font-size: 0.85rem;
+  transition: border-color 0.2s;
+}
+
+.count-input:focus,
+.reason-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.count-input:disabled,
+.reason-input:disabled {
+  background-color: #f8fafc;
+  cursor: not-allowed;
 }
 
 .form-row {
@@ -820,11 +925,89 @@ async function confirmReconcile(count) {
   font-weight: 500;
   margin-bottom: 0.25rem;
 }
-.form-group input {
+.form-group input,
+.form-group textarea,
+.form-group select {
   width: 100%;
+  display: block;
   padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input:disabled,
+.form-group textarea:disabled {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  color: var(--text-secondary);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.notes-group {
+  grid-column: span 2;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-section {
+  background: var(--bg-white);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  width: 100%;
+}
+
+.count-details-section {
+  border-left: 4px solid var(--primary-color);
+}
+
+.count-items-section {
+  border-top: 1px solid var(--border-color);
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--text-secondary);
+}
+
+.search-input {
+  padding-left: 2.75rem !important;
 }
 
 .flex {
@@ -938,6 +1121,94 @@ async function confirmReconcile(count) {
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.items-center {
+  display: flex;
+  align-items: center;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.variance-summary {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-top: 1rem;
+}
+
+.variance-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #374151;
+}
+
+.variance-list-scroll {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid #f3f4f6;
+  border-radius: 0.375rem;
+}
+
+.variance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.variance-table th {
+  position: sticky;
+  top: 0;
+  background: #f3f4f6;
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.variance-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.variance-reason {
+  color: #6b7280;
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.no-variance {
+  text-align: center;
+  color: #6b7280;
+  padding: 1rem;
+}
+
+.history-notes-col {
+  min-width: 200px;
+}
+
+.history-notes-cell {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .history-notes-cell {
+    max-width: none;
+    white-space: normal;
+    text-align: right !important;
   }
 }
 </style>
