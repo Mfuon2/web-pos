@@ -5,10 +5,16 @@
         <Receipt class="header-icon" />
         Sales History
       </h1>
-      <button v-if="isAdmin" class="export-btn" @click="openExportModal">
-        <Download class="icon-sm" />
-        Export
-      </button>
+      <div class="header-actions" v-if="isAdmin">
+        <button class="analytics-btn" @click="openAnalyticsModal">
+          <BarChart3 class="icon-sm" />
+          Analytics
+        </button>
+        <button class="export-btn" @click="openExportModal">
+          <Download class="icon-sm" />
+          Export
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="loading">
@@ -232,6 +238,10 @@
       @close="closeDeleteModal"
       @deleted="handleItemDeleted"
     />
+    <ProductAnalyticsModal
+      v-if="isAnalyticsModalOpen"
+      @close="closeAnalyticsModal"
+    />
   </div>
 </template>
 
@@ -247,11 +257,13 @@ import {
   Download,
   Edit,
   Trash2,
+  BarChart3,
 } from "lucide-vue-next";
 import DailySalesModal from "../components/DailySalesModal.vue";
 import ExportSalesModal from "../components/ExportSalesModal.vue";
 import EditSaleItemModal from "../components/EditSaleItemModal.vue";
 import DeleteSaleItemModal from "../components/DeleteSaleItemModal.vue";
+import ProductAnalyticsModal from "../components/ProductAnalyticsModal.vue";
 import { formatCurrency } from "../utils/currency";
 import { apiGet, apiPatch } from "../utils/api";
 import { useAuthStore } from "../stores/authStore";
@@ -268,6 +280,7 @@ const isDailySalesModalOpen = ref(false);
 const isExportModalOpen = ref(false);
 const isEditModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
+const isAnalyticsModalOpen = ref(false);
 const selectedDayData = ref(null);
 const selectedEditItem = ref(null);
 const selectedEditSaleId = ref(null);
@@ -290,6 +303,14 @@ function openExportModal() {
 
 function closeExportModal() {
   isExportModalOpen.value = false;
+}
+
+function openAnalyticsModal() {
+  isAnalyticsModalOpen.value = true;
+}
+
+function closeAnalyticsModal() {
+  isAnalyticsModalOpen.value = false;
 }
 
 function openEditModal(saleId, item) {
@@ -502,9 +523,13 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.export-btn {
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.export-btn, .analytics-btn {
   padding: 0.3rem 1rem;
-  background: var(--primary-gradient);
   color: var(--text-white);
   border: none;
   border-radius: var(--radius-md);
@@ -516,12 +541,20 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
-.export-btn:disabled {
+.analytics-btn {
+  background: var(--secondary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+}
+
+.export-btn {
+  background: var(--primary-gradient);
+}
+
+.export-btn:disabled, .analytics-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.export-btn:not(:disabled):hover {
+.export-btn:not(:disabled):hover, .analytics-btn:not(:disabled):hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
