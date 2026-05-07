@@ -171,7 +171,7 @@
               </div>
             </div>
 
-            <div class="table-container">
+            <div class="table-container mt-4">
               <table>
                 <thead>
                   <tr>
